@@ -39,7 +39,7 @@ def get_data():
 			# },
 			{
 				'label': _('CRM'),
-				'items': ["Interactions", "Memos", "Annual Plan"]
+				'items': ["Interactions"]
 			},
 			# {
 			# 	'label': _('Subscriptions'),

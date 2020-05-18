@@ -2,11 +2,10 @@ from __future__ import unicode_literals
 
 import frappe
 from frappe.model.db_query import DatabaseQuery
-import pdb
 
 @frappe.whitelist()
 def get_data(item_code=None, warehouse=None, item_group=None,
-	start=0, sort_by='actual_qty', sort_order='desc', limit_page_length=20):
+	start=0, sort_by='actual_qty', sort_order='desc'):
 	'''Return data to render the item dashboard'''
 	filters = []
 	if item_code:
@@ -41,9 +40,8 @@ def get_data(item_code=None, warehouse=None, item_group=None,
 		filters=filters,
 		order_by=sort_by + ' ' + sort_order,
 		limit_start=start,
-		limit_page_length=limit_page_length)
+		limit_page_length='21')
 
-	# pdb.set_trace()
 	for item in items:
 		item.update({
 			'item_name': frappe.get_cached_value("Item", item.item_code, 'item_name'),
