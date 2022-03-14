@@ -21,11 +21,18 @@ def get_columns(filters):
 
 	columns =[
 		{
+			"label": _("Sales Partner ID"),
+			"options": "Customer",
+			"fieldname": "partner_id",
+			"fieldtype": "Link",
+			"width": 75
+		},
+		{
 			"label": _("Sales Partner"),
 			"options": "Sales Partner",
 			"fieldname": "sales_partner",
 			"fieldtype": "Link",
-			"width": 100
+			"width": 130
 		},
 				{
 			"label": _("Sales Partner Email"),
@@ -37,7 +44,7 @@ def get_columns(filters):
 			"label": _("Sales Partner Rebate preference"),
 			"fieldname": "bank_details",
 			"fieldtype": "Data",
-			"width": 200
+			"width": 175
 		},
 		{
 			"label": _(filters["doctype"]),
@@ -150,7 +157,7 @@ def get_entries(filters):
 		SELECT
 			dt.name, dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, 
 			if(s.preference = "Refund to Account", s.bank_account, s.preference) as bank_details,
-			dt_item.item_name, dt.customer_name,
+			dt_item.item_name, dt.customer_name, s.customer as partner_id,
 			dt_item.base_net_rate as rate, dt_item.qty, dt_item.base_net_amount as amount,
 			ROUND(((dt_item.base_net_amount * dt.commission_rate) / 100), 2) as commission,
 			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code
