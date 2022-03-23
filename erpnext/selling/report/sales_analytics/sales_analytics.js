@@ -10,19 +10,7 @@ frappe.query_reports["Sales Analytics"] = {
 			fieldtype: "Select",
 			options: ["Customer Group", "Customer", "Item Group", "Item", "Territory", "Order Type", "Project"],
 			default: "Customer",
-			reqd: 1,
-			// on_change: () => {
-			// 	// var tree_type = frappe.query_report.get_filter_value('tree_type')
-			// 	var tree_type = frappe.query_report.get_filter_value('tree_type')
-			// 	if (tree_type == 'Item'){
-			// 		frappe.query_reports["Sales Analytics"].filters[7].hidden = 0
-			// 	} else {
-			// 		frappe.query_reports["Sales Analytics"].filters[7].hidden = 1
-			// 	}
-			// 	frappe.set_route("query-report","Sales Analytics",{"tree_type": tree_type})
-			// 	frappe.query_report.load();
-
-			// }
+			reqd: 1
 		},
 		{
 			fieldname: "doc_type",
@@ -104,32 +92,27 @@ frappe.query_reports["Sales Analytics"] = {
 					const data_doctype = $(
 						data[2].html
 					)[0].attributes.getNamedItem("data-doctype").value;
-					const tree_type = frappe.query_report.filters[0].value;
-					if (data_doctype != tree_type) return;
+					
 
 					row_name = data[2].content;
 					length = data.length;
-
-					if (tree_type == "Customer") {
-						row_values = data
-							.slice(4, length - 1)
-							.map(function (column) {
-								return column.content;
-							});
+					var tree_type = frappe.query_report.filters[0].value;
+					if (data_doctype != tree_type) return;
+					if(tree_type == "Customer") {
+						row_values = data.slice(4,length-1).map(function (column) {
+							return column.content;
+						})
 					} else if (tree_type == "Item") {
-						row_values = data
-							.slice(5, length - 1)
-							.map(function (column) {
-								return column.content;
-							});
-					} else {
-						row_values = data
-							.slice(3, length - 1)
-							.map(function (column) {
-								return column.content;
-							});
+						row_values = data.slice(6,length-1).map(function (column) {
+							return column.content;
+						})
 					}
-
+					else {
+						row_values = data.slice(3,length-1).map(function (column) {
+							return column.content;
+						})
+					}
+					
 					entry = {
 						name: row_name,
 						values: row_values,
@@ -137,19 +120,18 @@ frappe.query_reports["Sales Analytics"] = {
 
 					let raw_data = frappe.query_report.chart.data;
 					let new_datasets = raw_data.datasets;
+					let element_found = new_datasets.some((element, index, array)=>{	
+						if(element.name == row_name){	
+							array.splice(index, 1)	
+							return true	
+						}	
+						return false	
+					})	
 
-					let element_found = new_datasets.some((element, index, array)=>{
-						if(element.name == row_name){
-							array.splice(index, 1)
-							return true
-						}
-						return false
-					})
 
 					if (!element_found) {
 						new_datasets.push(entry);
 					}
-
 					let new_data = {
 						labels: raw_data.labels,
 						datasets: new_datasets,

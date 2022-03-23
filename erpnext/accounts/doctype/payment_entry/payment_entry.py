@@ -545,6 +545,8 @@ class PaymentEntry(AccountsController):
 
 		self.total_allocated_amount = abs(total_allocated_amount)
 		self.base_total_allocated_amount = abs(base_total_allocated_amount)
+		# self.total_allocated_amount = total_allocated_amount
+		# self.base_total_allocated_amount = base_total_allocated_amount
 
 	def set_unallocated_amount(self):
 		self.unallocated_amount = 0
@@ -946,8 +948,12 @@ class PaymentEntry(AccountsController):
 
 			tax.base_total = tax.total * self.source_exchange_rate
 
-			self.total_taxes_and_charges += current_tax_amount
-			self.base_total_taxes_and_charges += current_tax_amount * self.source_exchange_rate
+			if self.payment_type == 'Pay':
+				self.base_total_taxes_and_charges += flt(current_tax_amount / self.source_exchange_rate)
+				self.total_taxes_and_charges += flt(current_tax_amount / self.target_exchange_rate)
+			else:
+				self.base_total_taxes_and_charges += flt(current_tax_amount / self.target_exchange_rate)
+				self.total_taxes_and_charges += flt(current_tax_amount / self.source_exchange_rate)
 
 		if self.get('taxes'):
 			self.paid_amount_after_tax = self.get('taxes')[-1].base_total
@@ -1080,7 +1086,7 @@ def get_outstanding_reference_documents(args, print=1):
 		elif d.voucher_type in ("Sales Invoice"):
 			d["customer_purchase_no"] = frappe.db.get_value(d.voucher_type, d.voucher_no, "po_no")
 
-	# Get all SO / PO which are not fully billed or aginst which full advance not paid
+	# Get all SO / PO which are not fully billed or against which full advance not paid
 	orders_to_be_billed = []
 	if (args.get("party_type") != "Student"):
 		orders_to_be_billed =  get_orders_to_be_billed(args.get("posting_date"),args.get("party_type"),

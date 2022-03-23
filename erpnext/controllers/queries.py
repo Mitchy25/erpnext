@@ -227,7 +227,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 
 	searchfields = searchfields + [field for field in[searchfield or "name", "item_code", "item_group", "item_name"]
 		if not field in searchfields]
-	searchfields = " or ".join([field + " like %(txt)s" for field in searchfields])
+	searchfields = " or ".join(["tabItem." + field + " like %(txt)s" for field in searchfields])
 
 	if filters and isinstance(filters, dict):
 		if filters.get('customer') or filters.get('supplier'):
@@ -260,24 +260,72 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 	if frappe.db.count('Item', cache=True) < 50000:
 		# scan description only if items are less than 50000
 		description_cond = 'or tabItem.description LIKE %(txt)s'
-	return frappe.db.sql("""select
-			tabItem.name, tabItem.item_name, tabItem.item_group,
-		if(length(tabItem.description) > 40, \
-			concat(substr(tabItem.description, 1, 40), "..."), description) as description
-		{columns}
-		from tabItem
-		where tabItem.docstatus < 2
+
+	# return frappe.db.sql("""select tabItem.name,
+	# 	if(length(tabItem.item_name) > 40,
+	# 		concat(substr(tabItem.item_name, 1, 40), "..."), item_name) as item_name,
+	# 	tabItem.item_group,
+	# 	if(length(tabItem.description) > 40, \
+	# 		concat(substr(tabItem.description, 1, 40), "..."), description) as description
+	# 	{columns}
+	# 	from tabItem
+	# 	where tabItem.docstatus < 2
+	# 		and tabItem.has_variants=0
+	# 		and tabItem.disabled=0
+	# 		and (tabItem.end_of_life > %(today)s or ifnull(tabItem.end_of_life, '0000-00-00')='0000-00-00')
+	# 		and ({scond} or tabItem.item_code IN (select parent from `tabItem Barcode` where barcode LIKE %(txt)s)
+	# 			{description_cond})
+	# 		{fcond} {mcond}
+	# 	order by
+	# 		if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
+	# 		if(locate(%(_txt)s, item_name), locate(%(_txt)s, item_name), 99999),
+	# 		idx desc,
+	# 		name, item_name
+	# 	limit %(start)s, %(page_len)s """.format(
+	# 		columns=columns,
+	# 		scond=searchfields,
+	# 		fcond=get_filters_cond(doctype, filters, conditions).replace('%', '%%'),
+	# 		mcond=get_match_cond(doctype).replace('%', '%%'),
+	# 		description_cond = description_cond),
+	# 		{
+	# 			"today": nowdate(),
+	# 			"txt": "%%%s%%" % txt,
+	# 			"_txt": txt.replace("%", ""),
+	# 			"start": start,
+	# 			"page_len": page_len
+	# 		}, as_dict=as_dict)
+	return frappe.db.sql("""select 
+			tabItem.name,
+			if(length(tabItem.item_name) > 40,
+				concat(substr(tabItem.item_name, 1, 40), "..."), tabItem.item_name) as item_name,
+			CONCAT("Stock: ", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int)) as available,
+			CONCAT("BO: ", CAST(COALESCE(SUM(tabBin.reserved_qty),0) as int)) as backorder,
+			CONCAT("On Order: ", CAST(COALESCE(SUM(tabBin.ordered_qty),0) as int)) as on_order
+			{columns}
+		from 
+			tabItem
+		LEFT JOIN
+			tabBin
+		ON
+			tabItem.item_code = tabBin.item_code
+		where 
+			tabItem.docstatus < 2
+			and tabItem.has_variants=0
 			and tabItem.disabled=0
 			and tabItem.has_variants=0
 			and (tabItem.end_of_life > %(today)s or ifnull(tabItem.end_of_life, '0000-00-00')='0000-00-00')
 			and ({scond} or tabItem.item_code IN (select parent from `tabItem Barcode` where barcode LIKE %(txt)s)
 				{description_cond})
 			{fcond} {mcond}
+		group by
+			tabItem.item_code,
+			tabBin.item_code
 		order by
-			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
-			if(locate(%(_txt)s, item_name), locate(%(_txt)s, item_name), 99999),
-			idx desc,
-			name, item_name
+			if(locate(%(_txt)s, tabItem.name), locate(%(_txt)s, tabItem.name), 99999),
+			if(locate(%(_txt)s, tabItem.item_name), locate(%(_txt)s, tabItem.item_name), 99999),
+			tabItem.idx desc,
+			tabItem.name, 
+			tabItem.item_name
 		limit %(start)s, %(page_len)s """.format(
 			columns=columns,
 			scond=searchfields,
@@ -742,6 +790,7 @@ def get_tax_template(doctype, txt, searchfield, start, page_len, filters):
 
 	item_doc = frappe.get_cached_doc('Item', filters.get('item_code'))
 	item_group = filters.get('item_group')
+	company = filters.get('company')
 	taxes = item_doc.taxes or []
 
 	while item_group:
@@ -750,7 +799,7 @@ def get_tax_template(doctype, txt, searchfield, start, page_len, filters):
 		item_group = item_group_doc.parent_item_group
 
 	if not taxes:
-		return frappe.db.sql(""" SELECT name FROM `tabItem Tax Template` """)
+		return frappe.get_all('Item Tax Template', filters={'disabled': 0, 'company': company}, as_list=True)
 	else:
 		valid_from = filters.get('valid_from')
 		valid_from = valid_from[1] if isinstance(valid_from, list) else valid_from
@@ -759,7 +808,7 @@ def get_tax_template(doctype, txt, searchfield, start, page_len, filters):
 			'item_code': filters.get('item_code'),
 			'posting_date': valid_from,
 			'tax_category': filters.get('tax_category'),
-			'company': filters.get('company')
+			'company': company
 		}
 
 		taxes = _get_item_tax_template(args, taxes, for_validate=True)
