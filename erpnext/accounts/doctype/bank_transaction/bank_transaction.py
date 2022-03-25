@@ -8,6 +8,8 @@ from six.moves import reduce
 
 from erpnext.controllers.status_updater import StatusUpdater
 
+from fxnmrnth.fxnmrnth.doctype.payment_group.payment_group import set_clearance_date_bank_rec
+
 
 class BankTransaction(StatusUpdater):
 	def after_insert(self):
@@ -59,8 +61,12 @@ class BankTransaction(StatusUpdater):
 			if frappe.db.get_value("Payment Entry", payment_entry.payment_entry, "payment_type") == "Internal Transfer":
 				if len(get_reconciled_bank_transactions(payment_entry)) < 2:
 					return
-
+		
 		clearance_date = self.date if not for_cancel else None
+
+		if payment_entry.payment_document == "Payment Group":
+			set_clearance_date_bank_rec(payment_entry.payment_entry,clearance_date)
+
 		frappe.db.set_value(
 			payment_entry.payment_document, payment_entry.payment_entry,
 			"clearance_date", clearance_date)
