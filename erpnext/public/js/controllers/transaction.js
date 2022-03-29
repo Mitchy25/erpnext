@@ -1212,7 +1212,13 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		}
 
 	},
-
+	item_code: function(doc, cdt, cdn) {
+		var d = locals[cdt][cdn];
+		if (d.item_code && d.qty > 0) {
+			var me = this;
+			me.frm.script_manager.trigger("qty", cdt, cdn);
+		}
+	},
 	qty: function(doc, cdt, cdn) {
 		// let item = frappe.get_doc(cdt, cdn);
 		// this.conversion_factor(doc, cdt, cdn, true);
@@ -1370,15 +1376,20 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 								},
 								() => {
 									let cur_grid = me.frm.fields_dict.items.grid;
-									let listOriginalLength = $('.frappe-control[data-fieldname="items"] .grid-body .grid-row').length
-									console.log(listOriginalLength)
-									frappe.model.add_child(me.frm.doc, cur_grid.doctype, 'items');
-									
+									var emptyRows = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row div[data-fieldname="item_code"] .static-area').filter(function(){
+											return $(this).find('a').length == 0
+									}).length;
+
+									if (emptyRows == 0){
+										frappe.model.add_child(me.frm.doc, cur_grid.doctype, 'items');
+									}
+
 									setTimeout(function(){
-										let listNewLength = $('.frappe-control[data-fieldname="items"] .grid-body .grid-row').length
+										let listNewLength = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row').length
 										$('.grid-row[data-name="new-sales-invoice-item-' + listNewLength + '"] div[data-fieldname="item_code"]').click().focus()
 										$('.grid-row[data-name="new-sales-invoice-item-' + listNewLength + '"] input[data-fieldname="item_code"]').click().focus().trigger('input')									
-									},200)							
+									},200)
+					
 								}
 							]);
 						}
