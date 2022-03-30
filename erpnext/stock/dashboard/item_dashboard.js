@@ -138,7 +138,8 @@ erpnext.stock.ItemDashboard = Class.extend({
 			company: this.company,
 			start: this.start,
 			sort_by: this.sort_by,
-			sort_order: this.sort_order
+			sort_order: this.sort_order,
+			brand: this.brand
 		};
 
 		var me = this;
@@ -149,6 +150,7 @@ erpnext.stock.ItemDashboard = Class.extend({
 				me.render(r.message);
 			}
 		});
+		
 	},
 	render: function (data) {
 		if (this.start === 0) {
@@ -157,12 +159,13 @@ erpnext.stock.ItemDashboard = Class.extend({
 		}
 
 		let context = "";
+		
 		if (this.page_name === "warehouse-capacity-summary") {
 			context = this.get_capacity_dashboard_data(data);
 		} else {
 			context = this.get_item_dashboard_data(data, this.max_count, true);
 		}
-
+		
 		this.max_count = this.max_count;
 
 		// show more button
