@@ -297,8 +297,8 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 	return frappe.db.sql("""select 
 			tabItem.name,
 			if (
-				length(tabItem.item_name) > 40,
-				concat(substr(tabItem.item_name, 1, 40), "..."), 
+				length(tabItem.item_name) > 60,
+				concat(substr(tabItem.item_name, 1, 60), "..."), 
 				tabItem.item_name
 			) as item_name,
 			if (
