@@ -296,11 +296,18 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 	# 		}, as_dict=as_dict)
 	return frappe.db.sql("""select 
 			tabItem.name,
-			if(length(tabItem.item_name) > 40,
-				concat(substr(tabItem.item_name, 1, 40), "..."), tabItem.item_name) as item_name,
-			CONCAT("Stock: ", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int)) as available,
-			CONCAT("BO: ", CAST(COALESCE(SUM(tabBin.reserved_qty),0) as int)) as backorder,
-			CONCAT("On Order: ", CAST(COALESCE(SUM(tabBin.ordered_qty),0) as int)) as on_order
+			if (
+				length(tabItem.item_name) > 40,
+				concat(substr(tabItem.item_name, 1, 40), "..."), 
+				tabItem.item_name
+			) as item_name,
+			if (
+				CAST(COALESCE(SUM(tabBin.actual_qty),0) as int) > 0,
+				CONCAT("<br>Stock: <b style='color:#33cc33;;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>"),
+				CONCAT("<br>Stock: <b style='color:#ff0000;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>")
+			) as available,
+			CONCAT("BO: <b>", CAST(COALESCE(SUM(tabBin.reserved_qty),0) as int),"</b>") as backorder,
+			CONCAT("On Order: <b>", CAST(COALESCE(SUM(tabBin.ordered_qty),0) as int),"</b>") as on_order
 			{columns}
 		from 
 			tabItem
