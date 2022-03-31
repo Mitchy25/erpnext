@@ -53,8 +53,7 @@ def get_report_pdf(doc, consolidated=True):
 				'range1': 30,
 				'range2': 60,
 				'range3': 90,
-				'range4': 120,
-				'range5': 121,
+				'range4': 90,	#Ignored but required
 				'customer': entry.customer
 			})
 			col1, ageing = get_ageing(ageing_filters)
@@ -63,6 +62,7 @@ def get_report_pdf(doc, consolidated=True):
 				ageing[0]['ageing_based_on'] = doc.ageing_based_on
 
 		tax_id = frappe.get_doc('Customer', entry.customer).tax_id
+		customer_name = frappe.get_doc('Customer', entry.customer).customer_name
 		presentation_currency = get_party_account_currency('Customer', entry.customer, doc.company) \
 				or doc.currency or get_company_currency(doc.company)
 		if doc.letter_head:
@@ -77,6 +77,7 @@ def get_report_pdf(doc, consolidated=True):
 			'account': [doc.account] if doc.account else None,
 			'party_type': 'Customer',
 			'party': [entry.customer],
+			'party_name': [customer_name],
 			'presentation_currency': presentation_currency,
 			'group_by': doc.group_by,
 			'currency': doc.currency,
