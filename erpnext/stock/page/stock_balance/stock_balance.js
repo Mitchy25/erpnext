@@ -41,7 +41,7 @@ frappe.pages['stock-balance'].on_page_load = function(wrapper) {
 
 	page.brand_field = page.add_field({
 		fieldname: 'brand',
-		label: 'Brand',
+		label: __('Brand'),
 		fieldtype:'Link',
 		options:'Brand',
 		change: function() {
@@ -54,7 +54,7 @@ frappe.pages['stock-balance'].on_page_load = function(wrapper) {
 		fieldname: 'limit',
 		label: 'Limit',
 		fieldtype:'Int',
-		default: 20,
+		default: 30,
 		change: function() {
 			page.item_dashboard.start = 0;
 			page.item_dashboard.refresh();
@@ -99,7 +99,6 @@ frappe.pages['stock-balance'].on_page_load = function(wrapper) {
 			this.brand = page.brand_field.get_value();
 			this.limit_page_length = page.limit_field.get_value();
 		}
-
 		page.item_dashboard.refresh();
 
 		// item click
@@ -107,6 +106,7 @@ frappe.pages['stock-balance'].on_page_load = function(wrapper) {
 			page.main.on('click', 'a[data-type="'+ doctype.toLowerCase() +'"]', function() {
 				var name = $(this).attr('data-name');
 				var field = page[doctype.toLowerCase() + '_field'];
+				
 				if(field.get_value()===name) {
 					frappe.set_route('Form', doctype, name)
 				} else {
@@ -115,7 +115,6 @@ frappe.pages['stock-balance'].on_page_load = function(wrapper) {
 				}
 			});
 		}
-
 		setup_click('Item');
 		setup_click('Warehouse');
 	});
