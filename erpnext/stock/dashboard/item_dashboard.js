@@ -488,10 +488,9 @@ function append_breakdown(element, item_code, poi_results, boi_results) {
 
 	</div>`
 
-	let empty_display = `<div id="pending-breakdown-${item_code}" width="100%" class="col-sm-12" style="padding: 15px 15px;
-		border-top: 1px solid #d1d8dd; border-left: 6px solid deepskyblue;">
-		<h2> Seems like there's nothing to display. </h2>
-		<h2> No stocks coming and no reserved quantity for any customers! </h2>
+	let empty_display = `<div id="pending-breakdown-${item_code}" width="100%" class="col-sm-12";
+		border-top: 1px solid #d1d8dd; border-left: 2px solid deepskyblue;">
+		<h4 style="text-align: center;padding: 10px;"> No reserved/incoming stock to display. </h4>
 	</div>`
 
 	if (poi_results.length > 0 || boi_results.length > 0) {
