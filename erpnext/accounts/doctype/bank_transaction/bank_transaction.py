@@ -112,10 +112,10 @@ def get_paid_amount(payment_entry, currency, bank_account):
 	if payment_entry.payment_document in ["Payment Entry", "Sales Invoice", "Purchase Invoice"]:
 
 		paid_amount_field = "paid_amount"
-		if payment_entry.payment_document == 'Payment Entry':
-			doc = frappe.get_doc("Payment Entry", payment_entry.payment_entry)
-			paid_amount_field = ("base_paid_amount"
-				if doc.paid_to_account_currency == currency else "paid_amount")
+		# if payment_entry.payment_document == 'Payment Entry':
+		# 	doc = frappe.get_doc("Payment Entry", payment_entry.payment_entry)
+		# 	paid_amount_field = ("base_paid_amount"
+		# 		if doc.paid_to_account_currency == currency else "paid_amount")
 
 		return frappe.db.get_value(payment_entry.payment_document,
 			payment_entry.payment_entry, paid_amount_field)
