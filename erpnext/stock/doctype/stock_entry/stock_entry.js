@@ -412,7 +412,7 @@ frappe.ui.form.on('Stock Entry', {
 
 	toggle_display_account_head: function(frm) {
 		var enabled = erpnext.is_perpetual_inventory_enabled(frm.doc.company);
-		frm.fields_dict["items"].grid.set_column_disp(["cost_center", "expense_account"], enabled);
+		frm.fields_dict["items"].grid.set_column_disp(["cost_center", "expense_account"], !enabled);
 	},
 
 	set_basic_rate: function(frm, cdt, cdn) {
