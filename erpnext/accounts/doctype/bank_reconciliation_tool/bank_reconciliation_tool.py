@@ -232,7 +232,7 @@ def reconcile_vouchers(bank_transaction_name, vouchers):
 		}), transaction.currency, company_account)
 
 	if total_amount > transaction.unallocated_amount:
-		frappe.throw(_("The sum total of amounts of all selected vouchers should be less than the unallocated amount of the bank transaction"))
+		frappe.throw(_("The sum total of amounts of all selected vouchers (" + total_amount + ") should be less than the unallocated amount of the bank transaction (" + transaction.unallocated_amount + ")"))
 	account = frappe.db.get_value("Bank Account", transaction.bank_account, "account")
 
 	for voucher in vouchers:
