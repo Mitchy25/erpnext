@@ -26,7 +26,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 				} else {				
 					var discount_percentage = flt((1 - item.rate / item.price_list_rate) * 100.0,
 						precision("discount_percentage", item));
-					if (item.discount_percentage - discount_percentage > 0.05){
+					if (item.discount_percentage - discount_percentage > 0.05 || item.discount_percentage - discount_percentage < -0.05){
 						item.discount_percentage = discount_percentage
 					}
 					
@@ -1385,9 +1385,10 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									}
 
 									setTimeout(function(){
-										let listNewLength = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row').length
-										$('.grid-row[data-name="new-sales-invoice-item-' + listNewLength + '"] div[data-fieldname="item_code"]').click().focus()
-										$('.grid-row[data-name="new-sales-invoice-item-' + listNewLength + '"] input[data-fieldname="item_code"]').click().focus().trigger('input')									
+										let listNewLength = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row')
+										listNewLength = $(listNewLength[listNewLength.length-1]).attr("data-name")
+										$('.grid-row[data-name=' + listNewLength + '] div[data-fieldname="item_code"]').click().focus()
+										$('.grid-row[data-name=' + listNewLength + '] input[data-fieldname="item_code"]').click().focus().trigger('input')									
 									},200)
 					
 								}
