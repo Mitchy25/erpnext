@@ -157,8 +157,7 @@ frappe.ui.form.on("Bank Reconciliation Tool", {
 					).$wrapper,
 					bank_statement_from_date: frm.doc.bank_statement_from_date,
 					bank_statement_to_date: frm.doc.bank_statement_to_date,
-					bank_statement_closing_balance:
-						frm.doc.bank_statement_closing_balance,
+					bank_statement_closing_balance:	frm.doc.bank_statement_closing_balance,
 					cards_manager: frm.cards_manager,
 				}
 			);
