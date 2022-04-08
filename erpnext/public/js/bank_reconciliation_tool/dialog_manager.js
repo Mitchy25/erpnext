@@ -121,22 +121,34 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 	}
 
 	get_datatable(proposals_wrapper) {
-		if (!this.datatable) {
-			const datatable_options = {
-				columns: this.columns,
-				data: this.data,
-				dynamicRowHeight: true,
-				checkboxColumn: true,
-				inlineFilters: true,
-			};
-			this.datatable = new frappe.DataTable(
-				proposals_wrapper.get(0),
-				datatable_options
-			);
-		} else {
-			this.datatable.refresh(this.data, this.columns);
-			this.datatable.rowmanager.checkMap = [];
-		}
+		delete this.datatable;
+		const datatable_options = {
+			columns: this.columns,
+			data: this.data,
+			dynamicRowHeight: true,
+			checkboxColumn: true,
+			inlineFilters: true,
+		};
+		this.datatable = new frappe.DataTable(
+			proposals_wrapper.get(0),
+			datatable_options
+		);
+		// if (!this.datatable) {
+		// 	const datatable_options = {
+		// 		columns: this.columns,
+		// 		data: this.data,
+		// 		dynamicRowHeight: true,
+		// 		checkboxColumn: true,
+		// 		inlineFilters: true,
+		// 	};
+		// 	this.datatable = new frappe.DataTable(
+		// 		proposals_wrapper.get(0),
+		// 		datatable_options
+		// 	);
+		// } else {
+		// 	this.datatable.refresh(this.data, this.columns);
+		// 	this.datatable.rowmanager.checkMap = [];
+		// }
 	}
 
 	make_dialog() {

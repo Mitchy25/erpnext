@@ -165,6 +165,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 	}
 
 	update_dt_cards(bank_transaction) {
+		this.make_dt();
 		const transaction_index = this.transaction_dt_map[
 			bank_transaction.name
 		];
@@ -187,6 +188,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 		// this.make_dt();
 		this.cards_manager = cur_frm.cards_manager
 		this.get_cleared_balance().then(() => {
+			//debugger;
 			this.cards_manager.$cards[1].set_value(
 				format_currency(this.cleared_balance),
 				this.currency
