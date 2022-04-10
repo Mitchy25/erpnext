@@ -19,6 +19,20 @@ def get_columns(filters):
 		msgprint(_("Please select the document type first"), raise_exception=1)
 
 	columns =[
+		# {
+		# 	"label": _("Customer"),
+		# 	"options": "Customer",
+		# 	"fieldname": "customer",
+		# 	"fieldtype": "Link",
+		# 	"width": 100
+		# },
+		{
+			"label": _("Sales Partner Code"),
+			"options": "Customer",
+			"fieldname": "sales_partner_code",
+			"fieldtype": "Link",
+			"width": 100
+		},
 		{
 			"label": _("Sales Partner"),
 			"options": "Sales Partner",
@@ -32,6 +46,18 @@ def get_columns(filters):
 			"fieldtype": "DATA",
 			"width": 200
 		},
+				{
+			"label": _("Branch Code"),
+			"fieldname": "branch_code",
+			"fieldtype": "data",
+			"width": 100
+		},
+		{
+			"label": _("Account Number"),
+			"fieldname": "account_number",
+			"fieldtype": "data",
+			"width": 100
+		},
 		{
 			"label": _("Sales Partner Rebate preference"),
 			"fieldname": "bank_details",
@@ -44,13 +70,6 @@ def get_columns(filters):
 			"fieldname": "name",
 			"fieldtype": "Link",
 			"width": 140
-		},
-		{
-			"label": _("Customer"),
-			"options": "Customer",
-			"fieldname": "customer",
-			"fieldtype": "Link",
-			"width": 100
 		},
 		{
 			"label": _("Customer Name"),
@@ -104,12 +123,12 @@ def get_columns(filters):
 			"fieldtype": "Float",
 			"width": 80
 		},
-		{
-			"label": _("Rate"),
-			"fieldname": "rate",
-			"fieldtype": "Currency",
-			"width": 80
-		},
+		# {
+		# 	"label": _("Rate"),
+		# 	"fieldname": "rate",
+		# 	"fieldtype": "Currency",
+		# 	"width": 80
+		# },
 		{
 			"label": _("Amount"),
 			"fieldname": "amount",
@@ -147,8 +166,12 @@ def get_entries(filters):
 	conditions = get_conditions(filters, date_field)
 	entries = frappe.db.sql("""
 		SELECT
-			dt.name, dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, 
-			if(s.preference = "Refund to Account", s.bank_account, s.preference) as bank_details,
+			s.customer as sales_partner_code,
+			dt.name, 
+			if(s.preference = "Refund to Account", a.branch_code, 'N/A') as branch_code,
+			if(s.preference = "Refund to Account", a.bank_account_no, 'N/A') as account_number,
+			dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, 
+			s.preference as bank_details,
 			dt_item.item_name, dt.customer_name,
 			dt_item.base_net_rate as rate, dt_item.qty, dt_item.base_net_amount as amount,
 			ROUND(((dt_item.base_net_amount * dt.commission_rate) / 100), 2) as commission,
@@ -158,6 +181,7 @@ def get_entries(filters):
 		join `tab{doctype} Item` dt_item on dt_item.parent = dt.name
 		join `tabSales Partner` s on s.name = dt.sales_partner
 		join `tabCustomer` dts on dts.name = s.customer
+		LEFT join `tabBank Account` a on s.bank_account = a.name
 		WHERE
 			{cond} and dt.name = dt_item.parent 
 			and dt.docstatus = 1
