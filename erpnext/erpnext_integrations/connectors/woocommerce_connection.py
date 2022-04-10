@@ -1,5 +1,3 @@
-
-
 import base64
 import hashlib
 import hmac
@@ -26,9 +24,7 @@ def verify_request():
 	woocommerce_settings = frappe.get_doc("Woocommerce Settings")
 	sig = base64.b64encode(
 		hmac.new(
-			woocommerce_settings.secret.encode('utf8'),
-			frappe.request.data,
-			hashlib.sha256
+			woocommerce_settings.secret.encode("utf8"), frappe.request.data, hashlib.sha256
 		).digest()
 	)
 
@@ -109,6 +105,7 @@ def validate_customer_code_erpnext(customer_code):
 		frappe.throw("Customer {} not exits in ERPNext!".format(customer_code))
 	return payment_category, accepts_backorders
 
+
 @frappe.whitelist(allow_guest=True)
 def order(*args, **kwargs):
 	woocommerce_settings = frappe.get_doc("Woocommerce Settings")
@@ -140,7 +137,7 @@ def _order(woocommerce_settings, *args, **kwargs):
 		try:
 			order = json.loads(frappe.request.data)
 		except ValueError:
-			#woocommerce returns 'webhook_id=value' for the first request which is not JSON
+			# woocommerce returns 'webhook_id=value' for the first request which is not JSON
 			order = frappe.request.data
 		event = frappe.get_request_header("X-WC-Webhook-Event")
 		webhook_delivery_id = frappe.get_request_header("X-WC-Webhook-Delivery-ID")

@@ -1,12 +1,10 @@
-
 import frappe
 from frappe.model.db_query import DatabaseQuery
 from frappe.utils import cint, flt
 
 
 @frappe.whitelist()
-def get_data(item_code=None, warehouse=None, item_group=None, brand=None,
-	start=0, sort_by='actual_qty', sort_order='desc', limit_page_length=20):
+def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=0, sort_by='actual_qty', sort_order='desc', limit_page_length=20):
 	'''Self Modification of Return data to render the item dashboard'''
 	item_code_filter = ""
 	if item_code:
@@ -21,7 +19,8 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None,
 	item_group_filter = ""
 	if item_group:
 		lft, rgt = frappe.db.get_value("Item Group", item_group, ["lft", "rgt"])
-		items = frappe.db.sql_list("""
+		items = frappe.db.sql_list(
+			"""
 			select i.name from `tabItem` i
 			where exists(select name from `tabItem Group`
 				where name=i.item_group and lft >=%s and rgt<=%s)
@@ -89,17 +88,16 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None,
 	precision = cint(frappe.db.get_single_value("System Settings", "float_precision"))
 
 	for item in items:
-		item.update({
-			'item_name': frappe.get_cached_value(
-				"Item", item.item_code, 'item_name'),
-			'disable_quick_entry': frappe.get_cached_value(
-				"Item", item.item_code, 'has_batch_no')
-			or frappe.get_cached_value(
-				"Item", item.item_code, 'has_serial_no'),
-			'projected_qty': flt(item.projected_qty, precision),
-			'reserved_qty': flt(item.reserved_qty, precision),
-			'reserved_qty_for_production': flt(item.reserved_qty_for_production, precision),
-			'reserved_qty_for_sub_contract': flt(item.reserved_qty_for_sub_contract, precision),
-			'actual_qty': flt(item.actual_qty, precision),
-		})
+		item.update(
+			{
+				"item_name": frappe.get_cached_value("Item", item.item_code, "item_name"),
+				"disable_quick_entry": frappe.get_cached_value("Item", item.item_code, "has_batch_no")
+				or frappe.get_cached_value("Item", item.item_code, "has_serial_no"),
+				"projected_qty": flt(item.projected_qty, precision),
+				"reserved_qty": flt(item.reserved_qty, precision),
+				"reserved_qty_for_production": flt(item.reserved_qty_for_production, precision),
+				"reserved_qty_for_sub_contract": flt(item.reserved_qty_for_sub_contract, precision),
+				"actual_qty": flt(item.actual_qty, precision),
+			}
+		)
 	return items
