@@ -299,9 +299,9 @@ def reconcile_vouchers(bank_transaction_name, vouchers):
 			
 		else:
 			gl_amount, transaction_amount = (
-				(gl_entry.credit, transaction.deposit)
+				(gl_entry.credit_in_account_currency, transaction.deposit)
 				if gl_entry.credit > 0
-				else (gl_entry.debit, transaction.withdrawal)
+				else (gl_entry.debit_in_account_currency, transaction.withdrawal)
 			)
 			allocated_amount = gl_amount if gl_amount >= transaction_amount else transaction_amount
 
