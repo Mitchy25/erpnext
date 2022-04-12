@@ -9,6 +9,7 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 	refresh: function(frm){
 		if(!frm.doc.__islocal) {
 			frm.add_custom_button('Send Emails',function(){
+				if (frm.doc.__islocal != 1) frm.save();
 				frappe.call({
 					method: "erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_emails",
 					args: {
@@ -25,6 +26,7 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 				});
 			});
 			frm.add_custom_button('Download',function(){
+				if (frm.doc.__islocal != 1) frm.save();
 				var url = frappe.urllib.get_full_url(
 					'/api/method/erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.download_statements?'
 					+ 'document_name='+encodeURIComponent(frm.doc.name))
@@ -78,13 +80,20 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 		}
 	},
 	fetch_customers: function(frm){
-		if(frm.doc.collection_name){
+		if (frm.doc.customer_collection == "Custom Logic"){
+            var customLogic = frm.doc.logic
+        } else {
+            var customLogic = null
+        }
+
+		if(frm.doc.collection_name || (frm.doc.customer_collection == "Custom Logic" && frm.doc.logic)){
 			frappe.call({
 				method: "erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.fetch_customers",
 				args: {
 					'customer_collection': frm.doc.customer_collection,
 					'collection_name': frm.doc.collection_name,
-					'primary_mandatory': frm.doc.primary_mandatory
+					'primary_mandatory': frm.doc.primary_mandatory,
+                    'custom_logic': customLogic
 				},
 				callback: function(r) {
 					if(!r.exc) {
@@ -97,6 +106,7 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 								row.billing_email = customer.billing_email;
 							}
 							frm.refresh_field('customers');
+							frm.save()
 						}
 						else{
 							frappe.throw(__('No Customers found with selected options.'));

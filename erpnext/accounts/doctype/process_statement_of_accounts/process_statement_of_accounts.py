@@ -7,7 +7,7 @@ import copy
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import add_days, add_months, format_date, getdate, today
+from frappe.utils import add_days, nowdate, add_months, format_date, getdate, today
 from frappe.utils.jinja import validate_template
 from frappe.utils.pdf import get_pdf
 from frappe.www.printview import get_print_style
@@ -19,6 +19,7 @@ from erpnext.accounts.report.accounts_receivable_summary.accounts_receivable_sum
 )
 from erpnext.accounts.report.general_ledger.general_ledger import execute as get_soa
 
+import pdb
 
 class ProcessStatementOfAccounts(Document):
 	def validate(self):
@@ -38,15 +39,19 @@ class ProcessStatementOfAccounts(Document):
 			self.from_date = add_months(self.to_date, -1 * self.filter_duration)
 
 
-def get_report_pdf(doc, consolidated=True):
+def get_report_pdf(doc, consolidated=True, customer=None):
 	statement_dict = {}
 	ageing = ""
 	base_template_path = "frappe/www/printview.html"
 	template_path = (
 		"erpnext/accounts/doctype/process_statement_of_accounts/process_statement_of_accounts.html"
 	)
-
+	
 	for entry in doc.customers:
+		if customer:
+			if entry.customer != customer:
+				continue
+
 		if doc.include_ageing:
 			ageing_filters = frappe._dict({
 				'company': doc.company,
@@ -151,6 +156,49 @@ def get_customers_based_on_territory_or_customer_group(customer_collection, coll
 		filters=[[fields_dict[customer_collection], "IN", selected]],
 	)
 
+def get_logic_context(doc):
+	return {"doc": doc, "nowdate": nowdate, "frappe": frappe._dict(utils=frappe.utils)}
+
+
+def get_customers_based_on_custom_logic(custom_logic):
+	'''Get list of customers'''
+	customerList = frappe.db.sql("""
+		SELECT
+			name,
+			customer_statement_email_address as email_id
+		FROM 
+			`tabCustomer`
+		WHERE
+			disabled = 0""",
+		as_dict=1,
+	)
+
+	passCustomerList = []
+
+	for customer in customerList:
+		doc = frappe.get_doc("Customer", customer.name)
+		skipped = 0
+
+		if custom_logic:
+			or_condition = " or \\\n"
+			if or_condition in custom_logic:
+				conditions = custom_logic.split(or_condition)
+				for condition in conditions:
+					condition = condition.strip()
+					if frappe.safe_eval(condition, None, get_logic_context(doc)):
+						skipped = 1
+						break
+				if skipped:
+					continue
+			else:
+				if frappe.safe_eval(custom_logic.strip(), None, get_logic_context(doc)):
+					skipped = 1
+					continue
+			
+		if skipped == 0:
+			passCustomerList.append(customer)
+
+	return passCustomerList
 
 def get_customers_based_on_sales_person(sales_person):
 	lft, rgt = frappe.db.get_value("Sales Person", sales_person, ["lft", "rgt"])
@@ -207,12 +255,16 @@ def get_context(customer, doc):
 
 
 @frappe.whitelist()
-def fetch_customers(customer_collection, collection_name, primary_mandatory):
+def fetch_customers(customer_collection, collection_name, primary_mandatory, custom_logic):
 	customer_list = []
 	customers = []
 
 	if customer_collection == "Sales Person":
 		customers = get_customers_based_on_sales_person(collection_name)
+		if not bool(customers):
+			frappe.throw(_("No Customers found with selected options."))
+	elif customer_collection == "Custom Logic":
+		customers = get_customers_based_on_custom_logic(custom_logic)
 		if not bool(customers):
 			frappe.throw(_("No Customers found with selected options."))
 	else:
@@ -249,26 +301,38 @@ def get_customer_emails(customer_name, primary_mandatory, billing_and_primary=Tr
 	when Is Billing Contact checked
 	and Primary email- email with Is Primary checked"""
 
+	# billing_email = frappe.db.sql(
+	# 	"""
+	# 	SELECT
+	# 		email.email_id
+	# 	FROM
+	# 		`tabContact Email` AS email
+	# 	JOIN
+	# 		`tabDynamic Link` AS link
+	# 	ON
+	# 		email.parent=link.parent
+	# 	JOIN
+	# 		`tabContact` AS contact
+	# 	ON
+	# 		contact.name=link.parent
+	# 	WHERE
+	# 		link.link_doctype='Customer'
+	# 		and link.link_name=%s
+	# 		and contact.is_billing_contact=1
+	# 	ORDER BY
+	# 		contact.creation desc""",
+	# 	customer_name,
+	# )
+
+	"""Returns customer statement email address"""
 	billing_email = frappe.db.sql(
 		"""
 		SELECT
-			email.email_id
+			customer_statement_email_address
 		FROM
-			`tabContact Email` AS email
-		JOIN
-			`tabDynamic Link` AS link
-		ON
-			email.parent=link.parent
-		JOIN
-			`tabContact` AS contact
-		ON
-			contact.name=link.parent
+			`tabCustomer`
 		WHERE
-			link.link_doctype='Customer'
-			and link.link_name=%s
-			and contact.is_billing_contact=1
-		ORDER BY
-			contact.creation desc""",
+			name=%s""",
 		customer_name,
 	)
 
@@ -279,7 +343,8 @@ def get_customer_emails(customer_name, primary_mandatory, billing_and_primary=Tr
 			return ""
 
 	if billing_and_primary:
-		primary_email = frappe.get_value("Customer", customer_name, "email_id")
+		# primary_email = frappe.get_value("Customer", customer_name, "email_id")
+		primary_email = frappe.get_value("Customer", customer_name, "customer_statement_email_address")
 		if primary_email is None and int(primary_mandatory):
 			frappe.throw(_("No primary email found for customer: {0}").format(customer_name))
 		return [primary_email or "", billing_email[0][0]]
@@ -292,10 +357,18 @@ def download_statements(document_name):
 	doc = frappe.get_doc("Process Statement Of Accounts", document_name)
 	report = get_report_pdf(doc)
 	if report:
-		frappe.local.response.filename = doc.name + ".pdf"
+		frappe.local.response.filename = doc.company + " - Statement of Account.pdf"
 		frappe.local.response.filecontent = report
 		frappe.local.response.type = "download"
 
+@frappe.whitelist()
+def download_individual_statement(document_name,customer):
+	doc = frappe.get_doc("Process Statement Of Accounts", document_name)
+	report = get_report_pdf(doc,consolidated=True,customer=customer)
+	if report:
+		frappe.local.response.filename = doc.company + " - Statement of Account - " + customer + ".pdf"
+		frappe.local.response.filecontent = report
+		frappe.local.response.type = "download"
 
 @frappe.whitelist()
 def send_emails(document_name, from_scheduler=False):
@@ -304,7 +377,7 @@ def send_emails(document_name, from_scheduler=False):
 
 	if report:
 		for customer, report_pdf in report.items():
-			attachments = [{"fname": customer + ".pdf", "fcontent": report_pdf}]
+			attachments = [{"fname": doc.company + " - Statement of Account - " + customer + ".pdf", "fcontent": report_pdf}]
 
 			recipients, cc = get_recipients_and_cc(customer, doc)
 			context = get_context(customer, doc)
@@ -344,10 +417,30 @@ def send_emails(document_name, from_scheduler=False):
 
 @frappe.whitelist()
 def send_auto_email():
+	
 	selected = frappe.get_list(
 		"Process Statement Of Accounts",
-		filters={"to_date": format_date(today()), "enable_auto_email": 1},
+		filters={"to_date": today(), "enable_auto_email": 1},
 	)
 	for entry in selected:
+		customerAccountDoc = frappe.get_doc("Process Statement Of Accounts", entry)
+
+		if customerAccountDoc.collection_name or (customerAccountDoc.customer_collection == "Custom Logic" and customerAccountDoc.logic):
+			#Refresh customers in 'Customers' table
+			if customerAccountDoc.customer_collection == "Custom Logic":
+				custom_logic = customerAccountDoc.logic
+			else:
+				custom_logic = None
+			
+			customerAccountDoc.set('customers', [])
+			customerList = fetch_customers(customerAccountDoc.customer_collection, customerAccountDoc.collection_name, customerAccountDoc.primary_mandatory, custom_logic)
+			for customer in customerList:
+				customerAccountDoc.append('customers', {
+					"customer": customer['name'],
+					"primary_email": customer['primary_email'],
+					"billing_email": customer['billing_email']
+				})
+			customerAccountDoc.save()
+
 		send_emails(entry.name, from_scheduler=True)
 	return True
