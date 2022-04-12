@@ -101,7 +101,20 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			res[x]["account"] = res[x]["account"].replace("'", "")
 
 		if len(res) == 3:
-			continue
+			#No Transactions this month
+			if res[2]["debit"] == 0:
+				#No outstanding balance
+				continue
+			else:
+				res.insert(2,{
+					"account":"No transactions during the period",
+					"debit":"",
+					"credit":"",
+					"debit_in_account_currency":"",
+					"credit_in_account_currency":"",
+					"balance":0,
+					"account_currency": res[1]["account_currency"]
+				})
 
 		html = frappe.render_template(
 			template_path,

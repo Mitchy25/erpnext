@@ -157,19 +157,21 @@
 							{{row.account}}
 						{% elif (row.account == "Closing (Opening + Total)") %}
 							Closing
+						{% elif (row.account == "No transactions during the period") %}
+							No transactions during the period
 						{% endif %}
 					</td>
 					<!-- <td><b>{{ frappe.format(row.account, {fieldtype: "Link"}) or "&nbsp;" }}</b></td> -->
 					
 					<td style="text-align: right">
-						{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)")  %}
+						{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)" or row.account == "No transactions during the period")  %}
 							&nbsp;
 						{% else %}
 							{{ row.account and frappe.utils.fmt_money(row.debit, currency=filters.presentation_currency) }}
 						{% endif %}
 					</td>
 					<td style="text-align: right;">
-						{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)")  %}
+						{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)" or row.account == "No transactions during the period")  %}
 							&nbsp;
 						{% else %}
 							{{ row.account and frappe.utils.fmt_money(row.credit, currency=filters.presentation_currency) }}
