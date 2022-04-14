@@ -447,7 +447,7 @@ $.extend(erpnext.item, {
 					return accumulator + (`<div class="row" parent=${cur_row.price_list}>\
 					<div class="col-sm-3 "> ${cur_row.price_list}</div>\
 					<div class="col-sm-3 "> ${cur_row.currency}</div>\
-					<div class="col-sm-3 "> $ ${cur_row.price_list_rate}</div>\
+					<div class="col-sm-3 "> $ ${cur_row.price_list_rate.toFixed(2)}</div>\
 					<div class="col-sm-3 "> ${cur_row.valid_from} To ${(cur_row.valid_upto? cur_row.valid_upto : "Now")}</div>\
 				</div>`)
 				}, "")
