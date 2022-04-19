@@ -61,6 +61,7 @@ class BankTransaction(StatusUpdater):
 		for payment_entry in self.payment_entries:
 			if payment_entry.payment_document in [
 				"Payment Entry", 
+				"Payment Group", 
 				"Journal Entry", 
 				"Purchase Invoice", 
 				"Expense Claim", 
