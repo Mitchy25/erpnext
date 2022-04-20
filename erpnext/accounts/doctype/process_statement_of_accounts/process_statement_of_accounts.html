@@ -136,10 +136,14 @@
 								{{ row.party or row.account }}
 								<br>
 							{% endif %}
-							{% if row.remarks == "No Remarks" %}
+							{% if row.voucher_type == "Sales Invoice" %}
+								{{ row.po_no }}
+							{% elif row.remarks == "No Remarks" %}
 								&nbsp;
-							{% else %}
+							{% elif row.voucher_type == "Journal Entry" %}
 								{{ row.remarks }}
+							{% else %}
+								&nbsp;
 							{% endif %}
 							{% if row.bill_no %}
 								<br>{{ _("Supplier Invoice No") }}: {{ row.bill_no }}
@@ -199,19 +203,23 @@
 	<table style="width:50%;margin:auto; border:1px solid #d1d8dd!important; overflow: hidden; border-radius:10px!important;border-collapse: separate !important;" class="table">
 		<thead>
 			<tr>
-				<th style="border-radius:10px 0px 0px 0px; width: 20%; text-align:center;{{brandHeader}}">30 Days</th>
+				<th style="border-radius:10px 0px 0px 0px; width: 20%; text-align:center;{{brandHeader}}">&lt; 30 Days</th>
+				<th style="width: 20%; text-align:center;{{brandHeader}}">30 Days</th>
 				<th style="width: 20%; text-align:center;{{brandHeader}}">60 Days</th>
 				<th style="width: 20%; text-align:center;{{brandHeader}}">90 Days</th>
-				<!-- <th style="width: 20%; text-align:center;{{brandHeader}}">120 Days</th> -->
 				<th style="border-radius:0px 10px 0px 0px; width: 20%; text-align:center;{{brandHeader}}">90 Days +</th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td style="border-right:1px solid white!important; border-radius: 0px 0px 0px 10px!important;text-align:center;">{{ frappe.utils.fmt_money(ageing.range1, currency=filters.presentation_currency) }}</td>
+				{% if ageing.not_yet_due %}
+					<td style="border-right:1px solid white!important; border-radius: 0px 0px 0px 10px!important;text-align:center;">{{ frappe.utils.fmt_money(ageing.not_yet_due, currency=filters.presentation_currency) }}</td>
+				{% else %}
+					<td style="border-right:1px solid white!important; border-radius: 0px 0px 0px 10px!important;text-align:center;">{{ frappe.utils.fmt_money(0, currency=filters.presentation_currency) }}</td>
+				{% endif %}
+				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range1, currency=filters.presentation_currency) }}</td>
 				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range2, currency=filters.presentation_currency) }}</td>
 				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range3, currency=filters.presentation_currency) }}</td>
-				<!-- <td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range4, currency=filters.presentation_currency) }}</td> -->
 				<td style="border-left:1px solid white!important;border-radius: 0px 0px 10px 0px!important;text-align:center;">{{ frappe.utils.fmt_money(ageing.range5, currency=filters.presentation_currency) }}</td>
 			</tr>
 		</tbody>

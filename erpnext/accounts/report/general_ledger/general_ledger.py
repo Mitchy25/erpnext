@@ -514,6 +514,7 @@ def get_account_type_map(company):
 def get_result_as_list(data, filters):
 	balance, balance_in_account_currency = 0, 0
 	inv_details = get_supplier_invoice_details()
+	si_details = get_sales_invoice_details()
 
 	for d in data:
 		if not d.get("posting_date"):
@@ -524,6 +525,7 @@ def get_result_as_list(data, filters):
 
 		d["account_currency"] = filters.account_currency
 		d["bill_no"] = inv_details.get(d.get("against_voucher"), "")
+		d["po_no"] = si_details.get(d.get("against_voucher"), "")
 
 	return data
 
@@ -536,6 +538,17 @@ def get_supplier_invoice_details():
 		as_dict=1,
 	):
 		inv_details[d.name] = d.bill_no
+
+	return inv_details
+
+def get_sales_invoice_details():
+	inv_details = {}
+	for d in frappe.db.sql(
+		""" select name, po_no from `tabSales Invoice`
+		where docstatus = 1 and po_no is not null and po_no != '' """,
+		as_dict=1,
+	):
+		inv_details[d.name] = d.po_no
 
 	return inv_details
 
@@ -630,6 +643,7 @@ def get_columns(filters):
 			},
 			{"label": _("Supplier Invoice No"), "fieldname": "bill_no", "fieldtype": "Data", "width": 100},
 			{"label": _("Remarks"), "fieldname": "remarks", "width": 400},
+			{"label": _("Purchase Order No"), "fieldname": "po_no", "fieldtype": "Data", "width": 200},
 		]
 	)
 

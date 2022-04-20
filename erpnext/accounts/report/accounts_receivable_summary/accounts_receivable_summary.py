@@ -101,6 +101,7 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 					"paid": 0.0,
 					"credit_note": 0.0,
 					"outstanding": 0.0,
+					"not_yet_due": 0.0,
 					"range1": 0.0,
 					"range2": 0.0,
 					"range3": 0.0,
@@ -148,6 +149,9 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 			self.add_column(_("Difference"), fieldname="diff")
 
 		self.setup_ageing_columns()
+
+		if self.filters.show_not_yet_due:
+			self.add_column(_("Not Yet Due"), fieldname="not_yet_due")
 
 		if self.party_type == "Customer":
 			self.add_column(

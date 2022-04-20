@@ -197,7 +197,6 @@ class ReceivablePayableReport(object):
 
 	def update_sub_total_row(self, row, party):
 		total_row = self.total_row_map.get(party)
-
 		for field in self.get_currency_fields():
 			total_row[field] += row.get(field, 0.0)
 
@@ -651,11 +650,13 @@ class ReceivablePayableReport(object):
 		if getdate(entry_date) > getdate(self.filters.report_date):
 			row.range1 = row.range2 = row.range3 = row.range4 = row.range5 = 0.0
 
+		
 		row.total_due = row.range1 + row.range2 + row.range3 + row.range4 + row.range5
 
 	def get_ageing_data(self, entry_date, row):
 		# [0-30, 30-60, 60-90, 90-120, 120-above]
-		row.range1 = row.range2 = row.range3 = row.range4 = row.range5 = 0.0
+
+		row.not_yet_due = row.range1 = row.range2 = row.range3 = row.range4 = row.range5 = 0.0
 
 		if not (self.age_as_on and entry_date):
 			return
@@ -663,9 +664,7 @@ class ReceivablePayableReport(object):
 		row.age = (getdate(self.age_as_on) - getdate(entry_date)).days or 0
 		index = None
 
-		if not (
-			self.filters.range1 and self.filters.range2 and self.filters.range3 and self.filters.range4
-		):
+		if not (self.filters.range1 and self.filters.range2 and self.filters.range3 and self.filters.range4):
 			self.filters.range1, self.filters.range2, self.filters.range3, self.filters.range4 = (
 				30,
 				60,
@@ -673,16 +672,22 @@ class ReceivablePayableReport(object):
 				120,
 			)
 
-		for i, days in enumerate(
-			[self.filters.range1, self.filters.range2, self.filters.range3, self.filters.range4]
-		):
+		for i, days in enumerate([self.filters.range1, self.filters.range2, self.filters.range3, self.filters.range4]):
 			if cint(row.age) <= cint(days):
-				index = i
+				if self.filters.show_not_yet_due and cint(row.age) < 0:
+					index = 10
+				else:
+					index = i
 				break
 
 		if index is None:
 			index = 4
-		row["range" + str(index + 1)] = row.outstanding
+
+		if self.filters.show_not_yet_due and index == 10:
+			row["not_yet_due"] = row.outstanding
+		else:
+			row["range" + str(index + 1)] = row.outstanding
+		
 
 	def get_gl_entries(self):
 		# get all the GL entries filtered by the given filters

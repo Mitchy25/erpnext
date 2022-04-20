@@ -61,7 +61,8 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 				'range2': 60,
 				'range3': 90,
 				'range4': 90,	#Ignored but required
-				'customer': entry.customer
+				'customer': entry.customer,
+				'show_not_yet_due': 1
 			})
 			col1, ageing = get_ageing(ageing_filters)
 
