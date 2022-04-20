@@ -117,8 +117,9 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 					"account_currency": res[1]["account_currency"]
 				})
 
-		if res[-1]["debit"] == 0:
-			pdb.set_trace()
+		frappe.log_error(res)
+
+		if res[-1]["balance"] == 0:
 			#No outstanding balance
 			continue
 
