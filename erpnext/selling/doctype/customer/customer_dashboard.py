@@ -45,7 +45,9 @@ def get_data():
 			},
 			{
 				'label': _('Statements'),
-				'items': ['Customer Statements'],
+				'items': ['Customer Statements','Statement of Account']
+			},
+			{
 				'label': _('Payments'),
 				'items': ['Payment Entry', 'Bank Account']
 			},
