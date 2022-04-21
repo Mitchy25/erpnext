@@ -27,21 +27,22 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 			});
 			frm.add_custom_button('Download',function(){
 				if (frm.doc.__islocal != 1) frm.save();
-				var url = frappe.urllib.get_full_url(
-					'/api/method/erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.download_statements?'
-					+ 'document_name='+encodeURIComponent(frm.doc.name))
-				$.ajax({
-					url: url,
-					type: 'GET',
-					success: function(result) {
-						if(jQuery.isEmptyObject(result)){
-							frappe.msgprint(__('No Records for these settings.'));
-						}
-						else{
-							window.location = url;
-						}
-					}
-				});
+				// var url = frappe.urllib.get_full_url(
+				// 	'/api/method/erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.download_statements?'
+				// 	+ 'document_name='+encodeURIComponent(frm.doc.name))
+				// $.ajax({
+				// 	url: url,
+				// 	type: 'GET',
+				// 	success: function(result) {
+				// 		if(jQuery.isEmptyObject(result)){
+				// 			frappe.msgprint(__('No Records for these settings.'));
+				// 		}
+				// 		else{
+				// 			window.location = url;
+				// 		}
+				// 	}
+				// });
+				alert("Please use the 'Download PDF' button in the rows below")
 			});
 		}
 	},
