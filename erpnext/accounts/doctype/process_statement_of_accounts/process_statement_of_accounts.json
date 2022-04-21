@@ -287,24 +287,12 @@
   }
  ],
  "links": [],
- "modified": "2021-09-06 21:00:45.732505",
+ "modified": "2022-04-21 14:02:54.201288",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Process Statement Of Accounts",
  "owner": "Administrator",
  "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Accounts User",
-   "share": 1,
-   "write": 1
-  },
   {
    "create": 1,
    "delete": 1,
