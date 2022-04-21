@@ -66,7 +66,8 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 							row[1],
 							row[2],
 							reference_date,
-							format_currency(row[3], row[9]),
+							// format_currency(row[3], row[9]),
+							row[3],
 							row[6],
 							row[4],
 						]);
@@ -105,6 +106,9 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				name: "Amount",
 				editable: false,
 				width: 100,
+				format: (value) => {
+					return "<div style='text-align:left;'>" + "$ " + value.toFixed(2) + "</div>";
+				}
 			},
 			{
 				name: "Party",
