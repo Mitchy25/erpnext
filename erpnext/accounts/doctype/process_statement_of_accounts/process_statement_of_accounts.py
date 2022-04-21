@@ -405,6 +405,7 @@ def send_emails(document_name, from_scheduler=False):
 				subject=subject,
 				message=message,
 				now=True,
+				is_async=True,
 				reference_doctype="Process Statement Of Accounts",
 				reference_name=document_name,
 				attachments=attachments,
