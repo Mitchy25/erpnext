@@ -20,7 +20,7 @@ from erpnext.setup.doctype.brand.brand import get_brand_defaults
 from frappe import _, throw
 from frappe.utils import cint, flt, get_datetime, get_link_to_form, getdate, today
 
-
+import math
 class MultiplePricingRuleConflict(frappe.ValidationError):
 	pass
 
@@ -624,7 +624,7 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 	if pricing_rule.is_recursive:
 		transaction_qty = args.get("qty") if args else doc.total_qty
 		if transaction_qty:
-			qty = flt(transaction_qty) * qty
+			qty = math.floor((flt(transaction_qty) * qty)/pricing_rule.min_qty)
 
 	free_item_data_args = {
 		"item_code": free_item,
