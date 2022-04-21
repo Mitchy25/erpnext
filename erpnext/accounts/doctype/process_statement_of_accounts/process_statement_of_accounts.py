@@ -19,6 +19,7 @@ from erpnext.accounts.report.accounts_receivable_summary.accounts_receivable_sum
 )
 from erpnext.accounts.report.general_ledger.general_ledger import execute as get_soa
 
+from fxnmrnth.fxnmrnth.doctype.statement_of_account.statement_of_account import create_statement
 import pdb
 
 class ProcessStatementOfAccounts(Document):
@@ -117,8 +118,6 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 					"account_currency": res[1]["account_currency"]
 				})
 
-		frappe.log_error(res)
-
 		if res[-1]["balance"] == 0:
 			#No outstanding balance
 			continue
@@ -154,7 +153,6 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			statement_dict[customer] = get_pdf(statement_html, {"orientation": doc.orientation})
 		return statement_dict
 
-
 def get_customers_based_on_territory_or_customer_group(customer_collection, collection_name):
 	fields_dict = {
 		"Customer Group": "customer_group",
@@ -178,7 +176,6 @@ def get_customers_based_on_territory_or_customer_group(customer_collection, coll
 
 def get_logic_context(doc):
 	return {"doc": doc, "nowdate": nowdate, "frappe": frappe._dict(utils=frappe.utils)}
-
 
 def get_customers_based_on_custom_logic(custom_logic):
 	'''Get list of customers'''
@@ -244,7 +241,6 @@ def get_customers_based_on_sales_person(sales_person):
 	else:
 		return []
 
-
 def get_recipients_and_cc(customer, doc):
 	recipients = []
 	for clist in doc.customers:
@@ -261,7 +257,6 @@ def get_recipients_and_cc(customer, doc):
 
 	return recipients, cc
 
-
 def get_context(customer, doc):
 	template_doc = copy.deepcopy(doc)
 	del template_doc.customers
@@ -272,7 +267,6 @@ def get_context(customer, doc):
 		"customer": frappe.get_doc("Customer", customer),
 		"frappe": frappe.utils,
 	}
-
 
 @frappe.whitelist()
 def fetch_customers(customer_collection, collection_name, primary_mandatory, custom_logic):
@@ -313,7 +307,6 @@ def fetch_customers(customer_collection, collection_name, primary_mandatory, cus
 			{"name": customer.name, "primary_email": primary_email, "billing_email": billing_email}
 		)
 	return customer_list
-
 
 @frappe.whitelist()
 def get_customer_emails(customer_name, primary_mandatory, billing_and_primary=True):
@@ -371,7 +364,6 @@ def get_customer_emails(customer_name, primary_mandatory, billing_and_primary=Tr
 	else:
 		return billing_email[0][0] or ""
 
-
 @frappe.whitelist()
 def download_statements(document_name):
 	doc = frappe.get_doc("Process Statement Of Accounts", document_name)
@@ -418,6 +410,9 @@ def send_emails(document_name, from_scheduler=False):
 				attachments=attachments,
 			)
 
+			#Create Statement Doc
+			create_statement(doc, customer, recipients[0])
+
 		if doc.enable_auto_email and from_scheduler:
 			new_to_date = getdate(today())
 			if doc.frequency == "Weekly":
@@ -433,7 +428,6 @@ def send_emails(document_name, from_scheduler=False):
 		return True
 	else:
 		return False
-
 
 @frappe.whitelist()
 def send_auto_email():
