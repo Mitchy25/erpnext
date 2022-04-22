@@ -143,7 +143,9 @@ def _order(woocommerce_settings, *args, **kwargs):
 		webhook_delivery_id = frappe.get_request_header("X-WC-Webhook-Delivery-ID")
 	else:
 		return "success"
-
+	#if no event then return; order is not json therefore exit. 
+	if not event:
+		return
 	# Validate if the event and status results are expecting
 	validate_event_and_status(order.get("id"), event, order.get("status"))
 
