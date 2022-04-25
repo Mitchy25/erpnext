@@ -1844,7 +1844,6 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		args.free_item_data.forEach(pr_row => {
 			let row_to_modify = {};
 			var adjust = 0;
-			debugger
 			if (!items || !in_list(exist_items, (pr_row.item_code + "-" + pr_row.pricing_rules))) {
 				row_to_modify = frappe.model.add_child(this.frm.doc,this.frm.doc.doctype + ' Item', 'items');
 				//@Stan - Perhaps we need to use get_basic_details here to get Income Acc?
