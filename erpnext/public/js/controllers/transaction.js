@@ -377,7 +377,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		let scan_barcode_field = this.frm.fields_dict["scan_barcode"];
 		let cur_grid = this.frm.fields_dict.items.grid;
 		let row_to_modify = null;
-
+		
 		// Check if batch is scanned and table has batch no field
 		let batch_no_scan = Boolean(data.batch_no) && frappe.meta.has_field(cur_grid.doctype, "batch_no");
 
@@ -1838,24 +1838,35 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 	apply_product_discount: function(args) {
 		const items = this.frm.doc.items.filter(d => (d.is_free_item)) || [];
-
-		const exist_items = items.map(row => (row.item_code, row.pricing_rules));
+		var exist_items = items.map(row => row.item_code + "-" + row.pricing_rules);
+		exist_items = exist_items.flat()
 
 		args.free_item_data.forEach(pr_row => {
 			let row_to_modify = {};
-			if (!items || !in_list(exist_items, (pr_row.item_code, pr_row.pricing_rules))) {
-
-				row_to_modify = frappe.model.add_child(this.frm.doc,
-					this.frm.doc.doctype + ' Item', 'items');
-
+			var adjust = 0;
+			debugger
+			if (!items || !in_list(exist_items, (pr_row.item_code + "-" + pr_row.pricing_rules))) {
+				row_to_modify = frappe.model.add_child(this.frm.doc,this.frm.doc.doctype + ' Item', 'items');
+				//@Stan - Perhaps we need to use get_basic_details here to get Income Acc?
 			} else if(items) {
-				row_to_modify = items.filter(d => (d.item_code === pr_row.item_code
-					&& d.pricing_rules === pr_row.pricing_rules))[0];
+				row_to_modify = items.filter(d => (d.item_code === pr_row.item_code	&& d.pricing_rules === pr_row.pricing_rules));
+				adjust = 1
+			}
+			if(!("income_account" in row_to_modify)) {
+				row_to_modify["income_account"] = args["income_account"]
+			}
+			if(!("expense_account" in row_to_modify)) {
+				row_to_modify["expense_account"] = args["expense_account"]
+			}
+			for (let key in pr_row) {
+				if (adjust){
+					this.frm.doc.items[row_to_modify[0].idx-1][key] = pr_row[key]
+				} else {
+					row_to_modify[key] = pr_row[key];
+				}
+				
 			}
 
-			for (let key in pr_row) {
-				row_to_modify[key] = pr_row[key];
-			}
 		});
 
 		// free_item_data is a temporary variable
