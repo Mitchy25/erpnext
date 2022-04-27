@@ -5,8 +5,8 @@
 	{% set brandColour = '#266825' %}
 	{% set brandHeader = 'background-color:#266825!important;color:white!important;' %}
 {% elif filters.company == "RN Labs" %}
-	{% set brandColour = '#323AA8' %}
-	{% set brandHeader = 'background-color:#323AA8!important;color:white!important;' %}
+	{% set brandColour = '#0671b9' %}
+	{% set brandHeader = 'background-color:#0671b9!important;color:white!important;' %}
 {% elif filters.company == "Therahealth" %}
 	{% set brandColour = '#F0AA44' %}
 	{% set brandHeader = 'background-color:#F0AA44!important;color:white!important;' %}
@@ -17,7 +17,7 @@
 	<div id="header-html" class="hidden-pdf">
 		{% if letter_head %}
 		<div class="letter-head text-center">{{ letter_head.content }}</div>
-		<hr style="height:2px;border-width:0;">
+		<hr style="height:2px;border-width:0;margin-bottom:0px;margin-top:10px;">
 		{% endif %}
 	</div>
 	<div id="footer-html" class="visible-pdf">
@@ -109,14 +109,14 @@
 	<table id="statementTable" class="table">
 		<thead>
 			<tr>
-				<th style="width: 8%;">{{ _("Date") }}</th>
-				<th style="width: 15%;">{{ _("Reference") }}</th>
+				<th style="width: 15%;">{{ _("Date") }}</th>
+				<th style="width: 22%;">{{ _("Invoice/Payment") }}</th>
 				{% if filters.company == "RN Labs" %}
-					<th style="width: 20%;">{{ _("Remarks") }}</th>
+					<th style="width: 25%;">{{ _("Reference") }}</th>
 				{% endif %}
-				<th style="width: 8%; text-align:right;">{{ _("Debit") }}</th>
-				<th style="width: 8%; text-align:right;">{{ _("Credit/Payment") }}</th>
-				<th style="width: 11%; text-align:right;">{{ _("Balance (Dr - Cr)") }}</th>
+				<th style="width: 13%; text-align:right;">{{ _("Debit") }}</th>
+				<th style="width: 13%; text-align:right;">{{ _("Credit") }}</th>
+				<th style="width: 15%; text-align:right;">{{ _("Balance") }}</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -152,25 +152,39 @@
 					{% endif %}
 					<td style="text-align: right">
 						{% if not (row.remarks == "Total") %}
-							{{ frappe.utils.fmt_money(row.debit, currency=filters.presentation_currency) }}</td>
+							{% if row.debit != 0 %}
+								{{ frappe.utils.fmt_money(row.debit, currency=filters.presentation_currency) }}
+							{% endif %}
 						{% endif %}
+					</td>
 					<td style="text-align: right">
 						{% if not (row.remarks == "Total") %}
-							{{ frappe.utils.fmt_money(row.credit, currency=filters.presentation_currency) }}</td>
+							{% if row.credit != 0 %}
+								{{ frappe.utils.fmt_money(row.credit, currency=filters.presentation_currency) }}
+							{% endif %}
 						{% endif %}
+					</td>
 				{% else %}
-					<td></td>
 					<td>
 						{% if (row.account == "Opening") %} 
 							{{row.account}}
 						{% elif (row.account == "Closing (Opening + Total)") %}
 							Closing
-						{% elif (row.account == "No transactions during the period") %}
+						{% endif %}
+					</td>
+					<td>
+						{% if (row.account == "No transactions during the period") %}
 							No transactions during the period
 						{% endif %}
 					</td>
 					{% if filters.company == "RN Labs" %}
-						<td><b>{{ frappe.format(row.account, {fieldtype: "Link"}) or "&nbsp;" }}</b></td>
+						<td>
+							{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)") %}
+								&nbsp;
+							{% else %}
+								<b>{{ frappe.format(row.account, {fieldtype: "Link"}) or "&nbsp;" }}</b>
+							{% endif %}
+						</td>
 					{% endif %}
 					<td style="text-align: right">
 						{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)" or row.account == "No transactions during the period")  %}
@@ -200,7 +214,7 @@
 	<h4 class="text-center">{{ _("Ageing based on ") }} {{ ageing.ageing_based_on }}
 		{{ _("up to " ) }}  {{ frappe.format(filters.to_date, 'Date')}}
 	</h4>
-	<table style="width:50%;margin:auto; border:1px solid #d1d8dd!important; overflow: hidden; border-radius:10px!important;border-collapse: separate !important;" class="table">
+	<table style="width:60%;margin:auto; border:1px solid #d1d8dd!important; overflow: hidden; border-radius:10px!important;border-collapse: separate !important;" class="table">
 		<thead>
 			<tr>
 				<th style="border-radius:10px 0px 0px 0px; width: 20%; text-align:center;{{brandHeader}}">&lt; 30 Days</th>
