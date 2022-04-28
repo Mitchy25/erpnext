@@ -517,7 +517,7 @@ function append_breakdown(element, item_code, poi_results, boi_results) {
 					//get specific label by index 
 					var label = poChart.data.labels[clickedElementindex];
 					let po_id  = label.split(" | ")[0]
-					window.open(frappe.urllib.get_full_url(`/desk#Form/Purchase%20Order/${po_id}`));
+					window.open(frappe.urllib.get_full_url(`/app/purchase-order/${po_id}`));
 	
 					//get value by index      
 					var value = poChart.data.datasets[0].data[clickedElementindex];
@@ -542,7 +542,7 @@ function append_breakdown(element, item_code, poi_results, boi_results) {
 					//get specific label by index 
 					var label = boChart.data.labels[clickedElementindex];
 					let bo_id  = label[0]
-					window.open(frappe.urllib.get_full_url(`/desk#Form/Backorder/${bo_id}`));
+					window.open(frappe.urllib.get_full_url(`/app/backorder/${bo_id}`));
 
 					//get value by index      
 					var value = boChart.data.datasets[0].data[clickedElementindex];
