@@ -404,7 +404,7 @@ function hide_fields(doc) {
 
 	var item_fields_stock = ['warehouse_section', 'received_qty', 'rejected_qty'];
 	cur_frm.fields_dict['items'].grid.set_column_disp(item_fields_stock,
-		(cint(doc.update_stock)==1 || cint(doc.is_return)==1 ? false : true));
+		(cint(doc.update_stock)==1 || cint(doc.is_return)==1 ? true : false));
 
 	cur_frm.refresh_fields();
 }
