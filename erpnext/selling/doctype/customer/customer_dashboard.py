@@ -25,7 +25,7 @@ def get_data():
 			# },
 			{
 				'label': _('Pricing/Payments'),
-				'items': ['Pricing Rule', 'Payment Entry']
+				'items': ['Pricing Rule', 'Payment Entry', 'Bank Account', 'Statement of Account']
 			},
 			{
 				'label': _('Orders'),
@@ -41,20 +41,12 @@ def get_data():
 			# },
 			{
 				'label': _('CRM'),
-				'items': ["Interactions", "Memos", "Annual Plan"]
+				'items': ["Interactions", "Memos"]
 			},
-			{
-				'label': _('Statements'),
-				'items': ['Statement of Account']
-			},
-			{
-				'label': _('Payments'),
-				'items': ['Payment Entry', 'Bank Account']
-			},
-			{
-				'label': _('Support'),
-				'items': ['Issue', 'Maintenance Visit', 'Installation Note', 'Warranty Claim']
-			},
+			# {
+			# 	'label': _('Support'),
+			# 	'items': ['Issue', 'Maintenance Visit', 'Installation Note', 'Warranty Claim']
+			# },
 			{
 				'label': 'Testing DB',
 				'items': ['Medical Objects', 'Sample']
