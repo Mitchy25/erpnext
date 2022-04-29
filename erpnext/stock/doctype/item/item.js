@@ -454,7 +454,7 @@ $.extend(erpnext.item, {
 				console.log("rows: ", rows)
 				let item_price_html = template + rows
 				frm.dashboard.add_section(` <h5 style="margin-top: 0px;">\
-				<a href="/desk#Form/Brand/${brand}">Brand: ${brand}</a></h5>` + item_price_html);
+				<a href="/app/brand/${brand}">Brand: ${brand}</a></h5>` + item_price_html);
 			})
 		}
 
