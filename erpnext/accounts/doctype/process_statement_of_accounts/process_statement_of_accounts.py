@@ -121,6 +121,10 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 		if res[-1]["balance"] == 0:
 			#No outstanding balance
 			continue
+		
+		if doc.exclude_balances_below:
+			if res[-1]["balance"] < float(doc.exclude_balances_below):
+				continue
 
 		html = frappe.render_template(
 			template_path,
