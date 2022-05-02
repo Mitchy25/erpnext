@@ -10,6 +10,16 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 		if(!frm.doc.__islocal) {
 			frm.add_custom_button('Send Emails',function(){
 				if (frm.doc.__islocal != 1) frm.save();
+				frappe.call({
+					"method": "frappe.desk.form.utils.add_comment",
+					"args": {
+					  reference_doctype: "Process Statement Of Accounts",
+					  reference_name: frm.doc.name,
+					  content: "Statement send executed by user: " + frappe.user.name + " at " + frappe.datetime.now_datetime() + ".<br><br>From: " + frm.doc.from_date + ".<br>To: : " + frm.doc.to_date + ".",
+					  comment_email: frappe.session.user,
+					  comment_by: frappe.session.user_fullname,
+					}
+				});
 				frm.doc.add_comment(
 					"Comment", frappe.user.name + " executed the job to send statements"
 				)
