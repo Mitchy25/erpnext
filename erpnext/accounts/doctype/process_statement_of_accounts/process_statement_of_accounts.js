@@ -15,7 +15,7 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 					"args": {
 					  reference_doctype: "Process Statement Of Accounts",
 					  reference_name: frm.doc.name,
-					  content: "Statement send executed by user: " + frappe.user.name + " at " + frappe.datetime.now_datetime() + ".<br><br>From: " + frm.doc.from_date + ".<br>To: : " + frm.doc.to_date + ".",
+					  content: "Statement send executed by " + frappe.user.name + " at " + frappe.datetime.now_datetime() + ".<br><br>From: " + frm.doc.from_date + ".<br>To: " + frm.doc.to_date + ".",
 					  comment_email: frappe.session.user,
 					  comment_by: frappe.session.user_fullname,
 					}
