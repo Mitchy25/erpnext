@@ -1,24 +1,16 @@
-import base64
-import hashlib
-import hmac
 import json
+from datetime import datetime 
 
 import frappe
 from frappe import _
-from frappe.utils import cstr
-
-
-import pdb
-import requests
-from datetime import datetime 
-
-from frappe.utils.background_jobs import enqueue
-from frappe.desk.doctype.tag.tag import DocTags
-from erpnext.stock.get_item_details import get_bin_details
-from fxnmrnth.integration_req_log import log_integration_request, log_exceptions
-19820
-from erpnext.exceptions import PartyFrozen, PartyDisabled
 from frappe.exceptions import ValidationError
+from frappe.desk.doctype.tag.tag import DocTags
+
+from erpnext.stock.get_item_details import get_bin_details
+from erpnext.exceptions import PartyFrozen, PartyDisabled
+
+from fxnmrnth.integration_req_log import log_integration_request, log_exceptions
+
 
 def validate_event_and_status(order_id, event, status):
 	if event == "woocommerce_payment_complete": # normal patient test order and on-behalf test order
@@ -355,6 +347,10 @@ def create_sales_invoice(edited_line_items, order, customer_code, payment_catego
 
 	invoice_doc.comments = msg_comments
 	invoice_doc.save()
+
+	couponCodes = order.get("coupon_lines")
+	if couponCodes:
+		DocTags("Sales Invoice").add(invoice_doc.name, "Coupon: " + str(couponCodes[0]['code']))
 
 	DocTags("Sales Invoice").add(invoice_doc.name, "WooCommerce Order")
 
