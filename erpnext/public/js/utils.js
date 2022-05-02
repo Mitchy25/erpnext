@@ -483,6 +483,7 @@ erpnext.utils.update_child_items = function(opts) {
 			if (frm.doc.doctype == 'Sales Order') {
 				filters = {"is_sales_item": 1};
 			} else if (frm.doc.doctype == 'Purchase Order') {
+
 				if (frm.doc.is_subcontracted == "Yes") {
 					filters = {"is_sub_contracted_item": 1};
 				} else {
@@ -575,7 +576,53 @@ erpnext.utils.update_child_items = function(opts) {
 			},
 		],
 		primary_action: function() {
+			let temp_items = {}
+			let to_change = []
 			const trans_items = this.get_values()["trans_items"].filter((item) => !!item.item_code);
+			//Backorder ETA Code Start
+			frm.doc.items.forEach(element => {
+				temp_items[element["name"]] = {
+					"item_code": element["item_code"],
+					"qty": element["qty"],
+					"schedule_date": element["schedule_date"],
+					"expected_delivery_date": element["expected_delivery_date"],
+					"found":false
+				}
+			});
+			trans_items.forEach(element => {
+				if(element.name in temp_items){
+					temp_items[element.name]["found"] = true
+					
+					console.log(temp_items[element.name])
+					if (element.qty != temp_items[element.name].qty) {
+						console.log(trans_items)
+						to_change.push([element.item_code, element["schedule_date"]])
+					}
+				} else{ 
+					console.log(2)
+					to_change.push([element.item_code, element["schedule_date"]])
+				}
+			});
+			for (const [key, value] of Object.entries(temp_items)) {
+				if(value["found"] == false) {
+					to_change.push([value.item_code, value["schedule_date"]])
+				}
+			}
+			to_change.forEach(element => {
+				frappe.call({
+					method: "fxnmrnth.fxnmrnth.doctype.backorder.backorder.purchase_order_change",
+					args: {
+						expected_date:element[1],
+						item_code:element[0],
+						includes_itself:true,
+						recalculate:false
+					},
+					callback: function(r) {
+						console.log('purchase order change')
+					}
+				})	
+			});
+			//Backorder ETA Code End
 			frappe.call({
 				method: 'erpnext.controllers.accounts_controller.update_child_qty_rate',
 				freeze: true,
@@ -591,6 +638,7 @@ erpnext.utils.update_child_items = function(opts) {
 			});
 			this.hide();
 			refresh_field("items");
+			
 		},
 		primary_action_label: __('Update')
 	});
