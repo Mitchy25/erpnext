@@ -20,18 +20,6 @@ from fxnmrnth.integration_req_log import log_integration_request, log_exceptions
 from erpnext.exceptions import PartyFrozen, PartyDisabled
 from frappe.exceptions import ValidationError
 
-def verify_request():
-	woocommerce_settings = frappe.get_doc("Woocommerce Settings")
-	sig = base64.b64encode(
-		hmac.new(
-			woocommerce_settings.secret.encode("utf8"), frappe.request.data, hashlib.sha256
-		).digest()
-	)
-
-	if frappe.request.data and \
-		not sig == frappe.get_request_header("X-Wc-Webhook-Signature", "").encode():
-			frappe.throw(_("Unverified Webhook Data"))
-
 def validate_event_and_status(order_id, event, status):
 	if event == "woocommerce_payment_complete": # normal patient test order and on-behalf test order
 		if status != "processing":
@@ -59,8 +47,6 @@ def pre_process_payload(meta_data, billing):
 			customer_code = meta["value"]
 		elif meta["key"] == "delivery_option":
 			delivery_option = meta["value"]
-		# elif meta["key"] == "_nab_reference_id":
-		# 	nab_reference_id = meta["value"]
 		elif meta["key"] == "pos_patient":
 			patient_name = meta["value"]
 		elif meta["key"] == "patient_dob":
@@ -105,7 +91,6 @@ def validate_customer_code_erpnext(customer_code):
 		frappe.throw("Customer {} not exits in ERPNext!".format(customer_code))
 	return payment_category, accepts_backorders
 
-
 @frappe.whitelist(allow_guest=True)
 def order(*args, **kwargs):
 	woocommerce_settings = frappe.get_doc("Woocommerce Settings")
@@ -133,7 +118,6 @@ def order(*args, **kwargs):
 def _order(woocommerce_settings, *args, **kwargs):
 	frappe.set_user(woocommerce_settings.creation_user)
 	if frappe.request and frappe.request.data:
-		# verify_request()
 		try:
 			order = json.loads(frappe.request.data)
 		except ValueError:
@@ -244,7 +228,6 @@ def _order(woocommerce_settings, *args, **kwargs):
 	except UnboundLocalError:
 		frappe.log_error(title="Error in Woocommerce Integration", message=frappe.get_traceback())
 		frappe.throw(frappe.get_traceback())
-
 
 def create_sales_invoice(edited_line_items, order, customer_code, payment_category,  woocommerce_settings, order_type=None, temp_address=None, delivery_option=None, invoice_sending_option=None, test_order=0, patient_dob=""):
 	#Set Basic Info
@@ -381,7 +364,6 @@ def create_sales_invoice(edited_line_items, order, customer_code, payment_catego
 	else:
 		return invoice_doc, customer_accepts_backorder
 
-
 def set_items_in_sales_invoice(edited_line_items, customer_code, invoice_doc, woocommerce_settings, tax_rate, invoice_sending_option=None):
 	"""
 		validated_item = {
@@ -465,7 +447,7 @@ def set_items_in_sales_invoice(edited_line_items, customer_code, invoice_doc, wo
 	except AttributeError:
 		pass
 	except:
-  		frappe.log_error(title='Error in woocommerce integration', message=frappe.get_traceback())
+		frappe.log_error(title='Error in woocommerce integration', message=frappe.get_traceback())
 	return customer_accepts_backorder
 
 def create_patient_invoice(edited_line_items, patient_invoice_doc):
@@ -480,7 +462,6 @@ def create_patient_invoice(edited_line_items, patient_invoice_doc):
 				})
 			else:
 				frappe.throw("Cannot find testkit for {}".format(item['item_code']))
-
 
 def backorder_validation(line_items, customer_code, woocommerce_settings, discount=None):
 	new_line_items = []
