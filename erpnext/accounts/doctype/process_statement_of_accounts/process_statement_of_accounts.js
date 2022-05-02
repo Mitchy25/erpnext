@@ -20,9 +20,6 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 					  comment_by: frappe.session.user_fullname,
 					}
 				});
-				frm.doc.add_comment(
-					"Comment", frappe.user.name + " executed the job to send statements"
-				)
 				frappe.call({
 					method: "erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_emails",
 					args: {
