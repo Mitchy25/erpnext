@@ -10,6 +10,9 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 		if(!frm.doc.__islocal) {
 			frm.add_custom_button('Send Emails',function(){
 				if (frm.doc.__islocal != 1) frm.save();
+				frm.doc.add_comment(
+					"Comment", frappe.user.name + " executed the job to send statements"
+				)
 				frappe.call({
 					method: "erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_emails",
 					args: {
