@@ -80,7 +80,7 @@ def get_account_balance(bank_account, till_date):
 		+ amounts_not_reflected_in_system
 	)
 
-	frappe.log_error("Balance as at " + filters["report_date"] + ": " + balance_as_per_system + ". Debits posted before " + filters["report_date"] + " and cleared after or not cleared: " + total_debit + ".  Credits posted before " + filters["report_date"] + " and cleared after or not cleared: " + total_credit + ". Amounts not reflected in system: " + amounts_not_reflected_in_system)
+	# frappe.log_error("Balance as at " + filters["report_date"] + ": " + balance_as_per_system + ". Debits posted before " + filters["report_date"] + " and cleared after or not cleared: " + total_debit + ".  Credits posted before " + filters["report_date"] + " and cleared after or not cleared: " + total_credit + ". Amounts not reflected in system: " + amounts_not_reflected_in_system)
 
 	return bank_bal
 
