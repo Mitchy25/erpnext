@@ -10,30 +10,43 @@ frappe.ui.form.on('Process Statement Of Accounts', {
 		if(!frm.doc.__islocal) {
 			frm.add_custom_button('Send Emails',function(){
 				if (frm.doc.__islocal != 1) frm.save();
-				frappe.call({
-					"method": "frappe.desk.form.utils.add_comment",
-					"args": {
-					  reference_doctype: "Process Statement Of Accounts",
-					  reference_name: frm.doc.name,
-					  content: "Statement send executed by " + frappe.user.name + " at " + frappe.datetime.now_datetime() + ".<br><br>From: " + frm.doc.from_date + ".<br>To: " + frm.doc.to_date + ".",
-					  comment_email: frappe.session.user,
-					  comment_by: frappe.session.user_fullname,
-					}
-				});
-				frappe.call({
-					method: "erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_emails",
-					args: {
-						"document_name": frm.doc.name,
+				frappe.confirm('You are about to send Customer Statements. <span style="color:red;font-weight:bold;">This action is not reversible</span>. Please make sure that the following details are correct:<br><br><b>From:</b> ' + frm.doc.from_date + "<br><b>To:</b> " + frm.doc.to_date,
+					function() {
+						// if Yes
+						frappe.show_alert({message: __('Please wait...'), indicator: 'orange'});
+						frappe.call({
+							"method": "frappe.desk.form.utils.add_comment",
+							"args": {
+							  reference_doctype: "Process Statement Of Accounts",
+							  reference_name: frm.doc.name,
+							  content: "Statement send executed by " + frappe.user.name + " at " + frappe.datetime.now_datetime() + ".<br><br>From: " + frm.doc.from_date + ".<br>To: " + frm.doc.to_date + ".",
+							  comment_email: frappe.session.user,
+							  comment_by: frappe.session.user_fullname,
+							}
+						});
+						frappe.call({
+							method: "erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_emails",
+							args: {
+								"document_name": frm.doc.name,
+							},
+							callback: function(r) {
+								if(r && r.message) {
+									frappe.show_alert({message: __('Emails Queued'), indicator: 'blue'});
+								}
+								else{
+									frappe.msgprint(__('No Records for these settings.'))
+								}
+							}
+						});
 					},
-					callback: function(r) {
-						if(r && r.message) {
-							frappe.show_alert({message: __('Emails Queued'), indicator: 'blue'});
-						}
-						else{
-							frappe.msgprint(__('No Records for these settings.'))
-						}
+					function() {
+						// if No
+						frappe.show_alert({
+							message: 'Aborted',
+							indicator: 'red'
+						});
 					}
-				});
+				);
 			});
 			frm.add_custom_button('Download',function(){
 				if (frm.doc.__islocal != 1) frm.save();
