@@ -74,8 +74,12 @@ frappe.query_reports["General Ledger"] = {
 
 				let party_type = frappe.query_report.get_filter_value('party_type');
 				if (!party_type) return;
-
-				return frappe.db.get_link_options(party_type, txt);
+				let filters = {}
+				if (party_type == "Customer") {
+					let check = frappe.query_report.get_filter_value('hide_inactive_customers');
+					filters = (check ? {'customer_status': ["!=","Disabled"]} : {})
+				};
+				return frappe.db.get_link_options(party_type, txt, filters);
 			},
 			on_change: function() {
 				var party_type = frappe.query_report.get_filter_value('party_type');
@@ -188,6 +192,12 @@ frappe.query_reports["General Ledger"] = {
 			"fieldname": "show_net_values_in_party_account",
 			"label": __("Show Net Values in Party Account"),
 			"fieldtype": "Check"
+		},
+		{
+			"fieldname": "hide_inactive_customers",
+			"label": __("Hide Inactive Customers"),
+			"fieldtype": "Check",
+			"default": 1
 		}
 	]
 }
