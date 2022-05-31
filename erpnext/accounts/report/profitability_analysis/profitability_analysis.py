@@ -228,11 +228,12 @@ def set_gl_entries_by_account(
 		{additional_conditions}
 		and posting_date <= %(to_date)s
 		and {based_on} is not null
+		and is_cancelled = 0
 		order by {based_on}, posting_date""".format(
 			additional_conditions="\n".join(additional_conditions), based_on=based_on
 		),
 		{"company": company, "from_date": from_date, "to_date": to_date},
-		as_dict=True,
+		as_dict=True, debug=True
 	)
 
 	for entry in gl_entries:
