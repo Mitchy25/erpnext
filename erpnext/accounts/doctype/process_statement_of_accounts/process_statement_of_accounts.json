@@ -287,7 +287,7 @@
   }
  ],
  "links": [],
- "modified": "2022-04-21 14:02:54.201288",
+ "modified": "2022-06-02 14:44:36.017094",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Process Statement Of Accounts",
@@ -307,6 +307,5 @@
   }
  ],
  "sort_field": "modified",
- "sort_order": "DESC",
- "track_changes": 1
+ "sort_order": "DESC"
 }
