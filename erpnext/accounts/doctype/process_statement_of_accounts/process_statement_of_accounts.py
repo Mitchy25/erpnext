@@ -400,11 +400,12 @@ def send_emails(document_name, from_scheduler=False):
 			subject = frappe.render_template(doc.subject, context)
 			message = frappe.render_template(doc.body, context)
 
+
 			frappe.enqueue(
 				queue="short",
 				method=frappe.sendmail,
 				recipients=recipients,
-				sender=frappe.session.user,
+				# sender=frappe.session.user, #Send as default outgoing
 				cc=cc,
 				subject=subject,
 				message=message,
