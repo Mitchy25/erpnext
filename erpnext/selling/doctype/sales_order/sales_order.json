@@ -1525,14 +1525,12 @@
  ],
  "icon": "fa fa-file-text",
  "idx": 105,
- "in_create": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-03-15 21:38:31.437586",
+ "modified": "2022-06-01 16:39:25.584815",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",
- "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -1603,7 +1601,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
  "timeline_field": "customer",
  "title_field": "customer_name",
  "track_changes": 1,
