@@ -499,7 +499,7 @@ function append_breakdown(element, item_code, poi_results, boi_results) {
 		$row.append(empty_display)
 	}
 	$("#backorder-report" ).click(function() {
-		window.location = '/desk#query-report/Backorder Analytics?item_code='+item_code;
+		frappe.set_route("query-report","Backorder Analytics", {"item_code":item_code})
 	});
 	// Render the chart using our configuration
 	$.getScript("https://cdn.jsdelivr.net/npm/chart.js").done(function(){
