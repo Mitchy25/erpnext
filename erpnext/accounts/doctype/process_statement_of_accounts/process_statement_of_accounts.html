@@ -137,7 +137,11 @@
 								<br>
 							{% endif %}
 							{% if row.voucher_type == "Sales Invoice" %}
-								{{ row.po_no }}
+								{% if row.patient_name %}
+									{{ row.patient_name}} - {{ row.po_no }}
+								{% else %}
+									{{ row.po_no }}
+								{% endif %}
 							{% elif row.remarks == "No Remarks" %}
 								&nbsp;
 							{% elif row.voucher_type == "Journal Entry" %}

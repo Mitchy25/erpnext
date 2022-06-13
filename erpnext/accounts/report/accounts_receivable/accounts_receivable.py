@@ -738,6 +738,7 @@ class ReceivablePayableReport(object):
 			),
 			values,
 			as_dict=True,
+			debug=True
 		)
 
 	def get_sales_invoices_or_customers_based_on_sales_person(self):

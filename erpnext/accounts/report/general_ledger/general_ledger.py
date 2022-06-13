@@ -515,6 +515,8 @@ def get_result_as_list(data, filters):
 	balance, balance_in_account_currency = 0, 0
 	inv_details = get_supplier_invoice_details()
 	si_details = get_sales_invoice_details()
+	if filters.get("company") == "RN Labs":
+		si_patient_details = get_sales_invoice_patient_details()
 
 	for d in data:
 		if not d.get("posting_date"):
@@ -526,6 +528,8 @@ def get_result_as_list(data, filters):
 		d["account_currency"] = filters.account_currency
 		d["bill_no"] = inv_details.get(d.get("against_voucher"), "")
 		d["po_no"] = si_details.get(d.get("against_voucher"), "")
+		if filters.get("company") == "RN Labs":
+			d["patient_name"] = si_patient_details.get(d.get("against_voucher"), "")
 
 	return data
 
@@ -544,11 +548,36 @@ def get_supplier_invoice_details():
 def get_sales_invoice_details():
 	inv_details = {}
 	for d in frappe.db.sql(
-		""" select name, po_no from `tabSales Invoice`
-		where docstatus = 1 and po_no is not null and po_no != '' """,
+		"""SELECT 
+			name, 
+			po_no
+		FROM 
+			`tabSales Invoice`
+		WHERE 
+			docstatus = 1 and 
+			po_no is not null and 
+			po_no != '' """,
 		as_dict=1,
 	):
 		inv_details[d.name] = d.po_no
+
+	return inv_details
+
+def get_sales_invoice_patient_details():
+	inv_details = {}
+	for d in frappe.db.sql(
+		"""SELECT 
+			name, 
+			temporary_delivery_address_line_1
+		FROM 
+			`tabSales Invoice`
+		WHERE 
+			docstatus = 1 and 
+			temporary_delivery_address_line_1 is not null and 
+			temporary_delivery_address_line_1 != '' """,
+		as_dict=1,
+	):
+		inv_details[d.name] = d.temporary_delivery_address_line_1
 
 	return inv_details
 
