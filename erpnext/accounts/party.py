@@ -834,7 +834,7 @@ def get_party_shipping_address(doctype, name):
 		"and dl.link_name=%s "
 		'and dl.parenttype="Address" '
 		"and ifnull(ta.disabled, 0) = 0 and"
-		'(ta.address_type="Shipping" or ta.is_shipping_address=1) '
+		'(ta.address_type in ("Shipping", "Shipping and Billing") or ta.is_shipping_address=1) '
 		"order by ta.is_shipping_address desc, ta.address_type desc limit 1",
 		(doctype, name),
 	)
