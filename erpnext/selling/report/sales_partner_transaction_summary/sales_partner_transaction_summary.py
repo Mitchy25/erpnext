@@ -183,7 +183,7 @@ def get_entries(filters):
 			`tab{doctype}` dt
 		join `tab{doctype} Item` dt_item on dt_item.parent = dt.name
 		join `tabSales Partner` s on s.name = dt.sales_partner
-		join `tabCustomer` dts on dts.name = s.customer
+		LEFT join `tabCustomer` dts on dts.name = s.customer
 		LEFT join `tabBank Account` a on s.bank_account = a.name
 		WHERE
 			{cond} and dt.name = dt_item.parent 
