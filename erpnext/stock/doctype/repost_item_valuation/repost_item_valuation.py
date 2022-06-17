@@ -188,9 +188,10 @@ def repost_gl_entries(doc):
 
 
 def notify_error_to_stock_managers(doc, traceback):
-	recipients = get_users_with_role("Stock Manager")
-	if not recipients:
-		get_users_with_role("System Manager")
+	# recipients = get_users_with_role("Stock Manager")
+	# if not recipients:
+	# 	get_users_with_role("System Manager")
+	recipients = get_users_with_role("System Manager")
 
 	subject = _("Error while reposting item valuation")
 	message = (
