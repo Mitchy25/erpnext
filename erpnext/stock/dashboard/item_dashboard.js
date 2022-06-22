@@ -139,7 +139,8 @@ erpnext.stock.ItemDashboard = Class.extend({
 			start: this.start,
 			sort_by: this.sort_by,
 			sort_order: this.sort_order,
-			brand: this.brand
+			brand: this.brand,
+			limit_page_length: this.limit_page_length
 		};
 
 		var me = this;

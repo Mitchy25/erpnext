@@ -54,7 +54,7 @@ frappe.pages['stock-balance'].on_page_load = function(wrapper) {
 		fieldname: 'limit',
 		label: 'Limit',
 		fieldtype:'Int',
-		default: 30,
+		default: 50,
 		change: function() {
 			page.item_dashboard.start = 0;
 			page.item_dashboard.refresh();
@@ -87,7 +87,7 @@ frappe.pages['stock-balance'].on_page_load = function(wrapper) {
 	frappe.require('assets/js/item-dashboard.min.js', function() {
 		page.item_dashboard = new erpnext.stock.ItemDashboard({
 			parent: page.main,
-			page_length: 20,
+			page_length: 50,
 			method: 'erpnext.stock.dashboard.item_dashboard.get_data',
 			template: 'item_dashboard_list'
 		})
