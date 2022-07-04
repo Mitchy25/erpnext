@@ -1399,22 +1399,22 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									me.update_item_grid_labels(company_currency);
 								},
 								() => {
-									let cur_grid = me.frm.fields_dict.items.grid;
-									var emptyRows = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row div[data-fieldname="item_code"] .static-area').filter(function(){
-											return $(this).find('a').length == 0
-									}).length;
+									if (typeof dialog == 'undefined' || !dialog){
+										let cur_grid = me.frm.fields_dict.items.grid;
+										var emptyRows = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row div[data-fieldname="item_code"] .static-area').filter(function(){
+												return $(this).find('a').length == 0
+										}).length;
+										if (emptyRows == 0){
+											frappe.model.add_child(me.frm.doc, cur_grid.doctype, 'items');
+										}
 
-									if (emptyRows == 0){
-										frappe.model.add_child(me.frm.doc, cur_grid.doctype, 'items');
+										setTimeout(function(){
+												let listNewLength = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row')
+												listNewLength = $(listNewLength[listNewLength.length-1]).attr("data-name")
+												$('.grid-row[data-name=' + listNewLength + '] div[data-fieldname="item_code"]').click().focus()
+												$('.grid-row[data-name=' + listNewLength + '] input[data-fieldname="item_code"]').click().focus().trigger('input')		
+										},200)
 									}
-
-									setTimeout(function(){
-										let listNewLength = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row')
-										listNewLength = $(listNewLength[listNewLength.length-1]).attr("data-name")
-										$('.grid-row[data-name=' + listNewLength + '] div[data-fieldname="item_code"]').click().focus()
-										$('.grid-row[data-name=' + listNewLength + '] input[data-fieldname="item_code"]').click().focus().trigger('input')									
-									},200)
-					
 								}
 							]);
 						}
