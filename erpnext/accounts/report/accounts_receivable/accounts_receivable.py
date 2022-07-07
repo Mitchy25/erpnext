@@ -737,8 +737,7 @@ class ReceivablePayableReport(object):
 				select_fields, doc_currency_fields, date_condition, conditions, order_by, remarks=remarks
 			),
 			values,
-			as_dict=True,
-			debug=True
+			as_dict=True
 		)
 
 	def get_sales_invoices_or_customers_based_on_sales_person(self):
