@@ -416,6 +416,9 @@ def send_emails(document_name, from_scheduler=False):
 				attachments=attachments,
 			)
 
+			doc = frappe.get_doc('Customer', customer)
+			doc.add_comment('Customer has been sent a Statement of Accounts Email from us.')
+
 			#Create Statement Doc
 			create_statement(doc, customer, recipients[0])
 
