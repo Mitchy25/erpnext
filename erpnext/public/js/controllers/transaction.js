@@ -26,7 +26,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 				} else {				
 					var discount_percentage = flt((1 - item.rate / item.price_list_rate) * 100.0,
 						precision("discount_percentage", item));
-					if (Math.abs(item.discount_percentage - discount_percentage) > 0.05){
+					if (Math.abs(item.discount_percentage - discount_percentage) > 0.06){
 						item.discount_percentage = discount_percentage
 					}
 					
