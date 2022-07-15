@@ -302,6 +302,10 @@ frappe.ui.form.on("Bank Statement Import", {
 			},
 		}).then((r) => {
 			let preview_data = r.message;
+			if (preview_data["columns"][1]["date_format"] !== "%Y-%m-%d") {
+				frm.set_value('import_file', '')
+				frappe.throw("Date format must be in the format YYYY-MM-DD")
+			}
 			frm.events.show_import_preview(frm, preview_data);
 			frm.events.show_import_warnings(frm, preview_data);
 		});
