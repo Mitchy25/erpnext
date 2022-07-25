@@ -1,8 +1,10 @@
 from frappe import _
+from erpnext import get_default_company
 
 
 def get_data():
-	return {
+
+	dashboardData = {
 		'heatmap': False,
 		'heatmap_message': _('This is based on transactions against this Customer. See timeline below for details'),
 		'fieldname': 'customer',
@@ -47,13 +49,19 @@ def get_data():
 			# 	'label': _('Support'),
 			# 	'items': ['Issue', 'Maintenance Visit', 'Installation Note', 'Warranty Claim']
 			# },
-			{
-				'label': 'Testing DB',
-				'items': ['Medical Objects', 'Sample']
-			}
 			# {
 			# 	'label': _('Subscriptions'),
 			# 	'items': ['Subscription']
 			# }
 		]
 	}
+
+	company = get_default_company()
+
+	if company == "RN Labs" or company == "FxMed":
+		dashboardData['transactions'].append({
+			'label': 'Testing DB',
+			'items': ['Medical Objects', 'Sample']
+		})
+	
+	return dashboardData
