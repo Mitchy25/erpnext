@@ -15,9 +15,6 @@ def get_data():
 			'Memos': 'item'
 		},
 		"transactions": [
-			{"label": _("Groups"), "items": ["BOM", "Product Bundle", "Item Alternative"]},
-			{"label": _("Pricing"), "items": ["Item Price", "Pricing Rule"]},
-			{"label": _("Sell"), "items": ["Quotation", "Sales Order", "Delivery Note", "Sales Invoice"]},
 			{
 				'label': _('Groups'),
 				'items': ['BOM', 'Product Bundle', 'Item Alternative', 'Batch']
@@ -31,14 +28,6 @@ def get_data():
 				'label': _('Sell'),
 				'items': ['Sales Invoice', 'Backorder', 'Memos']
 			},
-			# {
-			# 	'label': _('Traceability'),
-			# 	'items': ['Batch']
-			# },
-			# {
-			# 	'label': _('Move'),
-			# 	'items': ['Stock Entry']
-			# },
 			{
 				'label': _('Manufacture'),
 				'items': ['Production Plan', 'Work Order', 'Item Manufacturer']
