@@ -709,7 +709,7 @@ frappe.ui.form.on('Payment Entry', {
 			"company": frm.doc.company,
 			"party_type": frm.doc.party_type,
 			"payment_type": frm.doc.payment_type,
-			"party": frm.doc.party.replace(/'/g, "\\'"),
+			"party": frm.doc.party.replace(/'/g, "\'"),
 			"party_account": frm.doc.payment_type=="Receive" ? frm.doc.paid_from : frm.doc.paid_to,
 			"cost_center": frm.doc.cost_center
 		}
