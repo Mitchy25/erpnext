@@ -85,6 +85,7 @@ def validate_customer_code_erpnext(customer_code):
 
 @frappe.whitelist(allow_guest=True)
 def order(*args, **kwargs):
+	frappe.log_error(frappe.request.data)
 	woocommerce_settings = frappe.get_doc("Woocommerce Settings")
 	try:
 		response = _order(woocommerce_settings, *args, **kwargs)
