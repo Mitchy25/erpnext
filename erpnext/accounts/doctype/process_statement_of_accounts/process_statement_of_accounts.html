@@ -13,7 +13,7 @@
 {% endif %}
 
 
-<div class="page-break">
+<div>
 	<div id="header-html" class="hidden-pdf">
 		{% if letter_head %}
 		<div class="letter-head text-center">{{ letter_head.content }}</div>
@@ -39,7 +39,6 @@
 			</h5>
 	</div>
 	<br>
-
 	
 	<style>
 		hr {
@@ -242,10 +241,5 @@
 			</tr>
 		</tbody>
 	</table>
-	{% endif %}
-	{% if terms_and_conditions %}
-	<div>
-		{{ terms_and_conditions }}
-	</div>
 	{% endif %}
 </div>
