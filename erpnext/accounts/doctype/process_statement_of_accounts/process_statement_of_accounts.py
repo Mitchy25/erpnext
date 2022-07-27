@@ -106,7 +106,18 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			#No Transactions this month
 			if res[2]["debit"] == 0:
 				#No outstanding balance
-				continue
+				if not doc.produce_0_statements:
+					continue
+				else:
+					res.insert(2,{
+						"account":"No transactions during the period",
+						"debit":"",
+						"credit":"",
+						"debit_in_account_currency":"",
+						"credit_in_account_currency":"",
+						"balance":0,
+						"account_currency": res[1]["account_currency"]
+					})
 			else:
 				res.insert(2,{
 					"account":"No transactions during the period",
@@ -120,7 +131,8 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 
 		if res[-1]["balance"] == 0:
 			#No outstanding balance
-			continue
+			if not doc.produce_0_statements:
+				continue
 		
 		if doc.exclude_balances_below:
 			if res[-1]["balance"] < float(doc.exclude_balances_below):
