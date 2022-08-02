@@ -22,6 +22,8 @@ from erpnext.accounts.report.general_ledger.general_ledger import execute as get
 from fxnmrnth.fxnmrnth.doctype.statement_of_account.statement_of_account import create_statement
 import pdb
 
+logger = frappe.logger(module="CustomerStatements", allow_site=True, with_more_info=False, file_count=2)
+
 class ProcessStatementOfAccounts(Document):
 	def validate(self):
 		if not self.subject:
@@ -47,12 +49,19 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 	template_path = (
 		"erpnext/accounts/doctype/process_statement_of_accounts/process_statement_of_accounts.html"
 	)
-	
+
+	i=0
+	numberOfCustomers = len(doc.customers)
 	for entry in doc.customers:
+		i += 1
 		if customer:
+			#Single Statement
 			if entry.customer != customer:
 				continue
-
+		else:
+			#Bulk Run
+			logger.info("Processing: " + str(i) + " of " + str(numberOfCustomers))
+			
 		if doc.include_ageing:
 			ageing_filters = frappe._dict({
 				'company': doc.company,
