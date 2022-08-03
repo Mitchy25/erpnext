@@ -5,6 +5,7 @@
 import copy
 
 import frappe
+import os
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import add_days, nowdate, add_months, format_date, getdate, today
@@ -50,6 +51,9 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 		"erpnext/accounts/doctype/process_statement_of_accounts/process_statement_of_accounts.html"
 	)
 
+	#Get Process ID
+	pid = os.getpid()
+
 	i=0
 	numberOfCustomers = len(doc.customers)
 	for entry in doc.customers:
@@ -60,7 +64,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 				continue
 		else:
 			#Bulk Run
-			logger.info("Processing: " + str(i) + " of " + str(numberOfCustomers))
+			logger.info("PID[" + str(pid) + "] Processing: " + str(i) + " of " + str(numberOfCustomers))
 			
 		if doc.include_ageing:
 			ageing_filters = frappe._dict({
