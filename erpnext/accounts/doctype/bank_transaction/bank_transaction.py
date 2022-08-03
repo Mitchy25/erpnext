@@ -9,6 +9,7 @@ from six.moves import reduce
 from erpnext.controllers.status_updater import StatusUpdater
 
 from fxnmrnth.fxnmrnth.doctype.payment_group.payment_group import set_clearance_date_bank_rec
+from fxnmrnth.utils.bank_reconciliation_tool import clear_linked_payment_group
 
 
 class BankTransaction(StatusUpdater):
@@ -83,6 +84,10 @@ class BankTransaction(StatusUpdater):
 					return
 		
 		clearance_date = self.date if not for_cancel else None
+
+		if payment_entry.payment_document == "Journal Entry":
+			#Check for PG's with this JE as a Clearance JE
+			clear_linked_payment_group(payment_entry.payment_entry, clearance_date)
 
 		if payment_entry.payment_document == "Payment Group":
 			set_clearance_date_bank_rec(payment_entry.payment_entry,clearance_date)
