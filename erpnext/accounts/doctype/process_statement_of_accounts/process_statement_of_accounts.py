@@ -178,7 +178,12 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 		result = "".join(list(statement_dict.values()))
 		return get_pdf(result, {"orientation": doc.orientation})
 	else:
+		i=0
+		pid = os.getpid()
+		numberOfCustomers = len(statement_dict.items())
 		for customer, statement_html in statement_dict.items():
+			i += 1
+			logger.info("PID[" + str(pid) + "] Generating PDF for Customer " + str(i) + " of " + str(numberOfCustomers))
 			statement_dict[customer] = get_pdf(statement_html, {"orientation": doc.orientation})
 		return statement_dict
 
