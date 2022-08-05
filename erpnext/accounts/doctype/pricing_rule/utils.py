@@ -21,6 +21,9 @@ from frappe import _, throw
 from frappe.utils import cint, flt, get_datetime, get_link_to_form, getdate, today
 
 import math
+
+import pdb
+
 class MultiplePricingRuleConflict(frappe.ValidationError):
 	pass
 
@@ -28,7 +31,7 @@ class MultiplePricingRuleConflict(frappe.ValidationError):
 apply_on_table = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands"}
 
 
-def get_pricing_rules(args, doc=None):
+def get_pricing_rules(args, doc=None, returnAll=False):
 	pricing_rules = []
 	values = {}
 
@@ -46,6 +49,14 @@ def get_pricing_rules(args, doc=None):
 
 	if not pricing_rules:
 		return []
+
+	if returnAll:
+		for pricing_rule in pricing_rules:
+			if isinstance(pricing_rule, list):
+				rules.extend(pricing_rule)
+			else:
+				rules.append(pricing_rule)
+		return rules
 
 	if apply_multiple_pricing_rules(pricing_rules):
 		pricing_rules = sorted_by_priority(pricing_rules, args, doc)
