@@ -11,6 +11,7 @@ import erpnext
 from erpnext.accounts.utils import get_outstanding_invoices, reconcile_against_document
 from erpnext.controllers.accounts_controller import get_advance_payment_entries
 
+import pdb
 
 class PaymentReconciliation(Document):
 	@frappe.whitelist()
@@ -30,15 +31,16 @@ class PaymentReconciliation(Document):
 			dr_or_cr_notes = []
 
 		non_reconciled_payments = payment_entries + journal_entries + dr_or_cr_notes
-
+		for payment in non_reconciled_payments:
+			payment['outstanding_amount'] = abs(payment['outstanding_amount'])
 		if self.payment_limit:
 			non_reconciled_payments = non_reconciled_payments[: self.payment_limit]
 
 		non_reconciled_payments = sorted(
 			non_reconciled_payments, key=lambda k: k["posting_date"] or getdate(nowdate())
 		)
-
 		self.add_payment_entries(non_reconciled_payments)
+
 
 	def get_payment_entries(self):
 		order_doctype = "Sales Invoice" if self.party_type=="Customer" else "Purchase Order"
@@ -51,7 +53,6 @@ class PaymentReconciliation(Document):
 			against_all_orders=False, 
 			limit=self.payment_limit,
 			condition=condition)
-
 		return payment_entries
 
 	def get_jv_entries(self):
@@ -61,7 +62,10 @@ class PaymentReconciliation(Document):
 			if erpnext.get_party_account_type(self.party_type) == "Receivable"
 			else "debit_in_account_currency"
 		)
-
+		if dr_or_cr == 'credit_in_account_currency':
+			outstanding = 'total_credit'
+		else:
+			outstanding = 'total_debit'
 		bank_account_condition = (
 			"t2.against_account like %(bank_cash_account)s" if self.bank_cash_account else "1=1"
 		)
@@ -71,7 +75,7 @@ class PaymentReconciliation(Document):
 			select
 				"Journal Entry" as reference_type, t1.name as reference_name,
 				t1.posting_date, t1.remark as remarks, t2.name as reference_row,
-				{dr_or_cr} as amount, t2.is_advance,
+				{dr_or_cr} as amount, t2.is_advance, {dr_or_cr} as outstanding_amount,
 				t2.account_currency as currency
 			from
 				`tabJournal Entry` t1, `tabJournal Entry Account` t2
@@ -93,6 +97,7 @@ class PaymentReconciliation(Document):
 					"dr_or_cr": dr_or_cr,
 					"bank_account_condition": bank_account_condition,
 					"condition": condition,
+					"outstanding":outstanding
 				}
 			),
 			{
@@ -103,7 +108,6 @@ class PaymentReconciliation(Document):
 			},
 			as_dict=1,
 		)
-
 		return list(journal_entries)
 
 	def get_dr_or_cr_notes(self):
@@ -125,7 +129,7 @@ class PaymentReconciliation(Document):
 		return frappe.db.sql(
 			""" SELECT doc.name as reference_name, %(voucher_type)s as reference_type,
 				(sum(gl.{dr_or_cr}) - sum(gl.{reconciled_dr_or_cr})) as amount, doc.posting_date,
-				account_currency as currency
+				account_currency as currency, doc.grand_total as outstanding_amount
 			FROM `tab{doc}` doc, `tabGL Entry` gl
 			WHERE
 				(doc.name = gl.against_voucher or doc.name = gl.voucher_no)
@@ -233,6 +237,7 @@ class PaymentReconciliation(Document):
 				"difference_amount": pay.get("difference_amount"),
 			}
 		)
+
 
 	@frappe.whitelist()
 	def reconcile(self):
@@ -416,38 +421,99 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 
 		company_currency = erpnext.get_company_currency(company)
 
-		jv = frappe.get_doc(
+		jvAccounts = [
 			{
-				"doctype": "Journal Entry",
-				"voucher_type": voucher_type,
-				"posting_date": today(),
-				"company": company,
-				"multi_currency": 1 if inv.currency != company_currency else 0,
-				"accounts": [
-					{
-						"account": inv.account,
-						"party": inv.party,
-						"party_type": inv.party_type,
-						inv.dr_or_cr: abs(inv.allocated_amount),
-						"reference_type": inv.against_voucher_type,
-						"reference_name": inv.against_voucher,
-						"cost_center": erpnext.get_default_cost_center(company),
-					},
-					{
-						"account": inv.account,
-						"party": inv.party,
-						"party_type": inv.party_type,
-						reconcile_dr_or_cr: (
-							abs(inv.allocated_amount)
-							if abs(inv.unadjusted_amount) > abs(inv.allocated_amount)
-							else abs(inv.unadjusted_amount)
-						),
-						"reference_type": inv.voucher_type,
-						"reference_name": inv.voucher_no,
-						"cost_center": erpnext.get_default_cost_center(company),
-					},
-				],
-			}
-		)
+				"account": inv.account,
+				"party": inv.party,
+				"party_type": inv.party_type,
+				inv.dr_or_cr: abs(inv.allocated_amount),
+				"reference_type": inv.against_voucher_type,
+				"reference_name": inv.against_voucher,
+				"cost_center": erpnext.get_default_cost_center(company),
+			},
+			{
+				"account": inv.account,
+				"party": inv.party,
+				"party_type": inv.party_type,
+				reconcile_dr_or_cr: (
+					abs(inv.allocated_amount)
+					if abs(inv.unadjusted_amount) > abs(inv.allocated_amount)
+					else abs(inv.unadjusted_amount)
+				),
+				"reference_type": inv.voucher_type,
+				"reference_name": inv.voucher_no,
+				"cost_center": erpnext.get_default_cost_center(company),
+			},
+		]
+
+		#Calculate Currency Gain/Loss
+		voucherExchangeRate = frappe.get_doc(inv.voucher_type,inv.voucher_no).conversion_rate
+		againstVoucherExchangeRate = frappe.get_doc(inv.against_voucher_type,inv.against_voucher).conversion_rate
+
+		if voucherExchangeRate != againstVoucherExchangeRate:
+			#Get Offset Account
+			offsetAccount = frappe.get_doc("Company",company).exchange_gain_loss_account
+
+			#Calculate Offset
+			offsetValue = round((float(inv.allocated_amount) * float(voucherExchangeRate)),2) - round(((float(inv.allocated_amount) * float(againstVoucherExchangeRate))),2)
+			if inv.dr_or_cr == "credit_in_account_currency":
+				if offsetValue > 0:
+					offsetDebit = 0
+					offsetCredit = abs(offsetValue)
+				else:
+					offsetDebit = abs(offsetValue)
+					offsetCredit = 0
+			else:
+				if offsetValue > 0:
+					offsetDebit = abs(offsetValue)
+					offsetCredit = 0
+				else:
+					offsetDebit = 0
+					offsetCredit = abs(offsetValue)
+		
+			jvAccounts.append({
+				"account": offsetAccount,
+				"debit_in_account_currency": offsetDebit,
+				"credit_in_account_currency": offsetCredit,
+				"cost_center": erpnext.get_default_cost_center(company)
+			})
+
+		jvDict = {
+			"doctype": "Journal Entry",
+			"voucher_type": voucher_type,
+			"posting_date": today(),
+			"company": company,
+			"multi_currency": 1 if inv.currency != company_currency else 0,
+			"accounts": jvAccounts,
+			"user_remark": "Reconciling via Payment Reconciliation."
+		}
+
+		jv = frappe.get_doc(jvDict)
+
 		jv.flags.ignore_mandatory = True
+		try:
+			jv.insert()
+		except:
+			#Rounding error - Adjusts
+			writeOffAmount = jv.total_debit - jv.total_credit
+			writeOffAccount = frappe.get_value("Company", company, "write_off_account")
+			frappe.msgprint("Proceeding to balance with a $" + str(round(writeOffAmount,2)) + " write off.")
+			if writeOffAmount < -0.009:
+				jvDict['accounts'].append({
+					"account": writeOffAccount,
+					"cost_center": erpnext.get_default_cost_center(company),
+					"debit_in_account_currency": abs(round(writeOffAmount,2))
+				})
+				jvDict['user_remark'] += " Extra write off of " + str(abs(round(writeOffAmount,2))) + " to account for rounding error"
+			elif writeOffAmount > 0.009:
+				jvDict['accounts'].append({
+					"account": writeOffAccount,
+					"cost_center": erpnext.get_default_cost_center(company),
+					"credit_in_account_currency": abs(round(writeOffAmount,2))
+				})
+				jvDict['user_remark'] += " Extra write off of " + str(abs(round(writeOffAmount,2))) + " to account for rounding error"
+			
+			jv = frappe.get_doc(jvDict)
+			jv.insert()
+
 		jv.submit()
