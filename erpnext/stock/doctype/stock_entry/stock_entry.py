@@ -1439,6 +1439,8 @@ class StockEntry(StockController):
 			"cost_center": item.get("buying_cost_center"),
 			"is_finished_item": 1,
 		}
+		if not args['expense_account']:
+			args['expense_account'] = frappe.db.get_value('Company', frappe.defaults.get_user_default("Company"), 'stock_adjustment_account')
 
 		if (
 			self.work_order
