@@ -447,36 +447,38 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 		]
 
 		#Calculate Currency Gain/Loss
-		voucherExchangeRate = frappe.get_doc(inv.voucher_type,inv.voucher_no).conversion_rate
-		againstVoucherExchangeRate = frappe.get_doc(inv.against_voucher_type,inv.against_voucher).conversion_rate
+		if inv.against_voucher_type != "Journal Entry" and inv.voucher_type != "Journal Entry":
 
-		if voucherExchangeRate != againstVoucherExchangeRate:
-			#Get Offset Account
-			offsetAccount = frappe.get_doc("Company",company).exchange_gain_loss_account
+			voucherExchangeRate = frappe.get_doc(inv.voucher_type,inv.voucher_no).conversion_rate
+			againstVoucherExchangeRate = frappe.get_doc(inv.against_voucher_type,inv.against_voucher).conversion_rate
 
-			#Calculate Offset
-			offsetValue = round((float(inv.allocated_amount) * float(voucherExchangeRate)),2) - round(((float(inv.allocated_amount) * float(againstVoucherExchangeRate))),2)
-			if inv.dr_or_cr == "credit_in_account_currency":
-				if offsetValue > 0:
-					offsetDebit = 0
-					offsetCredit = abs(offsetValue)
+			if voucherExchangeRate != againstVoucherExchangeRate:
+				#Get Offset Account
+				offsetAccount = frappe.get_doc("Company",company).exchange_gain_loss_account
+
+				#Calculate Offset
+				offsetValue = round((float(inv.allocated_amount) * float(voucherExchangeRate)),2) - round(((float(inv.allocated_amount) * float(againstVoucherExchangeRate))),2)
+				if inv.dr_or_cr == "credit_in_account_currency":
+					if offsetValue > 0:
+						offsetDebit = 0
+						offsetCredit = abs(offsetValue)
+					else:
+						offsetDebit = abs(offsetValue)
+						offsetCredit = 0
 				else:
-					offsetDebit = abs(offsetValue)
-					offsetCredit = 0
-			else:
-				if offsetValue > 0:
-					offsetDebit = abs(offsetValue)
-					offsetCredit = 0
-				else:
-					offsetDebit = 0
-					offsetCredit = abs(offsetValue)
-		
-			jvAccounts.append({
-				"account": offsetAccount,
-				"debit_in_account_currency": offsetDebit,
-				"credit_in_account_currency": offsetCredit,
-				"cost_center": erpnext.get_default_cost_center(company)
-			})
+					if offsetValue > 0:
+						offsetDebit = abs(offsetValue)
+						offsetCredit = 0
+					else:
+						offsetDebit = 0
+						offsetCredit = abs(offsetValue)
+			
+				jvAccounts.append({
+					"account": offsetAccount,
+					"debit_in_account_currency": offsetDebit,
+					"credit_in_account_currency": offsetCredit,
+					"cost_center": erpnext.get_default_cost_center(company)
+				})
 
 		jvDict = {
 			"doctype": "Journal Entry",
