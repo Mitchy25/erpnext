@@ -1346,7 +1346,17 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 										me.calculate_taxes_and_totals();
 									}
 								},
-								() => me.toggle_conversion_factor(item),
+								() => {
+									me.toggle_conversion_factor(item);
+									var d = locals[cdt][cdn]
+									if (d['rate'] == 0 && d['discount_percentage'] == 0){
+										let message = ''
+										if (cur_frm.doc.selling_price_list) {
+											message = "for the price list "+ cur_frm.doc.selling_price_list
+										} 
+										frappe.show_alert({"message":"No price list set for this item " + message,"indicator":"red"},5)
+									}
+								},
 								() => {
 									if (show_batch_dialog)
 										return frappe.db.get_value("Item", item.item_code, ["has_batch_no", "has_serial_no"])
