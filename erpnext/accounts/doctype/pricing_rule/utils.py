@@ -49,8 +49,11 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 
 	if not pricing_rules:
 		return []
-
+	
 	if returnAll:
+		pricing_rules = filter_pricing_rules_for_qty_amount(
+			args.qty, args.rate, pricing_rules
+		)
 		for pricing_rule in pricing_rules:
 			if isinstance(pricing_rule, list):
 				rules.extend(pricing_rule)
