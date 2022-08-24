@@ -148,7 +148,8 @@ def _order(woocommerce_settings, *args, **kwargs):
 	# input customer_id 
 	test_order = 0
 	if customer_id == 0: # this is guest login, a patient under a practitioner
-		edited_line_items, create_backorder_doc_flag = backorder_validation(order.get("line_items"), customer_code, woocommerce_settings)
+		order_type = order_type_mapping[pos_order_type]
+		edited_line_items, create_backorder_doc_flag = backorder_validation(order.get("line_items"), customer_code, woocommerce_settings, order_type)
 		if pos_order_type == "patient_test_order":
 
 			#Check if Prac is Frozen and Patient Test Order
@@ -182,7 +183,7 @@ def _order(woocommerce_settings, *args, **kwargs):
 				log_integration_request(webhook_delivery_id=webhook_delivery_id, order=order, invoice_doc=None, status="Cancelled", data=json.dumps(order, indent=4), error="Order Type is not found on WooCommcerce Payload!", woocommerce_settings=woocommerce_settings)
 				frappe.throw('Order Type is not found on WooCommcerce Payload!')
 			order_type = order_type_mapping[pos_order_type]
-			edited_line_items, create_backorder_doc_flag = backorder_validation(order.get("line_items"), customer_code, woocommerce_settings)
+			edited_line_items, create_backorder_doc_flag = backorder_validation(order.get("line_items"), customer_code, woocommerce_settings, order_type)
 
 			if pos_order_type in  ["self", "on-behalf"]:
 				# apply 20% of the discount
@@ -459,7 +460,7 @@ def create_patient_invoice(edited_line_items, patient_invoice_doc):
 			else:
 				frappe.throw("Cannot find testkit for {}".format(item['item_code']))
 
-def backorder_validation(line_items, customer_code, woocommerce_settings, discount=None):
+def backorder_validation(line_items, customer_code, woocommerce_settings, order_type):
 	new_line_items = []
 	backorder_item_num = 0
 	for item in line_items:
@@ -504,8 +505,13 @@ def backorder_validation(line_items, customer_code, woocommerce_settings, discou
 				if meta_data.get('key') == "swab" and meta_data.get('value') == "true":
 					is_swab = True
 
+
 		# we want to find the price list for that curreny and calculate the discount percentage
-		default_price_list = frappe.db.get_value("Customer", customer_code, "default_price_list")
+		if order_type in ["Practitioner Order", "Self Test", "On Behalf"]:
+			default_price_list = "Aus Wholesale"
+		else:
+			default_price_list = "Aus Retail"
+
 		from erpnext.stock.get_item_details import get_price_list_rate_for
 		args = frappe._dict(
 			customer=customer_code,
