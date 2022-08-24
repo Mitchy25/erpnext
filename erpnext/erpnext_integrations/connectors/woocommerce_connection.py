@@ -131,6 +131,7 @@ def _order(woocommerce_settings, *args, **kwargs):
 		"self": "Self Test",
 		"patient_order": "Patient Order",
 		"on-behalf": "On Behalf",
+		"patient_test_order": "Patient Order"
 	}
 
 	# pre-process to parse payload (parameter: meta_data, billing)
