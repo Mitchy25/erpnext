@@ -12,6 +12,7 @@ from fxnmrnth.fxnmrnth.doctype.payment_group.payment_group import set_clearance_
 from fxnmrnth.utils.bank_reconciliation_tool import clear_linked_payment_group
 
 
+
 class BankTransaction(StatusUpdater):
 	def after_insert(self):
 		self.unallocated_amount = abs(flt(self.withdrawal) - flt(self.deposit))
@@ -189,6 +190,7 @@ def get_paid_amount(payment_entry, currency, bank_account):
 
 @frappe.whitelist()
 def unclear_reference_payment(doctype, docname):
+
 	if frappe.db.exists(doctype, docname):
 		doc = frappe.get_doc(doctype, docname)
 		if doctype == "Sales Invoice":
@@ -200,5 +202,12 @@ def unclear_reference_payment(doctype, docname):
 			)
 		else:
 			frappe.db.set_value(doc.payment_document, doc.payment_entry, "clearance_date", None)
+
+		if doc.payment_document == "Journal Entry":
+			#Check for PG's with this JE as a Clearance JE
+			clear_linked_payment_group(doc.payment_entry, None)
+
+		if doc.payment_document == "Payment Group":
+			set_clearance_date_bank_rec(doc.payment_entry, None)
 
 		return doc.payment_entry
