@@ -1254,8 +1254,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 		item.weight_per_unit = 0;
 		item.weight_uom = '';
-		item.conversion_factor = 0;
-
+		// item.conversion_factor = 0;
 		if(['Sales Invoice'].includes(this.frm.doc.doctype)) {
 			update_stock = cint(me.frm.doc.update_stock);
 			show_batch_dialog = update_stock;
@@ -1269,8 +1268,14 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			item.barcode = null;
 		}
 		this.frm.from_barcode = this.frm.from_barcode - 1 >= 0 ? this.frm.from_barcode - 1 : 0;
+		this.conversion_factor(doc, cdt, cdn, true)
+		this.get_and_set_item_details(doc, cdt, cdn)
 
-
+	},
+	get_and_set_item_details: function(doc, cdt, cdn) {
+		var me = this;
+		var item = frappe.get_doc(cdt, cdn);
+		var update_stock = 0, show_batch_dialog = 0;
 		if(item.item_code || item.barcode || item.serial_no) {
 			if(!this.validate_company_and_party()) {
 				this.frm.fields_dict["items"].grid.grid_rows[item.idx - 1].remove();
@@ -1433,7 +1438,6 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			}
 		}
 	},
-
 	calculate_stock_uom_rate: function(doc, cdt, cdn) {
 		let item = frappe.get_doc(cdt, cdn);
 		item.stock_uom_rate = flt(item.rate)/flt(item.conversion_factor);
@@ -1826,6 +1830,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 	},
 
 	apply_rule_on_other_items: function(args) {
+		
 		const me = this;
 		const fields = ["discount_percentage", "pricing_rules", "discount_amount", "rate"];
 
@@ -1836,7 +1841,13 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 				me.frm.doc.items.forEach(d => {
 					if (in_list(data.apply_rule_on_other_items, d[data.apply_rule_on])) {
 						for(var k in data) {
-							if (in_list(fields, k) && data[k] && (data.price_or_product_discount === 'price' || k === 'pricing_rules')) {
+							if (in_list(fields, k) && data[k] && (data.price_or_product_discount === 'Price' || k === 'pricing_rules')) {
+								if (data['pricing_rule_for'] == "Discount Percentage" && k == "discount_amount") {
+									continue;
+								}
+								if (data['pricing_rule_for'] == "Discount Amount" && k == "discount_percentage") {
+									continue;
+								}
 								frappe.model.set_value(d.doctype, d.name, k, data[k]);
 							}
 						}
@@ -1955,7 +1966,24 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 					})
 				}
 			});
+			me.trigger_price_list_rate();
+		}
+		debugger;
+		if (item.apply_rule_on_other_items && item.apply_rule_on) {
+			const apply_rule_on_other_items_list = JSON.parse(item.apply_rule_on_other_items);
+			me.frm.doc.items.forEach(row => {
+				if(apply_rule_on_other_items_list.includes(row[item.apply_rule_on]) && row[item.apply_rule_on] != item[item.apply_rule_on]) {
+					fields.forEach(f => {
+						row[f] = 0;
+					});
 
+					["pricing_rules", "margin_type"].forEach(field => {
+						if (row[field]) {
+							row[field] = '';
+						}
+					})
+				}
+			});
 			me.trigger_price_list_rate();
 		}
 	},
