@@ -60,7 +60,11 @@ def pre_process_payload(meta_data, billing):
 		"temporary_address": 1,
 		"temporary_delivery_address_line_1": patient_name if patient_name else billing.get('first_name') + " " + billing.get('last_name'),
 		"temporary_delivery_address_line_2": billing.get('address_1') + " " + billing.get('address_2'),
-		"temporary_delivery_address_line_3": billing.get('city') + ", " + billing.get('state') + ", " + billing.get('postcode') + ", " + billing.get('country'),
+		"temporary_delivery_address_line_3": '',
+		"suburb": billing.get('city'),
+		"state": billing.get('state') ,
+		"postcode":  billing.get('postcode'),
+		"country_code": billing.get('country'),
 		"temporary_delivery_address_line_4": billing.get('phone'),
 		"temporary_delivery_address_line_5": billing.get('email')
 	}
