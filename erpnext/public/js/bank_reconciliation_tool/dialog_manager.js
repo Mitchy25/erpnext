@@ -38,7 +38,11 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					this.dialog.set_values(r.message);
 					this.dialog.fields_dict.posting_date.value = r.message.date
 					this.dialog.fields_dict.reference_date.value = r.message.date
+					if (r.message.deposit > 1) {
+						this.dialog.fields_dict.party_type.set_value("Customer")
+					}
 					this.dialog.show();
+
 				}
 			},
 		});
@@ -336,6 +340,32 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 						},
 					};
 				},
+				onchange: function (values) {
+					if(cur_dialog.fields_dict.second_account.value){
+						frappe.call({
+							method:"frappe.client.get_value",
+							args: {
+								doctype:"Account",
+								filters: {
+									name: cur_dialog.fields_dict.second_account.value
+								},
+								fieldname:["account_type"]
+							},
+							async: false,
+							callback: function(q) { 
+								if (q.message.account_type != "Receivable" || q.message.account_type != "Payable") {
+									cur_dialog.set_df_property('party','hidden',1)
+									cur_dialog.set_value('party','')
+									cur_dialog.set_df_property('party_type','hidden',1)
+									cur_dialog.set_value('party_type','')
+								} else {
+									cur_dialog.set_df_property('party','hidden',0)
+									cur_dialog.set_df_property('party_type','hidden',0)
+								}
+							}
+						})
+					}
+				},
 			},
 			{
 				fieldname: "party_type",
@@ -520,10 +550,17 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				frappe.show_alert(alert_string);
 				this.update_dt_cards(response.message);
 				this.dialog.hide();
+				this.route_to_payment_reconcile(values.party,values.party_type)
 			},
 		});
 	}
-
+	route_to_payment_reconcile(party, party_type) {
+		let doctype = 'doctype_redirect=Payment Reconciliation'
+		let route = 'route_redirect=payment-reconciliation'
+		let party_param = 'party=' + party
+		let party_type_param = 'party_type=' + party_type
+		window.open(`../redirect/Redirect?${doctype}&${route}&${party_type_param}&${party_param}`);
+	}
 	add_journal_entry(values) {
 		frappe.call({
 			method:
@@ -547,6 +584,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				frappe.show_alert(alert_string);
 				this.update_dt_cards(response.message);
 				this.dialog.hide();
+				this.route_to_payment_reconcile(values.party,values.party_type)
 			},
 		});
 	}
