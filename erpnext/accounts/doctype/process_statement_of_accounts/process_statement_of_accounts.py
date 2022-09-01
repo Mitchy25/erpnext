@@ -464,6 +464,20 @@ def send_emails(document_name, from_scheduler=False):
 			)
 			doc.db_set("to_date", new_to_date, commit=True)
 			doc.db_set("from_date", new_from_date, commit=True)
+
+		#Send email to admin
+		frappe.enqueue(
+			queue="short",
+			method=frappe.sendmail,
+			recipients="IT@Fxmed.co.nz",
+			# sender=frappe.session.user, #Send as default outgoing
+			subject= doc.company + ": Customer Statements Sending Complete",
+			message="Hi IT,<br><br><b>Company</b>: " + str(doc.company) + "<br><b>From</b>: " + str(doc.from_date) + "<br><b>To</b>: " + str(doc.to_date) + "<br><b>Customers Analysed</b>: " + str(len(doc.customers)) + "<br><b>Customers Sent</b>: " + str(len(report)) + "<br><br>Kind Regards, ERPNext",
+			# now=True,
+			is_async=True,
+			reference_doctype="Process Statement Of Accounts",
+			reference_name=document_name
+		)
 		return True
 	else:
 		return False
