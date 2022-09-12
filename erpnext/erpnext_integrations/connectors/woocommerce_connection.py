@@ -10,7 +10,7 @@ from erpnext.stock.get_item_details import get_bin_details
 from erpnext.exceptions import PartyFrozen, PartyDisabled
 
 from fxnmrnth.integration_req_log import log_integration_request, log_exceptions
-
+import pdb
 
 def validate_event_and_status(order_id, event, status):
 	if event == "woocommerce_payment_complete": # normal patient test order and on-behalf test order
@@ -542,17 +542,17 @@ def backorder_validation(line_items, customer_code, woocommerce_settings, order_
 			"uom": woocommerce_settings.uom or _("Unit"),
 			"qty": item.get("quantity"),
 			"discount_percentage": discount,
-			# "rate": item.get("price"),
+			"rate": item.get("price"),
 			"warehouse": woocommerce_settings.warehouse,
 			"is_stock_item": found_item.is_stock_item,
 			"is_paediatric": is_paediatric,
 			"is_swab": is_swab,
 		}
 
-		if price_list_rate:
-			validated_item['rate'] = price_list_rate
-		else:
-			validated_item['rate'] = item.get("price")
+		# if price_list_rate:
+		# 	validated_item['rate'] = price_list_rate
+		# else:
+		# 	validated_item['rate'] = item.get("price")
 
 		# check if item is out of stock
 		if found_item.is_stock_item == 1:
