@@ -62,9 +62,11 @@ def get_data(filters, columns):
 
 
 def get_item_price_qty_data(filters):
-	conditions = ""
+	conditions = "where 1=1"
+	today = frappe.utils.today()
+	conditions += ' and (a.valid_upto <= ' + today + ' or a.valid_upto ="" or a.valid_upto is NULL)'
 	if filters.get("item_code"):
-		conditions += "where a.item_code=%(item_code)s"
+		conditions += " and a.item_code=%(item_code)s "
 
 	item_results = frappe.db.sql(
 		"""select a.item_code, a.item_name, a.name as price_list_name,
