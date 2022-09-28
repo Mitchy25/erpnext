@@ -41,6 +41,8 @@ def pre_process_payload(meta_data, billing):
 			delivery_option = meta["value"]
 		elif meta["key"] == "pos_patient":
 			patient_name = meta["value"]
+		elif meta["key"] == "legal_patient_name":
+			patient_name = meta["value"]
 		elif meta["key"] == "patient_dob":
 			patient_dob = meta["value"]
 		elif meta["key"] == "invoice_sending_option":
