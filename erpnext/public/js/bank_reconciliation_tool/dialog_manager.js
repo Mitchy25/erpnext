@@ -349,7 +349,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 								filters: {
 									name: cur_dialog.fields_dict.second_account.value
 								},
-								fieldname:["account_type"]
+								fieldname:["account_type", "account_currency"]
 							},
 							async: false,
 							callback: function(q) { 
@@ -362,10 +362,46 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 									cur_dialog.set_df_property('party','hidden',0)
 									cur_dialog.set_df_property('party_type','hidden',0)
 								}
+								frappe.call({
+									method: 'frappe.client.get_value',
+									args: {
+									doctype: 'Bank Account',
+									name: cur_frm.doc.bank_account,
+									fieldname: 'account',
+									async: false,
+									},
+									callback: function(r){
+										frappe.call({
+											method: 'frappe.client.get_value',
+											args: {
+											doctype: 'Account',
+											name: r.message.account,
+											fieldname: 'account_currency',
+											async: false,
+											},
+											callback: function(r){
+												if(q.message.account_currency != r.message.account_currency){
+													cur_dialog.set_value('multi_currency',1)
+													cur_dialog.set_df_property('multi_currency','hidden',0)
+												} else{
+													cur_dialog.set_value('multi_currency',0)
+													cur_dialog.set_df_property('multi_currency','hidden',1)
+												}
+											}
+										});
+									}
+								});
+
 							}
 						})
 					}
 				},
+			},
+			{
+				fieldname: "multi_currency",
+				fieldtype: "Check",
+				label: "Multi Currency",
+				depends_on:"eval:doc.action=='Create Voucher' && doc.document_type=='Journal Entry'",
 			},
 			{
 				fieldname: "party_type",
@@ -575,6 +611,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				mode_of_payment: values.mode_of_payment,
 				entry_type: values.journal_entry_type,
 				second_account: values.second_account,
+				multi_currency: values.multi_currency
 			},
 			callback: (response) => {
 				const alert_string =
