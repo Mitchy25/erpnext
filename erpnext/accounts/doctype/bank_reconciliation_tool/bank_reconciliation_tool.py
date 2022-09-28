@@ -9,7 +9,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder.custom import ConstantColumn
 from frappe.utils import flt
-
+from frappe.exceptions import ValidationError
 from erpnext import get_company_currency
 from erpnext.accounts.doctype.bank_transaction.bank_transaction import get_paid_amount
 from erpnext.accounts.report.bank_reconciliation_statement.bank_reconciliation_statement import (
@@ -124,6 +124,7 @@ def create_journal_entry_bts(
 	party_type=None,
 	party=None,
 	allow_edit=None,
+	multi_currency=None
 ):
 	# Create a new journal entry based on the bank transaction
 	bank_transaction = frappe.db.get_values(
@@ -175,13 +176,24 @@ def create_journal_entry_bts(
 		"cheque_date": reference_date,
 		"cheque_no": reference_number,
 		"mode_of_payment": mode_of_payment,
+		"multi_currency":multi_currency
 	}
 	journal_entry = frappe.new_doc("Journal Entry")
 	journal_entry.update(journal_entry_dict)
 	journal_entry.set("accounts", accounts)
-
+	if multi_currency:
+		journal_entry.validate_party()
+		journal_entry.validate_entries_for_advance()
+		journal_entry.validate_multi_currency()
+		journal_entry.set_amounts_in_company_currency()
+		journal_entry.set_total_debit_credit()
+		if journal_entry.difference < 0:
+			journal_entry.accounts[1].debit_in_account_currency += journal_entry.difference * -1
+		elif journal_entry.difference > 0:
+			journal_entry.accounts[0].credit_in_account_currency += journal_entry.difference * -1
 	if allow_edit:
 		return journal_entry
+	
 
 	journal_entry.insert()
 	journal_entry.submit()
