@@ -418,7 +418,24 @@ def download_individual_statement(document_name,customer):
 
 @frappe.whitelist()
 def send_emails(document_name, from_scheduler=False):
+
 	doc = frappe.get_doc("Process Statement Of Accounts", document_name)
+
+	#Send email to admin
+	frappe.publish_realtime(event='msgprint', message="Customer statements running.<br><br><b style='color:red;'>Dont reboot the server</b>",user = "Administrator")
+	frappe.enqueue(
+		queue="short",
+		method=frappe.sendmail,
+		recipients="IT@Fxmed.co.nz",
+		# sender=frappe.session.user, #Send as default outgoing
+		subject= doc.company + ": Customer Statements Sending Started",
+		message="Hi IT,<br><br><b>Company</b>: " + str(doc.company) + "<br><b>From</b>: " + str(doc.from_date) + "<br><b>To</b>: " + str(doc.to_date) + "<br><br><b>DO NOT RESTART UNTIL COMPLETE</b><br><br>Kind Regards, ERPNext",
+		# now=True,
+		is_async=True,
+		reference_doctype="Process Statement Of Accounts",
+		reference_name=document_name
+	)
+
 	report = get_report_pdf(doc, consolidated=False)
 
 	if report:
@@ -478,6 +495,7 @@ def send_emails(document_name, from_scheduler=False):
 			reference_doctype="Process Statement Of Accounts",
 			reference_name=document_name
 		)
+		frappe.publish_realtime(event='msgprint', message="Customer statements finished",user = "Administrator")
 		return True
 	else:
 		return False
