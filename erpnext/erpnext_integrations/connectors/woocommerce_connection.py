@@ -170,7 +170,7 @@ def _order(woocommerce_settings, *args, **kwargs):
 			# We don't need to use the backorder flag for test order
 			test_order = 1
 			invoice_sending_option = "send receipt to patient" # this need to be added so that test kit is added for this type of orders
-			new_invoice, customer_accepts_backorder = create_sales_invoice(edited_line_items, order, customer_code, "Pay before Dispatch", woocommerce_settings, order_type= "Patient Order", temp_address=temp_address, delivery_option=delivery_option, invoice_sending_option=invoice_sending_option, test_order=test_order, patient_dob=patient_dob)
+			new_invoice, customer_accepts_backorder = create_sales_invoice(edited_line_items, order, customer_code, "Pay before Dispatch", woocommerce_settings, order_type= "Patient Order", temp_address=temp_address, delivery_option=delivery_option, invoice_sending_option=invoice_sending_option, test_order=test_order, patient_dob=patient_dob, patient_name=patient_name)
 
 			#Check if Prac was Frozen and Patient Test Order
 			if temporaryUnfreeze == 1:
@@ -197,9 +197,9 @@ def _order(woocommerce_settings, *args, **kwargs):
 				test_order = 1
 				if pos_order_type == "self":
 					invoice_sending_option = "send receipt to patient" # this need to be added so that test kit is added for this type of orders
-					new_invoice, customer_accepts_backorder = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type, invoice_sending_option=invoice_sending_option, test_order=test_order)
+					new_invoice, customer_accepts_backorder = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type, temp_address=temp_address, invoice_sending_option=invoice_sending_option, test_order=test_order,  patient_dob=patient_dob, patient_name=patient_name)
 				else:
-					new_invoice, patient_invoice_doc = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type, temp_address=temp_address, delivery_option=delivery_option, invoice_sending_option=invoice_sending_option, test_order=test_order, patient_dob=patient_dob)
+					new_invoice, patient_invoice_doc = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type, temp_address=temp_address, delivery_option=delivery_option, invoice_sending_option=invoice_sending_option, test_order=test_order, patient_dob=patient_dob, patient_name=patient_name)
 					customer_accepts_backorder = 1
 
 			elif pos_order_type == "practitioner_order":
@@ -209,7 +209,7 @@ def _order(woocommerce_settings, *args, **kwargs):
 						frappe.throw("Customer {} doesn't accept backorders!")
 					frappe.throw("This need to be developed further, to create a backorder instead of invoice")
 				else: # Create sales invoice
-					new_invoice, customer_accepts_backorder = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type)
+					new_invoice, customer_accepts_backorder = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type, patient_dob=patient_dob, patient_name=patient_name)
 			else:
 				frappe.log_error(title="Error in authorized order", message="Cannot recoginized pos_order_type: {}".format(pos_order_type))
 
@@ -229,7 +229,7 @@ def _order(woocommerce_settings, *args, **kwargs):
 		frappe.log_error(title="Error in Woocommerce Integration", message=frappe.get_traceback())
 		frappe.throw(frappe.get_traceback())
 
-def create_sales_invoice(edited_line_items, order, customer_code, payment_category,  woocommerce_settings, order_type=None, temp_address=None, delivery_option=None, invoice_sending_option=None, test_order=0, patient_dob=""):
+def create_sales_invoice(edited_line_items, order, customer_code, payment_category,  woocommerce_settings, order_type=None, temp_address=None, delivery_option=None, invoice_sending_option=None, test_order=0, patient_dob="", patient_name=""):
 	#Set Basic Info
 	date_created = order.get("date_created").split("T")[0]
 	customer_note = order.get('customer_note')
@@ -247,7 +247,8 @@ def create_sales_invoice(edited_line_items, order, customer_code, payment_catego
 		"po_date":date_created,
 		"company": woocommerce_settings.company,
 		"payment_category": payment_category,
-		"patient_dob": patient_dob
+		"patient_dob": patient_dob,
+		"patient_legal_name": patient_name
 	}
 	if order_type:
 		if order_type == "Self Test":
