@@ -197,7 +197,7 @@ def _order(woocommerce_settings, *args, **kwargs):
 				test_order = 1
 				if pos_order_type == "self":
 					invoice_sending_option = "send receipt to patient" # this need to be added so that test kit is added for this type of orders
-					new_invoice, customer_accepts_backorder = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type, temp_address=temp_address, invoice_sending_option=invoice_sending_option, test_order=test_order,  patient_dob=patient_dob, patient_name=patient_name)
+					new_invoice, customer_accepts_backorder = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type, invoice_sending_option=invoice_sending_option, test_order=test_order,  patient_dob=patient_dob, patient_name=patient_name)
 				else:
 					new_invoice, patient_invoice_doc = create_sales_invoice(edited_line_items, order, customer_code, payment_category, woocommerce_settings, order_type=order_type, temp_address=temp_address, delivery_option=delivery_option, invoice_sending_option=invoice_sending_option, test_order=test_order, patient_dob=patient_dob, patient_name=patient_name)
 					customer_accepts_backorder = 1
