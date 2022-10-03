@@ -300,8 +300,8 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			) as item_name,
 			if (
 				CAST(COALESCE(SUM(tabBin.actual_qty),0) as int) > 0,
-				CONCAT("<br>Stock: <b style='color:#33cc33;;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>"),
-				CONCAT("<br>Stock: <b style='color:#ff0000;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>")
+				CONCAT("Stock: <b style='color:#33cc33;;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>"),
+				CONCAT("Stock: <b style='color:#ff0000;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>")
 			) as available,
 			CONCAT("BO: <b>", CAST(COALESCE(SUM(tabBin.reserved_qty),0) as int),"</b>") as backorder,
 			CONCAT("On Order: <b>", CAST(COALESCE(SUM(tabBin.ordered_qty),0) as int),"</b>") as on_order
@@ -327,7 +327,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 		order by
 			if(locate(%(_txt)s, tabItem.name), locate(%(_txt)s, tabItem.name), 99999),
 			if(locate(%(_txt)s, tabItem.item_name), locate(%(_txt)s, tabItem.item_name), 99999),
-			tabItem.idx desc,
+			tabItem.idx asc,
 			tabItem.name, 
 			tabItem.item_name
 		limit %(start)s, %(page_len)s """.format(
