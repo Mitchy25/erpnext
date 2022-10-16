@@ -562,7 +562,7 @@ def get_je_matching_query(amount_condition, transaction):
 	"""
 
 	if amount_condition == "=":
-		sql += "AND jea.{cr_or_dr}_in_account_currency {amount_condition} %(amount)s"
+		sql += f"""AND jea.{cr_or_dr}_in_account_currency {amount_condition} %(amount)s"""
 
 	return sql
 
@@ -573,7 +573,7 @@ def get_pg_matching_query(amount_condition, transaction):
 		currency_field = "paid_to_account_currency as currency"
 	else:
 		currency_field = "paid_from_account_currency as currency"
-	return  f"""
+	sql = f"""
 	SELECT
 		0 AS rank,
 		'Payment Group' as doctype,
@@ -596,11 +596,15 @@ def get_pg_matching_query(amount_condition, transaction):
 	ON
 		bankAcc.account = acc.name
 	WHERE
-		pg.total {amount_condition} %(amount)s
-		AND pg.docstatus = 1
+		pg.docstatus = 1
 		AND ifnull(pg.clearance_date, '') = ""
 		AND bankAcc.account = %(bank_account)s
 	"""
+
+	if amount_condition == "=":
+		sql += f"""AND pg.total {amount_condition} %(amount)s"""
+
+	return sql
 
 
 def get_si_matching_query(amount_condition):
