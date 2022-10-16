@@ -535,7 +535,7 @@ def get_je_matching_query(amount_condition, transaction):
 	# So cr_or_dr should be judged only on basis of withdrawal and deposit and not account type
 	cr_or_dr = "credit" if transaction.withdrawal > 0 else "debit"
 
-	return f"""
+	sql = f"""
 
 		SELECT
 			(CASE WHEN je.cheque_no=%(reference_no)s THEN 1 ELSE 0 END
@@ -558,9 +558,13 @@ def get_je_matching_query(amount_condition, transaction):
 		WHERE
 			(je.clearance_date is null or je.clearance_date='0000-00-00')
 			AND jea.account = %(bank_account)s
-			AND jea.{cr_or_dr}_in_account_currency {amount_condition} %(amount)s
 			AND je.docstatus = 1
 	"""
+
+	if amount_condition == "=":
+		sql += "AND jea.{cr_or_dr}_in_account_currency {amount_condition} %(amount)s"
+
+	return sql
 
 def get_pg_matching_query(amount_condition, transaction):
 	# get matching payment groups query
