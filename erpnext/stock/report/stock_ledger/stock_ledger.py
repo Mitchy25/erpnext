@@ -277,6 +277,9 @@ def get_items(filters):
 		if filters.get("item_group"):
 			conditions.append(get_item_group_condition(filters.get("item_group")))
 
+	if filters.get("exclude_non_sale_items"):
+		conditions.append("item.is_sales_item=%(exclude_non_sale_items)s")
+
 	items = []
 	if conditions:
 		items = frappe.db.sql_list(
