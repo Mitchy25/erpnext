@@ -562,7 +562,7 @@ def get_je_matching_query(amount_condition, transaction):
 	"""
 
 	if amount_condition == "=":
-		sql += "AND jea.{cr_or_dr}_in_account_currency {amount_condition} %(amount)s"
+		sql += f"""AND jea.{cr_or_dr}_in_account_currency {amount_condition} %(amount)s"""
 
 	return sql
 
@@ -602,7 +602,7 @@ def get_pg_matching_query(amount_condition, transaction):
 	"""
 
 	if amount_condition == "=":
-		sql += "AND pg.total {amount_condition} %(amount)s"
+		sql += f"""AND pg.total {amount_condition} %(amount)s"""
 
 	return sql
 
