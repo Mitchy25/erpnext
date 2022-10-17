@@ -1251,7 +1251,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
 		var update_stock = 0, show_batch_dialog = 0;
-
+		this.set_items = [item.name];
 		item.weight_per_unit = 0;
 		item.weight_uom = '';
 		// item.conversion_factor = 0;
@@ -1415,17 +1415,19 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 								},
 								() => {
 									if (typeof dialog == 'undefined' || !dialog){
-										let cur_grid = me.frm.fields_dict.items.grid;
-										var emptyRows = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row div[data-fieldname="item_code"] .static-area').filter(function(){
+										let cur_grid = me.frm.fields_dict[locals[cdt][cdn].parentfield].grid;
+										var emptyRows = $(`.form-section .frappe-control[data-fieldname=${locals[cdt][cdn].parentfield}] .grid-body .grid-row div[data-fieldname="item_code"] .static-area`).filter(function(){
 												return $(this).find('a').length == 0
 										}).length;
 										if (emptyRows == 0){
-											frappe.model.add_child(me.frm.doc, cur_grid.doctype, 'items');
+											frappe.model.add_child(me.frm.doc, cur_grid.doctype, locals[cdt][cdn].parentfield);
+											me.frm.refresh_field(locals[cdt][cdn].parentfield)
 										}
 
 										setTimeout(function(){
-												let listNewLength = $('.form-section .frappe-control[data-fieldname="items"] .grid-body .grid-row')
+												let listNewLength = $(`.form-section .frappe-control[data-fieldname=${locals[cdt][cdn].parentfield}] .grid-body .grid-row`)
 												listNewLength = $(listNewLength[listNewLength.length-1]).attr("data-name")
+												
 												$('.grid-row[data-name=' + listNewLength + '] div[data-fieldname="item_code"]').click().focus()
 												$('.grid-row[data-name=' + listNewLength + '] input[data-fieldname="item_code"]').click().focus().trigger('input')		
 										},200)
@@ -1677,6 +1679,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 				callback: function(r) {
 					if (!r.exc && r.message) {
 						r.message.forEach(row_item => {
+
 							me.remove_pricing_rule(row_item);
 						});
 						me._set_values_for_item_list(r.message);
@@ -1833,28 +1836,37 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		
 		const me = this;
 		const fields = ["discount_percentage", "pricing_rules", "discount_amount", "rate"];
-
 		for(var k in args) {
-			debugger;
 			let data = args[k];
-
-			if (data && data.apply_rule_on_other_items) {
-				me.frm.doc.items.forEach(d => {
-					if (in_list(data.apply_rule_on_other_items, d[data.apply_rule_on])) {
-						for(var k in data) {
-							if (in_list(fields, k) && data[k] && (data.price_or_product_discount === 'Price' || k === 'pricing_rules')) {
-								if (data['pricing_rule_for'] == "Discount Percentage" && k == "discount_amount") {
-									continue;
-								}
-								if (data['pricing_rule_for'] == "Discount Amount" && k == "discount_percentage") {
-									continue;
-								}
-								frappe.model.set_value(d.doctype, d.name, k, data[k]);
-							}
-						}
+			me.frm.doc.items.forEach(item => {
+				if(item["ignore_pricing_rules"] != 1){
+					if(!me.set_items.includes(item.name) && data.apply_rule_on_other_items.includes(item[data.apply_rule_on])){
+						me.get_and_set_item_details(me.frm.doc, data.doctype, item.name)
+						me.set_items.push(item.name)
 					}
-				});
-			}
+					
+					// if (in_list(data.apply_rule_on_other_items, item[data.apply_rule_on])) {
+					// 	if(data.price_or_product_discount === 'Price'){
+					// 		if(data['pricing_rule_for']){
+					// 			switch(data['pricing_rule_for']) {
+					// 				case "Discount Percentage":
+					// 					frappe.model.set_value(item.doctype, item.name, "discount_percentage", data["discount_percentage"]);
+					// 					break;
+					// 				case "Discount Amount":
+					// 					frappe.model.set_value(item.doctype, item.name, "discount_amount", data["discount_amount"]);
+					// 					break;
+					// 				case "Rate":
+					// 					frappe.model.set_value(item.doctype, item.name, "rate_with_margin", data["rate"]);
+					// 					break;
+					// 				default:
+					// 					frappe.throw("Unknown pricing_rule_for in item.")
+					// 			}
+					// 		}
+					// 	}
+					// }
+					// frappe.model.set_value(item.doctype, item.name, "ignore_pricing_rules", 0);
+				}
+			})
 		}
 	},
 
@@ -1969,24 +1981,23 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			});
 			me.trigger_price_list_rate();
 		}
-		debugger;
-		if (item.apply_rule_on_other_items && item.apply_rule_on) {
-			const apply_rule_on_other_items_list = JSON.parse(item.apply_rule_on_other_items);
-			me.frm.doc.items.forEach(row => {
-				if(apply_rule_on_other_items_list.includes(row[item.apply_rule_on]) && row[item.apply_rule_on] != item[item.apply_rule_on]) {
-					fields.forEach(f => {
-						row[f] = 0;
-					});
+		// if(item.apply_rule_on && item.apply_rule_on_other_items) {
+		// 	const apply_rule_on_other_items = item.apply_rule_on_other_items.split(',');
+		// 	me.frm.doc.items.forEach(row => {
+		// 		if(apply_rule_on_other_items.includes(row[item.apply_rule_on]) && item.pricing_rules == row.pricing_rules) {
+		// 			fields.forEach(f => {
+		// 				row[f] = 0;
+		// 			});
 
-					["pricing_rules", "margin_type"].forEach(field => {
-						if (row[field]) {
-							row[field] = '';
-						}
-					})
-				}
-			});
-			me.trigger_price_list_rate();
-		}
+		// 			["pricing_rules", "margin_type"].forEach(field => {
+		// 				if (row[field]) {
+		// 					row[field] = '';
+		// 				}
+		// 			})
+		// 		}
+		// 	});
+		// 	me.trigger_price_list_rate();
+		// }
 	},
 
 	trigger_price_list_rate: function() {

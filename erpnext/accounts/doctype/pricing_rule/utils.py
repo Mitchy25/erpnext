@@ -44,8 +44,7 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 			break
 
 	rules = []
-
-	pricing_rules = filter_pricing_rule_based_on_condition(pricing_rules, doc)
+	pricing_rules = filter_pricing_rule_based_on_condition(pricing_rules, doc, args)
 
 	if not pricing_rules:
 		return []
@@ -96,13 +95,13 @@ def sorted_by_priority(pricing_rules, args, doc=None):
 	return pricing_rules_list
 
 
-def filter_pricing_rule_based_on_condition(pricing_rules, doc=None):
+def filter_pricing_rule_based_on_condition(pricing_rules, doc=None, args = None):
 	filtered_pricing_rules = []
 	if doc:
 		for pricing_rule in pricing_rules:
 			if pricing_rule.condition:
 				try:
-					if frappe.safe_eval(pricing_rule.condition, None, doc.as_dict()):
+					if frappe.safe_eval(pricing_rule.condition, None, {'doc': doc.as_dict(), 'args': args}):
 						filtered_pricing_rules.append(pricing_rule)
 				except Exception:
 					pass
