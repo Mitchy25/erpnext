@@ -509,7 +509,7 @@ def get_pe_matching_query(amount_condition, account_from_to, transaction):
 		+ 1 ) AS rank,
 		'Payment Entry' as doctype,
 		name,
-		paid_amount,
+		received_amount,
 		reference_no,
 		reference_date,
 		party,
@@ -519,7 +519,7 @@ def get_pe_matching_query(amount_condition, account_from_to, transaction):
 	FROM
 		`tabPayment Entry`
 	WHERE
-		paid_amount {amount_condition} %(amount)s
+		received_amount {amount_condition} %(amount)s
 		AND docstatus = 1
 		AND payment_type IN (%(payment_type)s, 'Internal Transfer')
 		AND ifnull(clearance_date, '') = ""
