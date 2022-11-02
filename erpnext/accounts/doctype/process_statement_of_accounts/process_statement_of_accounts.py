@@ -447,7 +447,6 @@ def send_emails(document_name, from_scheduler=False):
 			subject = frappe.render_template(doc.subject, context)
 			message = frappe.render_template(doc.body, context)
 
-
 			frappe.enqueue(
 				queue="short",
 				method=frappe.sendmail,
@@ -469,18 +468,31 @@ def send_emails(document_name, from_scheduler=False):
 			#Create Statement Doc
 			create_statement(doc, customer, recipients[0])
 
-		if doc.enable_auto_email and from_scheduler:
-			new_to_date = getdate(today())
-			if doc.frequency == "Weekly":
-				new_to_date = add_days(new_to_date, 7)
-			else:
-				new_to_date = add_months(new_to_date, 1 if doc.frequency == "Monthly" else 3)
-			new_from_date = add_months(new_to_date, -1 * doc.filter_duration)
+		# if doc.enable_auto_email and from_scheduler:
+		# 	new_to_date = getdate(today())
+		# 	if doc.frequency == "Weekly":
+		# 		new_to_date = add_days(new_to_date, 7)
+		# 	else:
+		# 		new_to_date = add_months(new_to_date, 1 if doc.frequency == "Monthly" else 3)
+		# 	new_from_date = add_months(new_to_date, -1 * doc.filter_duration)
+		# 	doc.add_comment(
+		# 		"Comment", "Emails sent on: " + frappe.utils.format_datetime(frappe.utils.now())
+		# 	)
+		# 	doc.db_set("to_date", new_to_date, commit=True)
+		# 	doc.db_set("from_date", new_from_date, commit=True)
+		
+		if doc.schedule_send and from_scheduler:
+
+			new_from_date = add_months(doc.from_date, 1)
+			temp_to_date = add_months(doc.from_date, 2)
+			new_to_date =  add_days(temp_to_date, -1)
 			doc.add_comment(
 				"Comment", "Emails sent on: " + frappe.utils.format_datetime(frappe.utils.now())
 			)
-			doc.db_set("to_date", new_to_date, commit=True)
+
+			doc.db_set("schedule_send", 0, commit=True)
 			doc.db_set("from_date", new_from_date, commit=True)
+			doc.db_set("to_date", new_to_date, commit=True)
 
 		#Send email to admin
 		frappe.enqueue(
@@ -503,10 +515,17 @@ def send_emails(document_name, from_scheduler=False):
 @frappe.whitelist()
 def send_auto_email():
 	
+	# Disabling because we will never auto-send as we need to do all reconciliations before sending
+	# selected = frappe.get_list(
+	# 	"Process Statement Of Accounts",
+	# 	filters={"to_date": today(), "enable_auto_email": 1},
+	# )
+
 	selected = frappe.get_list(
 		"Process Statement Of Accounts",
-		filters={"to_date": today(), "enable_auto_email": 1},
+		filters={"schedule_send": 1},
 	)
+
 	for entry in selected:
 		customerAccountDoc = frappe.get_doc("Process Statement Of Accounts", entry)
 
