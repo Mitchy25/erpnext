@@ -1413,26 +1413,26 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									var company_currency = me.get_company_currency();
 									me.update_item_grid_labels(company_currency);
 								},
-								() => {
-									if (typeof dialog == 'undefined' || !dialog){
-										let cur_grid = me.frm.fields_dict[locals[cdt][cdn].parentfield].grid;
-										var emptyRows = $(`.form-section .frappe-control[data-fieldname=${locals[cdt][cdn].parentfield}] .grid-body .grid-row div[data-fieldname="item_code"] .static-area`).filter(function(){
-												return $(this).find('a').length == 0
-										}).length;
-										if (emptyRows == 0){
-											frappe.model.add_child(me.frm.doc, cur_grid.doctype, locals[cdt][cdn].parentfield);
-											me.frm.refresh_field(locals[cdt][cdn].parentfield)
-										}
+								// () => {
+								// 	if (typeof dialog == 'undefined' || !dialog){
+								// 		let cur_grid = me.frm.fields_dict[locals[cdt][cdn].parentfield].grid;
+								// 		var emptyRows = $(`.form-section .frappe-control[data-fieldname=${locals[cdt][cdn].parentfield}] .grid-body .grid-row div[data-fieldname="item_code"] .static-area`).filter(function(){
+								// 				return $(this).find('a').length == 0
+								// 		}).length;
+								// 		if (emptyRows == 0){
+								// 			frappe.model.add_child(me.frm.doc, cur_grid.doctype, locals[cdt][cdn].parentfield);
+								// 			me.frm.refresh_field(locals[cdt][cdn].parentfield)
+								// 		}
 
-										setTimeout(function(){
-												let listNewLength = $(`.form-section .frappe-control[data-fieldname=${locals[cdt][cdn].parentfield}] .grid-body .grid-row`)
-												listNewLength = $(listNewLength[listNewLength.length-1]).attr("data-name")
+								// 		setTimeout(function(){
+								// 				let listNewLength = $(`.form-section .frappe-control[data-fieldname=${locals[cdt][cdn].parentfield}] .grid-body .grid-row`)
+								// 				listNewLength = $(listNewLength[listNewLength.length-1]).attr("data-name")
 												
-												$('.grid-row[data-name=' + listNewLength + '] div[data-fieldname="item_code"]').click().focus()
-												$('.grid-row[data-name=' + listNewLength + '] input[data-fieldname="item_code"]').click().focus().trigger('input')		
-										},200)
-									}
-								}
+								// 				$('.grid-row[data-name=' + listNewLength + '] div[data-fieldname="item_code"]').click().focus()
+								// 				$('.grid-row[data-name=' + listNewLength + '] input[data-fieldname="item_code"]').click().focus().trigger('input')		
+								// 		},200)
+								// 	}
+								// }
 							]);
 						}
 					}
