@@ -510,7 +510,6 @@ scheduler_events = {
 		"erpnext.selling.doctype.quotation.quotation.set_expired_status",
 		"erpnext.healthcare.doctype.patient_appointment.patient_appointment.update_appointment_status",
 		"erpnext.buying.doctype.supplier_quotation.supplier_quotation.set_expired_status",
-		"erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_auto_email",
 		"erpnext.non_profit.doctype.membership.membership.set_expired_status",
 		"erpnext.hr.doctype.interview.interview.send_daily_feedback_reminder",
 	],
@@ -523,6 +522,7 @@ scheduler_events = {
 		"erpnext.loan_management.doctype.process_loan_security_shortfall.process_loan_security_shortfall.create_process_loan_security_shortfall",
 		"erpnext.loan_management.doctype.process_loan_interest_accrual.process_loan_interest_accrual.process_loan_interest_accrual_for_term_loans",
 		"erpnext.crm.doctype.lead.lead.daily_open_lead",
+  		"erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_auto_email"
 	],
 	"weekly": ["erpnext.hr.doctype.employee.employee_reminders.send_reminders_in_advance_weekly"],
 	"monthly": ["erpnext.hr.doctype.employee.employee_reminders.send_reminders_in_advance_monthly"],
