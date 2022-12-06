@@ -117,7 +117,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 
 		if len(res) == 3:
 			#No Transactions this month
-			if res[2]["debit"] == 0:
+			if res[2]["debit"] == 0 or (res[2]["balance"] > -0.01 and res[2]["balance"] < 0.01):
 				#No outstanding balance
 				if not doc.produce_0_statements:
 					continue

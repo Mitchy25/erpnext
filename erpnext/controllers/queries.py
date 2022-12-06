@@ -327,6 +327,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 		order by
 			if(locate(%(_txt)s, tabItem.name), locate(%(_txt)s, tabItem.name), 99999),
 			if(locate(%(_txt)s, tabItem.item_name), locate(%(_txt)s, tabItem.item_name), 99999),
+			tabItem.brand,
 			tabItem.idx asc,
 			tabItem.name, 
 			tabItem.item_name
