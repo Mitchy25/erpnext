@@ -298,7 +298,7 @@ def create_sales_invoice(edited_line_items, order, customer_code, payment_catego
 		# Hard code shipping tax
 		if invoice_doc.order_type == "On Behalf":
 			shipping_tax = 0
-			shipping_total = 23
+			shipping_total = 20.91
 
 			# Depending on invoice sending option
 			if invoice_sending_option == "send receipt to clinic":
