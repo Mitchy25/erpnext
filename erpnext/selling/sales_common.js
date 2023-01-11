@@ -386,11 +386,6 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 
 	qty: function(doc, cdt, cdn) {
 		this._super(doc, cdt, cdn);
-
-		if(in_list(['Delivery Note', 'Sales Invoice'], doc.doctype)) {
-			if (doc.doctype === 'Sales Invoice' && (!doc.update_stock)) return;
-			this.set_batch_number(cdt, cdn);
-		}
 	},
 
 	/* Determine appropriate batch number and set it in the form.
@@ -413,7 +408,6 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 		if (doc.has_serial_no && doc.serial_no) {
 			args['serial_no'] = doc.serial_no
 		}
-
 		return frappe.call({
 			method: 'erpnext.stock.doctype.batch.batch.get_batch_no',
 			args: args,
