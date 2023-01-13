@@ -470,6 +470,7 @@ scheduler_events = {
 		"erpnext.crm.doctype.social_media_post.social_media_post.process_scheduled_social_media_posts",
 	],
 	"hourly": [
+		"erpnext.stock.reorder_item.reorder_item",
 		"erpnext.hr.doctype.daily_work_summary_group.daily_work_summary_group.trigger_emails",
 		"erpnext.accounts.doctype.subscription.subscription.process_all",
 		"erpnext.erpnext_integrations.doctype.amazon_mws_settings.amazon_mws_settings.schedule_get_order_details",
@@ -485,7 +486,6 @@ scheduler_events = {
 		"erpnext.stock.doctype.repost_item_valuation.repost_item_valuation.repost_entries"
 	],
 	"daily": [
-		"erpnext.stock.reorder_item.reorder_item",
 		"erpnext.support.doctype.issue.issue.auto_close_tickets",
 		"erpnext.crm.doctype.opportunity.opportunity.auto_close_opportunity",
 		"erpnext.controllers.accounts_controller.update_invoice_status",
