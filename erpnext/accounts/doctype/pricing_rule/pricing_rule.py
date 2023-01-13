@@ -336,7 +336,6 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 			item_details.price_or_product_discount = pricing_rule.get("price_or_product_discount")
 
 			rules.append(get_pricing_rule_details(args, pricing_rule))
-			# pdb.set_trace()
 
 			if pricing_rule.mixed_conditions or pricing_rule.apply_rule_on_other:
 				item_details.update(
