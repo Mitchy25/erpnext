@@ -227,13 +227,17 @@ def create_material_request(material_requests):
 def send_email_notification(mr_list):
 	"""Notify user about auto creation of indent"""
 
-	email_list = frappe.db.sql_list(
-		"""select distinct r.parent
-		from `tabHas Role` r, tabUser p
-		where p.name = r.parent and p.enabled = 1 and p.docstatus < 2
-		and r.role in ('Purchase Manager','Stock Manager')
-		and p.name not in ('Administrator', 'All', 'Guest')"""
-	)
+	# email_list = frappe.db.sql_list(
+	# 	"""select distinct r.parent
+	# 	from `tabHas Role` r, tabUser p
+	# 	where p.name = r.parent and p.enabled = 1 and p.docstatus < 2
+	# 	and r.role in ('Purchase Manager','Stock Manager')
+	# 	and p.name not in ('Administrator', 'All', 'Guest')"""
+	# )
+	if "therahealth" in frappe.utils.get_url() or "rnlabs" in frappe.utils.get_url():
+		email_list = ["Gerrit@RNLabs.com.au"]
+	elif "naturalmeds" in frappe.utils.get_url() or "fxmed" in frappe.utils.get_url():
+		email_list = ["theresa@fxmed.co.nz"]
 
 	msg = frappe.render_template("templates/emails/reorder_item.html", {"mr_list": mr_list})
 

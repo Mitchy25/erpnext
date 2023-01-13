@@ -1283,6 +1283,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 				return this.frm.call({
 					method: "erpnext.stock.get_item_details.get_item_details",
 					child: item,
+					async:true,
 					args: {
 						doc: me.frm.doc,
 						args: {
@@ -1413,6 +1414,13 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									var company_currency = me.get_company_currency();
 									me.update_item_grid_labels(company_currency);
 								},
+								() => {frappe.show_alert({"message":"Finished Generating Item Data", "indicator":"green"},3)},
+								() => {
+									if(in_list(['Delivery Note', 'Sales Invoice'], doc.doctype)) {
+										if (doc.doctype === 'Sales Invoice' && (!doc.update_stock)) return;
+										me.set_batch_number(cdt, cdn);
+									}
+								}
 								// () => {
 								// 	if (typeof dialog == 'undefined' || !dialog){
 								// 		let cur_grid = me.frm.fields_dict[locals[cdt][cdn].parentfield].grid;
