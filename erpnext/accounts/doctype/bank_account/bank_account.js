@@ -2,6 +2,35 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Bank Account', {
+	before_save: function (frm) {
+		let account_no = frm.doc.bank_account_no.replace("-", "").replace(" ", "");
+		
+		if (!account_no.match(/^[0-9-]+$/)) {
+			frappe.msgprint("Bank Account Numbers should only contain numbers and hypens")
+			frappe.validated = false
+		} else if (account_no.length < 15) {
+			frappe.msgprint("Bank Account Number is too short, Please provide one in format: XX-XXXX-XXXXXXXX-XX(X)")
+			frappe.validated = false
+		} else if (account_no.length > 17) {
+			frappe.msgprint("Bank Account Number is too long, Please provide one in format: XX-XXXX-XXXXXXXX-XXX")
+			frappe.validated = false
+		}
+
+		if (frm.doc.company === "Therahealth" || frm.doc.company === "RN Labs") {
+			let branch_code = frm.doc.branch_code.replace("-", "").replace(" ", "");
+			if (!branch_code.match(/^[0-9-]+$/)) {
+				frappe.msgprint("Branch Codes should only contain numbers and a hypen")
+				frappe.msgprint = false;
+			} else if (branch_code.length < 6) {
+				frappe.msgprint("Branch Code to short, Please provide one in format: XXX-XXX")
+				frappe.validated = false;
+			} else if (branch_code.length > 6) {
+				frappe.msgprint("Branch Code is too long, Please provide one in formatL XXX-XXX");
+				frappe.validated = false;
+			}
+		}
+	},
+
 	setup: function(frm) {
 		frm.set_query("account", function() {
 			return {
