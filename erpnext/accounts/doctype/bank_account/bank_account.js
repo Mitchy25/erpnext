@@ -11,7 +11,7 @@ frappe.ui.form.on('Bank Account', {
 		} else if (account_no.length < 15) {
 			frappe.msgprint("Bank Account Number is too short, Please provide one in format: XX-XXXX-XXXXXXXX-XX(X)")
 			frappe.validated = false
-		} else if (account_no.length > 17) {
+		} else if (account_no.length > 16) {
 			frappe.msgprint("Bank Account Number is too long, Please provide one in format: XX-XXXX-XXXXXXXX-XXX")
 			frappe.validated = false
 		}
