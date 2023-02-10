@@ -6,6 +6,9 @@ frappe.ui.form.on('Bank', {
 	onload: function(frm) {
 		add_fields_to_mapping_table(frm);
 	},
+
+	
+
 	refresh: function(frm) {
 		add_fields_to_mapping_table(frm);
 
