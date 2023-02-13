@@ -205,12 +205,11 @@
    "fieldname": "branch_code",
    "fieldtype": "Data",
    "in_global_search": 1,
-   "label": "Branch Code",
-   "reqd": 1
+   "label": "Branch Code"
   }
  ],
  "links": [],
- "modified": "2023-01-27 08:08:45.348017",
+ "modified": "2023-02-08 14:14:16.879455",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Account",
