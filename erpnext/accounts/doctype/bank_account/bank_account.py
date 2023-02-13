@@ -10,7 +10,7 @@ from frappe.contacts.address_and_contact import (
 )
 from frappe.model.document import Document
 
-#TODO: Remove this 
+
 class BankAccount(Document):
 	def onload(self):
 		"""Load address and contacts in `__onload`"""
