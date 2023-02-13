@@ -3,21 +3,8 @@
 
 frappe.ui.form.on('Bank Account', {
 	before_save: function (frm) {
-		let account_no = frm.doc.bank_account_no.replace("-", "").replace(" ", "");
-		
-		if (!account_no.match(/^[0-9-]+$/)) {
-			frappe.msgprint("Bank Account Numbers should only contain numbers and hypens")
-			frappe.validated = false
-		} else if (account_no.length < 15) {
-			frappe.msgprint("Bank Account Number is too short, Please provide one in format: XX-XXXX-XXXXXXXX-XX(X)")
-			frappe.validated = false
-		} else if (account_no.length > 16) {
-			frappe.msgprint("Bank Account Number is too long, Please provide one in format: XX-XXXX-XXXXXXXX-XXX")
-			frappe.validated = false
-		}
-
-		if (frm.doc.company === "Therahealth" || frm.doc.company === "RN Labs") {
-			let branch_code = frm.doc.branch_code.replace("-", "").replace(" ", "");
+		if (frm.doc.company === "Therahealth" || frm.doc.company === "RN Labs") { //AUS
+			let branch_code = frm.doc.branch_code.replace(/-|\s/g,"");
 			if (!branch_code.match(/^[0-9-]+$/)) {
 				frappe.msgprint("Branch Codes should only contain numbers and a hypen")
 				frappe.msgprint = false;
@@ -27,6 +14,29 @@ frappe.ui.form.on('Bank Account', {
 			} else if (branch_code.length > 6) {
 				frappe.msgprint("Branch Code is too long, Please provide one in formatL XXX-XXX");
 				frappe.validated = false;
+			}
+			let account_no = frm.doc.bank_account_no.replace(/-|\s/g,"");
+			if (!account_no.match((/^[0-9-]+$/))) {
+				frappe.msgprint("Bank Account Numbers should only contain numbers.")
+				frappe.validated = false
+			} else if (account_no.length < 9) {
+				frappe.msgprint("Bank Account Number is too short, please provide one that is 9 numbers long.")
+				frappe.validated = false
+			} else if (account_no.length > 10) {
+				frappe.msgprint("Bank Account Number is too long, please provide one that is 9 numbers long.")
+				frappe.validated = false
+			}
+		} else if (frm.doc.company == "NaturalMeds" || frm.doc.company == "FxMed") { //NZD
+			let account_no = frm.doc.bank_account_no.replace(/-|\s/g,"");
+			if (!account_no.match(/^[0-9-]+$/)) {
+				frappe.msgprint("Bank Account Numbers should only contain numbers and hypens")
+				frappe.validated = false
+			} else if (account_no.length < 15) {
+				frappe.msgprint("Bank Account Number is too short, Please provide one in format: XX-XXXX-XXXXXXXX-XX(X)")
+				frappe.validated = false
+			} else if (account_no.length > 16) {
+				frappe.msgprint("Bank Account Number is too long, Please provide one in format: XX-XXXX-XXXXXXXX-XXX")
+				frappe.validated = false
 			}
 		}
 	},
