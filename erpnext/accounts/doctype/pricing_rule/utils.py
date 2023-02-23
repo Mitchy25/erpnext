@@ -647,6 +647,8 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 		"price_list_rate": pricing_rule.free_item_rate or 0,
 		"is_free_item": 1,
 	}
+	if free_item_data_args["rate"] == 0:
+		free_item_data_args["discount_percentage"] = 100
 
 	item_data = frappe.get_cached_value(
 		"Item", free_item, ["item_name", "description", "stock_uom"], as_dict=1
