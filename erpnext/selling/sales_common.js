@@ -400,10 +400,10 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 	},
 
 	_set_batch_number: function(doc) {
-		if (doc.batch_no) {
-			return
-		}
-
+		// if (doc.batch_no) {
+		// 	return
+		// }
+		let me = this
 		let args = {'item_code': doc.item_code, 'warehouse': doc.warehouse, 'qty': flt(doc.qty) * flt(doc.conversion_factor)};
 		if (doc.has_serial_no && doc.serial_no) {
 			args['serial_no'] = doc.serial_no
@@ -416,11 +416,29 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 					frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
 				} else {
 				    frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
+					me.batch_selection(doc, r.content);
 				}
 			}
 		});
 	},
-
+	batch_selection: function(doc, content) {
+		let me = this
+		let this_frm = doc
+		let d = new frappe.ui.Dialog({
+			fields: [
+				{
+					fieldname: 'html',
+					fieldtype: 'HTML',
+				}
+			],
+			primary_action_label: 'Select Batch',
+			primary_action(values) {
+				erpnext.show_serial_batch_selector(me.frm, this_frm, "", undefined, true);
+			}
+		});
+		d.fields_dict.html.$wrapper.append(content)
+		d.show();
+	},
 	update_auto_repeat_reference: function(doc) {
 		if (doc.auto_repeat) {
 			frappe.call({
