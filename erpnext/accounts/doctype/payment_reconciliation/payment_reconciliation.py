@@ -129,7 +129,7 @@ class PaymentReconciliation(Document):
 		return frappe.db.sql(
 			""" SELECT doc.name as reference_name, %(voucher_type)s as reference_type,
 				(sum(gl.{dr_or_cr}) - sum(gl.{reconciled_dr_or_cr})) as amount, doc.posting_date,
-				account_currency as currency, doc.grand_total as outstanding_amount
+				account_currency as currency, doc.grand_total as outstanding_amount, doc.due_date as due_date
 			FROM `tab{doc}` doc, `tabGL Entry` gl
 			WHERE
 				(doc.name = gl.against_voucher or doc.name = gl.voucher_no)
@@ -183,7 +183,7 @@ class PaymentReconciliation(Document):
 	def add_invoice_entries(self, non_reconciled_invoices):
 		# Populate 'invoices' with JVs and Invoices to reconcile against
 		self.set("invoices", [])
-
+		
 		for entry in non_reconciled_invoices:
 			inv = self.append("invoices", {})
 			inv.invoice_type = entry.get("voucher_type")
@@ -192,6 +192,7 @@ class PaymentReconciliation(Document):
 			inv.amount = flt(entry.get("invoice_amount"))
 			inv.currency = entry.get("currency")
 			inv.outstanding_amount = flt(entry.get("outstanding_amount"))
+			inv.due_date = entry.get("due_date").strftime("%d-%m-%Y")
 
 	@frappe.whitelist()
 	def allocate_entries(self, args):
@@ -287,6 +288,7 @@ class PaymentReconciliation(Document):
 				"allocated_amount": flt(row.get("allocated_amount")),
 				"difference_amount": flt(row.get("difference_amount")),
 				"difference_account": row.get("difference_account"),
+				"due_date": row.get("due_date"),
 			}
 		)
 
