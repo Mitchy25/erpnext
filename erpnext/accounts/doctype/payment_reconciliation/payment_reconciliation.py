@@ -192,7 +192,8 @@ class PaymentReconciliation(Document):
 			inv.amount = flt(entry.get("invoice_amount"))
 			inv.currency = entry.get("currency")
 			inv.outstanding_amount = flt(entry.get("outstanding_amount"))
-			inv.due_date = entry.get("due_date").strftime("%d-%m-%Y")
+			if entry.get("due_date"):
+				inv.due_date = entry.get("due_date").strftime("%d-%m-%Y")
 
 	@frappe.whitelist()
 	def allocate_entries(self, args):
