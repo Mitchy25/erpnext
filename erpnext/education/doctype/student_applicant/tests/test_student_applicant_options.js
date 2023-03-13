@@ -18,7 +18,6 @@ QUnit.test('test student applicant', function(assert){
 		() => frappe.timeout(0.5),
 		() => {
 			testing_status = $('span.indicator.orange').text();
-			frappe.msgprint("test_sdtudent -> Submission header added")
 			assert.ok(testing_status.indexOf('Submit this document to confirm') == -1); // checking if submit has been successfull
 		},
 
@@ -42,7 +41,6 @@ QUnit.test('test student applicant', function(assert){
 		() => frappe.tests.click_button('Yes'), // Submitting again after amend
 		() => {
 			testing_status = $('span.indicator.orange').text();
-			frappe.msgprint("Second submission header for student applicant doctype")
 			assert.ok(testing_status.indexOf('Submit this document to confirm') == -1); // checking if submit has been successfull after amend
 		},
 
