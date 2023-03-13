@@ -312,7 +312,8 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None):
 			</div>
 		"""
 		final_html = panels + table_html
-		frappe.msgprint(final_html)
+		# frappe.msgprint(final_html)
+		frappe.response.content = final_html
 		if throw:
 			raise UnableToSelectBatchError
 

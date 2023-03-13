@@ -189,6 +189,8 @@ def get_periodic_data(entry, filters):
 def get_data(filters):
 	data = []
 	items = get_items(filters)
+	if not items and filters.brand:
+		return
 	sle = get_stock_ledger_entries(filters, items)
 	item_details = get_item_details(items, sle, filters)
 	periodic_data = get_periodic_data(sle, filters)

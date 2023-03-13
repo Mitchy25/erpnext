@@ -69,6 +69,13 @@ erpnext.SerialNoBatchSelector = Class.extend({
 					}
 				}
 			},
+			// {
+			// 	fieldname: 'assigned_qty',
+			// 	fieldtype:'Float',
+			// 	read_only: me.has_batch && !me.has_serial_no,
+			// 	label: __('Qty to Allocate'),
+			// 	default: flt(this.item.qty),
+			// },
 			{fieldtype:'Column Break'},
 			{
 				fieldname: 'qty',
@@ -166,7 +173,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			if (this.item.serial_no) {
 				this.dialog.fields_dict.serial_no.set_value(this.item.serial_no);
 			}
-			if (this.has_batch && !this.has_serial_no && d.batch_no) {
+			if (this.has_batch && !this.has_serial_no) {
 				this.frm.doc.items.forEach(data => {
 					if(data.item_code == d.item_code) {
 						this.dialog.fields_dict.batches.df.data.push({

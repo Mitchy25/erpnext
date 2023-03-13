@@ -16,8 +16,8 @@ frappe.ui.form.on("Salary Slip", {
 		frm.fields_dict["timesheets"].grid.get_field("time_sheet").get_query = function() {
 			return {
 				filters: {
-					employee: frm.doc.employee
-				}
+					employee: frm.doc.employee,
+				}, 
 			};
 		};
 
@@ -235,6 +235,7 @@ var set_totals = function(frm) {
 		}
 	}
 };
+
 
 frappe.ui.form.on('Salary Detail', {
 	amount: function(frm) {

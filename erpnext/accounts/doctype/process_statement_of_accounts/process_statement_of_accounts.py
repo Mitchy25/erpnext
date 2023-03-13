@@ -6,6 +6,7 @@ import copy
 
 import frappe
 import os
+import re
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import add_days, nowdate, add_months, format_date, getdate, today
@@ -279,9 +280,14 @@ def get_recipients_and_cc(customer, doc):
 	recipients = []
 	for clist in doc.customers:
 		if clist.customer == customer:
-			recipients.append(clist.billing_email)
+			billingEmails = re.split('; |, |\*|\n', clist.billing_email)
+			for billingEmail in billingEmails:
+				recipients.append(billingEmail)
+			
 			if doc.primary_mandatory and clist.primary_email:
-				recipients.append(clist.primary_email)
+				primaryEmails = re.split('; |, |\*|\n', clist.primary_email)
+				for primaryEmail in primaryEmails:
+					recipients.append(primaryEmail)
 	cc = []
 	if doc.cc_to != "":
 		try:

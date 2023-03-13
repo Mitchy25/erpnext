@@ -143,7 +143,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Bank Account No",
-   "length": 30
+   "length": 30,
+   "reqd": 1
   },
   {
    "fieldname": "address_and_contact",
@@ -208,7 +209,7 @@
   }
  ],
  "links": [],
- "modified": "2020-10-23 16:48:06.303658",
+ "modified": "2023-02-08 14:14:16.879455",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Account",
