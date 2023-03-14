@@ -306,7 +306,7 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None):
 			table_html += "</table>"
 		panels = f"""
 			<div class="panel panel-default">
-				<div class="panel-heading">{ item_code }</div>
+				<div class="panel-heading" style="text-align:center"><h3>Batch Selection for: { item_code }</h3></div>
 				<div class="panel-body">
 					<p>The entered qty is {frappe.bold(qty)}. Please manually select a Batch for Item { frappe.bold(item_code) }. Or you might want to split this item to more rows with different batch!</p>
 			</div>
@@ -342,7 +342,7 @@ def get_batches(item_code, warehouse, qty=1, throw=False, serial_no=None):
 
 	return frappe.db.sql(
 		"""
-		select batch_id, sum(`tabStock Ledger Entry`.actual_qty) as qty
+		select batch_id, sum(`tabStock Ledger Entry`.actual_qty) as qty, expiry_date
 		from `tabBatch`
 			join `tabStock Ledger Entry` ignore index (item_code, warehouse)
 				on (`tabBatch`.batch_id = `tabStock Ledger Entry`.batch_no )
