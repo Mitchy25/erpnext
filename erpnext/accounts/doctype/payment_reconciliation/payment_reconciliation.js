@@ -88,11 +88,12 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 		this.frm.set_value('party', '');
 	},
 
-	party: function() {
-		this.frm.set_value('receivable_payable_account', '');
+	party: function() {		
+		// this.frm.set_value('receivable_payable_account', '');
 		this.frm.trigger("clear_child_tables");
 
-		if (!this.frm.doc.receivable_payable_account && this.frm.doc.party_type && this.frm.doc.party) {
+		// if (!this.frm.doc.receivable_payable_account && this.frm.doc.party_type && this.frm.doc.party) {
+		if (this.frm.doc.party_type && this.frm.doc.party) {
 			return frappe.call({
 				method: "erpnext.accounts.party.get_party_account",
 				args: {
@@ -102,10 +103,11 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 				},
 				callback: (r) => {
 					if (!r.exc && r.message) {
-						this.frm.set_value("receivable_payable_account", r.message);
+						if (r.message != this.frm.doc.receivable_payable_account){
+							this.frm.set_value("receivable_payable_account", r.message);
+						}
 					}
-					this.frm.refresh();
-
+					// this.frm.refresh();
 				}
 			});
 		}
