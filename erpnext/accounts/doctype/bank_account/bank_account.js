@@ -9,18 +9,18 @@ frappe.ui.form.on('Bank Account', {
 				frappe.msgprint("Branch Codes should only contain numbers and a hypen")
 				frappe.msgprint = false;
 			} else if (branch_code.length < 6) {
-				frappe.msgprint("Branch Code to short, Please provide one in format: XXX-XXX")
+				frappe.msgprint("Branch Code is too short, Please provide one in format: XXX-XXX")
 				frappe.validated = false;
 			} else if (branch_code.length > 6) {
-				frappe.msgprint("Branch Code is too long, Please provide one in formatL XXX-XXX");
+				frappe.msgprint("Branch Code is too long, Please provide one in format: XXX-XXX");
 				frappe.validated = false;
 			}
 			let account_no = frm.doc.bank_account_no.replace(/-|\s/g,"");
 			if (!account_no.match((/^[0-9-]+$/))) {
 				frappe.msgprint("Bank Account Numbers should only contain numbers.")
 				frappe.validated = false
-			} else if (account_no.length < 9) {
-				frappe.msgprint("Bank Account Number is too short, please provide one that is 9 numbers long.")
+			} else if (account_no.length < 6) {
+				frappe.msgprint("Bank Account Number is too short, please provide one that is at least 6 numbers long.")
 				frappe.validated = false
 			} else if (account_no.length > 10) {
 				frappe.msgprint("Bank Account Number is too long, please provide one that is 9 numbers long.")
