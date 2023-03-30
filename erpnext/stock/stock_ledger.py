@@ -48,8 +48,9 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 
 		args = get_args_for_future_sle(sl_entries[0])
 		future_sle_exists(args, sl_entries)
-
+		counter = 0
 		for sle in sl_entries:
+			counter += 1
 			if sle.serial_no and not via_landed_cost_voucher:
 				validate_serial_no(sle)
 
@@ -80,7 +81,7 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 			is_stock_item = frappe.get_cached_value("Item", args.get("item_code"), "is_stock_item")
 			if is_stock_item:
 				bin_name = get_or_make_bin(args.get("item_code"), args.get("warehouse"))
-				repost_current_voucher(args, allow_negative_stock, via_landed_cost_voucher)
+				repost_current_voucher(args, counter, allow_negative_stock, via_landed_cost_voucher, )
 				update_bin_qty(bin_name, args)
 			else:
 				frappe.msgprint(
@@ -88,7 +89,7 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 				)
 
 
-def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_voucher=False):
+def repost_current_voucher(args, counter, allow_negative_stock=False, via_landed_cost_voucher=False):
 	if args.get("actual_qty") or args.get("voucher_type") == "Stock Reconciliation":
 		if not args.get("posting_date"):
 			args["posting_date"] = nowdate()
@@ -114,7 +115,7 @@ def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_vou
 		)
 
 		# update qty in future sle and Validate negative qty
-		update_qty_in_future_sle(args, allow_negative_stock)
+		update_qty_in_future_sle(args, counter, allow_negative_stock)
 
 
 def get_args_for_future_sle(row):
@@ -978,7 +979,6 @@ class update_entries_after(object):
 				exceptions[0]["voucher_type"],
 				exceptions[0]["voucher_no"],
 			) in frappe.local.flags.currently_saving:
-
 				msg = _("{0} units of {1} needed in {2} to complete this transaction.").format(
 					abs(deficiency),
 					frappe.get_desk_link("Item", exceptions[0]["item_code"]),
@@ -1247,7 +1247,7 @@ def get_valuation_rate(
 	return valuation_rate
 
 
-def update_qty_in_future_sle(args, allow_negative_stock=False):
+def update_qty_in_future_sle(args, counter, allow_negative_stock=False):
 	"""Recalculate Qty after Transaction in future SLEs based on current SLE."""
 	datetime_limit_condition = ""
 	qty_shift = args.actual_qty
@@ -1285,7 +1285,7 @@ def update_qty_in_future_sle(args, allow_negative_stock=False):
 		args,
 	)
 
-	validate_negative_qty_in_future_sle(args, allow_negative_stock)
+	validate_negative_qty_in_future_sle(args, counter, allow_negative_stock)
 
 
 def get_stock_reco_qty_shift(args):
@@ -1350,7 +1350,7 @@ def get_datetime_limit_condition(detail):
 		)"""
 
 
-def validate_negative_qty_in_future_sle(args, allow_negative_stock=False):
+def validate_negative_qty_in_future_sle(args, counter, allow_negative_stock=False):
 	allow_negative_stock = cint(allow_negative_stock) or cint(
 		frappe.db.get_single_value("Stock Settings", "allow_negative_stock")
 	)
@@ -1359,7 +1359,6 @@ def validate_negative_qty_in_future_sle(args, allow_negative_stock=False):
 		return
 	if not (args.actual_qty < 0 or args.voucher_type == "Stock Reconciliation"):
 		return
-
 	neg_sle = get_future_sle_with_negative_qty(args)
 	if neg_sle:
 		message = _(
@@ -1381,7 +1380,7 @@ def validate_negative_qty_in_future_sle(args, allow_negative_stock=False):
 	neg_batch_sle = get_future_sle_with_negative_batch_qty(args)
 	if neg_batch_sle:
 		message = _(
-			"{0} units of {1} needed in {2} on {3} {4} for {5} to complete this transaction."
+			"For Item: {7}<br> On Row #{6}<br>{0} units of {1} needed in {2} on {3} {4} for {5} to complete this transaction."
 		).format(
 			abs(neg_batch_sle[0]["cumulative_total"]),
 			frappe.get_desk_link("Batch", args.batch_no),
@@ -1389,6 +1388,8 @@ def validate_negative_qty_in_future_sle(args, allow_negative_stock=False):
 			neg_batch_sle[0]["posting_date"],
 			neg_batch_sle[0]["posting_time"],
 			frappe.get_desk_link(neg_batch_sle[0]["voucher_type"], neg_batch_sle[0]["voucher_no"]),
+			counter,
+			args.item_code
 		)
 		frappe.throw(message, NegativeStockError, title=_("Insufficient Stock for Batch"))
 
