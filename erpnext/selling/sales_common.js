@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
+// Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors_super
 // License: GNU General Public License v3. See license.txt
 
 
@@ -415,6 +415,7 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 				if(r.message) {
 					frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
 				} else {
+					//debugger
 				    frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
 					me.batch_selection(doc, r.content);
 				}
