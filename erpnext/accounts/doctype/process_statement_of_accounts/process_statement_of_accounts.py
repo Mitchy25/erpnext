@@ -112,10 +112,16 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			'tax_id': tax_id if tax_id else None
 		})
 		col, res = get_soa(filters)
-
+		new_res = []
+		for item in res[0:]:
+			if item.debit == item.credit:
+				continue
+			else:
+				new_res.append(item)
+		res = new_res
 		for x in [0, -2, -1]:
 			res[x]["account"] = res[x]["account"].replace("'", "")
-
+		
 		if len(res) == 3:
 			#No Transactions this month
 			if res[2]["debit"] == 0 or (res[2]["balance"] > -0.01 and res[2]["balance"] < 0.01):
