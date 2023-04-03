@@ -163,8 +163,8 @@ erpnext.buying.BuyingController = erpnext.TransactionController.extend({
 		item.discount_percentage = 0.0;
 		this.price_list_rate(doc, cdt, cdn);
 	},
-
-	qty(doc, cdt, cdn) {
+	
+	qty(doc, cdt, cdn) { 
 		if ((doc.doctype == "Purchase Receipt") || (doc.doctype == "Purchase Invoice" && (doc.update_stock || doc.is_return))) {
 			this.calculate_received_qty(doc, cdt, cdn)
 		}

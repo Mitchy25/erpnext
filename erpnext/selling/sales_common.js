@@ -415,7 +415,6 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 				if(r.message) {
 					frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
 				} else {
-					//debugger
 				    frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
 					me.batch_selection(doc, r.content);
 				}
