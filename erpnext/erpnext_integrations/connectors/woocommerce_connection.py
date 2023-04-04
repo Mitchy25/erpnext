@@ -137,7 +137,8 @@ def _order(woocommerce_settings, *args, **kwargs):
 		"self": "Self Test",
 		"patient_order": "Patient Order",
 		"on-behalf": "On Behalf",
-		"patient_test_order": "Patient Order"
+		"patient_test_order": "Patient Order",
+		"patient_product_order": "Patient Product Order" #Not handled atm
 	}
 
 	# pre-process to parse payload (parameter: meta_data, billing)
@@ -248,7 +249,8 @@ def create_sales_invoice(edited_line_items, order, customer_code, payment_catego
 		"company": woocommerce_settings.company,
 		"payment_category": payment_category,
 		"patient_dob": patient_dob,
-		"patient_legal_name": patient_name
+		"patient_legal_name": patient_name,
+		"patient_email": order.get('billing').get('email')
 	}
 	if order_type:
 		if order_type == "Self Test":
