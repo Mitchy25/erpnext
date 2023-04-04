@@ -5,7 +5,6 @@
 import frappe
 from frappe import _, msgprint
 
-
 def execute(filters=None):
 	if not filters:
 		filters = {}
@@ -149,6 +148,12 @@ def get_columns(filters):
 			"fieldname": "commission",
 			"fieldtype": "Currency",
 			"width": 120
+		},
+		{
+			"label": _("Commission (WS - RT)"),
+			"fieldname": "commission_wholesale",
+			"fieldtype": "Currency",
+			"width": 120
 		}
 		# {
 		# 	"label": _("Currency"),
@@ -175,7 +180,7 @@ def get_entries(filters):
 			if(s.preference = "Refund to Account", a.bank_account_no, 'N/A') as account_number,
 			dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, 
 			s.preference as bank_details,
-			dt_item.item_name, dt.customer_name,
+			dt_item.item_code, dt_item.item_name, dt.customer_name,
 			dt_item.base_net_rate as rate, dt_item.qty, dt_item.base_net_amount as amount,
 			ROUND(((dt_item.base_net_amount * dt.commission_rate) / 100), 2) as commission,
 			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code
@@ -198,7 +203,8 @@ def get_entries(filters):
 		filters,
 		as_dict=1,
 	)
-
+	if filters["doctype"] == "Sales Invoice":
+		entries = calculate_ws_commission(entries)
 	return entries
 
 
@@ -231,3 +237,31 @@ def get_conditions(filters, date_field):
 		)
 
 	return conditions
+
+
+
+
+def calculate_ws_commission(entries):
+	
+	invoices = [i['name'] for i in entries]
+	wholesale_prices = get_wholesales_prices(invoices)
+	item_dict = {}
+	for item in wholesale_prices:
+		if item["name"] not in item_dict:
+			item_dict[item["name"]] = {}
+		current_item = item_dict[item["name"]]
+		if item["item_code"] not in current_item:
+			current_item[item["item_code"]] = item["price_list_rate"] * item['qty']
+	for item in entries:
+		item["commission_wholesale"] = item["amount"] - item_dict[item["name"]][item["item_code"]]
+	return entries
+
+
+def get_wholesales_prices(sales_invoices):
+	sql = """select s.name, si.item_code, si.qty, p.price_list_rate, p.price_list, s.posting_date, p.valid_from from `tabSales Invoice` s
+		join `tabSales Invoice Item` si on si.parent = s.name
+		join `tabItem Price` p on p.item_code = si.item_code and p.price_list = CONCAT(SUBSTRING_INDEX(s.selling_price_list, ' ', 1), " ", "Wholesale")
+		AND p.valid_from <= s.posting_date AND (p.valid_upto >= s.posting_date OR p.valid_upto IS Null)
+		WHERE s.name IN %s
+	"""
+	return frappe.db.sql(sql, [sales_invoices], as_dict=True)

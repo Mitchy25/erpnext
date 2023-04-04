@@ -78,15 +78,42 @@ class BankStatementImport(DataImport):
 				now=frappe.conf.developer_mode or frappe.flags.in_test,
 			)
 			return True
-
 		return False
 
 
 @frappe.whitelist()
 def get_preview_from_template(data_import, import_file=None, google_sheets_url=None):
-	return frappe.get_doc("Bank Statement Import", data_import).get_preview_from_template(
+	preview_records = frappe.get_doc("Bank Statement Import", data_import).get_preview_from_template(
 		import_file, google_sheets_url
 	)
+	warnings = []
+	for bank_counter in range(len(preview_records.data)):
+		bank_record = preview_records.data[bank_counter]
+		try:
+			bank_transactions = frappe.db.get_list(
+				"Bank Transaction", 
+				filters={
+					"date": bank_record[1],
+					"deposit": bank_record[2],
+					"withdrawal": bank_record[3],
+					"reference_number": bank_record[5],
+					"description": bank_record[4],
+					"bank_account": bank_record[6],
+					"currency": bank_record[7],
+				},
+				fields=["name"]
+				)
+			if bank_transactions:
+				warning = {
+					"col":0,
+					"row":bank_counter+1,
+					"message":"Transaction already exists under the entries {}".format(", ".join([i["name"] for i in bank_transactions])),
+					"type":"warning",
+				}
+				preview_records.warnings.append(warning)
+		except: 
+			pass
+	return preview_records
 
 
 @frappe.whitelist()
