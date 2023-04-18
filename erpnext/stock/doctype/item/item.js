@@ -453,7 +453,6 @@ $.extend(erpnext.item, {
 					<div class="col-sm-2"><a href="/app/item-price/${cur_row.name}"><button style="margin-left: 7px;" class="btn btn-default btn-xs">Edit</button></a></div>
 				</div>`)
 				}, "")
-				console.log("rows: ", rows)
 				let item_price_html = template + rows
 				frm.dashboard.add_section(item_price_html,`<a href="/app/brand/${brand}">Brand: ${brand}</a>`);
 			})
