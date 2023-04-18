@@ -253,7 +253,10 @@ def calculate_ws_commission(entries):
 		if item["item_code"] not in current_item:
 			current_item[item["item_code"]] = item["price_list_rate"] * item['qty']
 	for item in entries:
-		item["commission_wholesale"] = item["amount"] - item_dict[item["name"]][item["item_code"]]
+		if not item["name"] in item_dict:
+			item["commission_wholesale"] = 0
+		else:
+			item["commission_wholesale"] = item["amount"] - item_dict[item["name"]][item["item_code"]]
 	return entries
 
 
