@@ -1423,7 +1423,6 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 								},
 								() => {
 									frappe.model.trigger('after_qty', undefined, locals[cdt][cdn], false)
-									console.log("2")
 								}
 								// () => {
 								// 	if (typeof dialog == 'undefined' || !dialog){
