@@ -150,7 +150,7 @@ def get_columns(filters):
 			"width": 120
 		},
 		{
-			"label": _("Commission (WS - RT)"),
+			"label": _('Rebate (SalePrice - WS)'),
 			"fieldname": "commission_wholesale",
 			"fieldtype": "Currency",
 			"width": 120
