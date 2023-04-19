@@ -1420,6 +1420,10 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 										if (doc.doctype === 'Sales Invoice' && (!doc.update_stock)) return;
 										me.set_batch_number(cdt, cdn);
 									}
+								},
+								() => {
+									frappe.model.trigger('after_qty', undefined, locals[cdt][cdn], false)
+									console.log("2")
 								}
 								// () => {
 								// 	if (typeof dialog == 'undefined' || !dialog){
