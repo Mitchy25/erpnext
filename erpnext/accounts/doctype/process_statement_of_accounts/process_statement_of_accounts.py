@@ -72,9 +72,9 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 				'company': doc.company,
 				'report_date': doc.to_date,
 				'ageing_based_on': doc.ageing_based_on,
-				'range1': 0.1,
-				'range2': 30,
-				'range3': 60,
+				'range1': 30,
+				'range2': 60,
+				'range3': 90,
 				'range4': 90,
 				'customer': entry.customer,
 				'show_not_yet_due': 1
@@ -114,7 +114,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 		col, res = get_soa(filters)
 		new_res = []
 		for item in res[0:]:
-			if item.debit == item.credit:
+			if item.debit == item.credit and item.account != "'Total'":
 				continue
 			else:
 				new_res.append(item)

@@ -234,20 +234,29 @@
 	<table style="width:60%;margin:auto;" class="table" id="summaryTable">
 		<thead>
 			<tr>
-				<th style="border-radius:10px 0px 0px 0px; width: 20%; text-align:center;{{brandHeader}}">&lt; 30 Days</th>
-				<th style="width: 20%; text-align:center;{{brandHeader}}">30 Days</th>
-				<th style="width: 20%; text-align:center;{{brandHeader}}">60 Days</th>
-				<th style="width: 20%; text-align:center;{{brandHeader}}">90 Days</th>
-				<th style="border-radius:0px 10px 0px 0px; width: 20%; text-align:center;{{brandHeader}}">90 Days +</th>
+				{% if ageing.not_yet_due %}
+					{% set colWidth = 16.6666 %}
+					<th style="border-radius:10px 0px 0px 0px; width: {{colWidth}}%; text-align:center;{{brandHeader}}">Not Yet Due</th>
+					<th style="width: {{colWidth}}%; text-align:center;{{brandHeader}}">0-30 Days</th>
+				{% else %}
+					{% set colWidth = 20 %}
+					<th style="border-radius:10px 0px 0px 0px; width: {{colWidth}}%; text-align:center;{{brandHeader}}">0 - 30 Days</th>
+				{% endif %}
+				<th style="width: {{colWidth}}%; text-align:center;{{brandHeader}}">30 - 60 Days</th>
+				<th style="width: {{colWidth}}%; text-align:center;{{brandHeader}}">60 - 90 Days</th>
+				<th style="width: {{colWidth}}%; text-align:center;{{brandHeader}}">90 - 120 Days</th>
+				<th style="border-radius:0px 10px 0px 0px; width: {{colWidth}}%; text-align:center;{{brandHeader}}">120 Days +</th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
 				{% if ageing.not_yet_due %}
-					<td style="border-radius: 0px 0px 0px 10px!important;text-align:center;">{{ frappe.utils.fmt_money(ageing.range1 + ageing.not_yet_due, currency=filters.presentation_currency) }}</td>
+					<td style="border-radius: 0px 0px 0px 10px!important;text-align:center;">{{ frappe.utils.fmt_money(ageing.not_yet_due, currency=filters.presentation_currency) }}</td>
+					<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range1, currency=filters.presentation_currency) }}</td>
 				{% else %}
 					<td style="border-radius: 0px 0px 0px 10px!important;text-align:center;">{{ frappe.utils.fmt_money(ageing.range1, currency=filters.presentation_currency) }}</td>
 				{% endif %}
+				
 				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range2, currency=filters.presentation_currency) }}</td>
 				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range3, currency=filters.presentation_currency) }}</td>
 				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range4, currency=filters.presentation_currency) }}</td>
