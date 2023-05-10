@@ -66,7 +66,7 @@ erpnext.stock.ItemDashboard = Class.extend({
 			// let warehouse = unescape($(this).attr('data-warehouse'));
 			// handle_breakdown($(this), item, warehouse);
 
-			if ($(`#pending-breakdown-${item}`).length){
+			if (document.getElementById(`pending-breakdown-${item}`)){
 				toggle_display(item, false);
 			} else {
 				frappe.show_alert("Nothing to collapse")
@@ -74,10 +74,11 @@ erpnext.stock.ItemDashboard = Class.extend({
 		});
 
 		function toggle_display(item, display) {
+			let element = $(document.getElementById(`pending-breakdown-${item}`))
 			if (display) {
-				$(`#pending-breakdown-${item}`).removeClass('hide');
+				element.removeClass('hide');
 			} else {
-				$(`#pending-breakdown-${item}`).addClass('hide');
+				element.addClass('hide');
 			}
 		}
 
@@ -495,9 +496,14 @@ function append_breakdown(element, item_code, poi_results, boi_results) {
 	</div>`
 
 	if (poi_results.length > 0 || boi_results.length > 0) {
-		$row.append(chartDisplay)
+		if (!document.getElementById(`pending-breakdown-${item_code}`)) {
+			$row.append(chartDisplay)
+		}
 	} else {
-		$row.append(empty_display)
+		if (!document.getElementById(`pending-breakdown-${item_code}`)) {
+			$row.append(empty_display)
+		}
+		
 	}
 	$("#backorder-report" ).click(function() {
 		frappe.set_route("query-report","Backorder Analytics", {"item_code":item_code})
