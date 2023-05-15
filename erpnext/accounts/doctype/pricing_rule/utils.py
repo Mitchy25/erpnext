@@ -237,6 +237,16 @@ def _get_tree_conditions(args, parenttype, table, allow_blank=True):
 			frappe.flags.tree_conditions[key] = condition
 	return condition
 
+def send_email(pricing_rules):
+	frappe.enqueue(
+		recipients= ["tom@fxmed.co.nz", "mitch@fxmed.co.nz"],
+		subject="Multiple Price Rules exists with same criteria, please resolve conflict by assigning priority. Price Rules: {0}".format("\n".join(d.name for d in pricing_rules)),
+		content=pricing_rules, 
+		method=frappe.sendmail,
+		queue='short', 
+		is_async=True, 
+		as_markdown=True,
+)
 
 def get_other_conditions(conditions, values, args):
 	for field in ["company", "customer", "supplier", "campaign", "sales_partner"]:
@@ -258,16 +268,6 @@ def get_other_conditions(conditions, values, args):
 
 	return conditions
 
-def send_email(pricing_rules):
-	frappe.enqueue(
-		recipients= ["tom@fxmed.co.nz", "mitch@fxmed.co.nz"],
-		subject="Multiple Price Rules exists with same criteria, please resolve conflict by assigning priority. Price Rules: {0}".format("\n".join(d.name for d in pricing_rules)),
-		content=pricing_rules, 
-		method=frappe.sendmail,
-		queue='short', 
-		is_async=True, 
-		as_markdown=True,
-)
 
 def filter_pricing_rules(args, pricing_rules, doc=None):
 	if not isinstance(pricing_rules, list):
@@ -354,8 +354,10 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 		# 	MultiplePricingRuleConflict,
 		# )
 		send_email(pricing_rules)
+		return pricing_rule[0]
+	elif pricing_rules:
+		return pricing_rules[0]
 
-	return pricing_rules[0]
 
 def validate_quantity_and_amount_for_suggestion(args, qty, amount, item_code, transaction_type):
 	fieldname, msg = "", ""
