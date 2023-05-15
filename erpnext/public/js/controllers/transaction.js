@@ -1810,7 +1810,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 				var v = d[k];
 				if (["doctype", "name"].indexOf(k)===-1) {
 					if(k=="price_list_rate") {
-						item_row['rate'] = v;
+						item_row['price_list_rate'] = v;
 					}
 
 					if (k !== 'free_item_data') {
