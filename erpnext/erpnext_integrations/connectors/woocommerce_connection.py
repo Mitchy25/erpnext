@@ -246,6 +246,8 @@ def create_sales_invoice(edited_line_items, order, customer_code, payment_catego
 		"woocommerce_order": 1,
 		"set_warehouse": default_warehouse,
 		"po_no": str(order.get("id")),
+		"order_source": "Online",
+		"online_order_id": str(order.get("id")),
 		"naming_series": frappe.get_meta("Sales Invoice").get_field("naming_series").options or "",
 		"transaction_date":date_created,
 		"po_date":date_created,
