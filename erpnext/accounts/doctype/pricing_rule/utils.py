@@ -354,7 +354,7 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 		# 	MultiplePricingRuleConflict,
 		# )
 		send_email(pricing_rules)
-		return pricing_rule[0]
+		return pricing_rules[0]
 	elif pricing_rules:
 		return pricing_rules[0]
 
