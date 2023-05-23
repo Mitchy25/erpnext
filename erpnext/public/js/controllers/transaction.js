@@ -1334,9 +1334,6 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 								() => {
 									var d = locals[cdt][cdn];
 									me.add_taxes_from_item_tax_template(d.item_tax_rate);
-									if (d.free_item_data) {
-										me.apply_product_discount(d);
-									}
 								},
 								() => {
 									// for internal customer instead of pricing rule directly apply valuation rate on item
@@ -1404,6 +1401,17 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 								},
 								() => me.conversion_factor(doc, cdt, cdn, true),
 								() => me.remove_pricing_rule(item),
+								() => {
+									var d = locals[cdt][cdn];
+									if (r.message.pricing_rules) {
+										d.pricing_rules = r.message.pricing_rules
+									} else {
+										d.pricing_rules = ''
+									}
+									if (d.free_item_data) {
+										me.apply_product_discount(d);
+									}
+								},
 								() => {
 									if (item.apply_rule_on_other_items) {
 										let key = item.name;
@@ -1912,10 +1920,44 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			}
 
 		});
-
+		this.remove_missing_products(args);
 		// free_item_data is a temporary variable
 		args.free_item_data = '';
 		refresh_field('items');
+	},
+	remove_missing_products: function(args) {
+		const items = this.frm.doc.items.filter(d => (d.is_free_item)) || [];
+		const normal_items = this.frm.doc.items.filter(d => (!d.is_free_item)) || [];
+		if (!items) {
+			return
+		}
+		for (let index = 0; index < items.length; index++) {
+			const free_item = items[index];
+			let free_item_rule
+			try {
+				free_item_rule = JSON.parse(free_item['pricing_rules']);
+			} catch (e) {
+				free_item_rule = [free_item['pricing_rules']];
+			}
+			let found = false
+			for (let normal_index = 0; normal_index < normal_items.length; normal_index++) {
+				const normal_item = normal_items[normal_index];
+				let normal_item_rule
+				try {
+					normal_item_rule = JSON.parse(normal_item['pricing_rules']);
+				} catch (e) {
+					normal_item_rule = [normal_item['pricing_rules']];
+				}
+				if (normal_item_rule.includes(free_item_rule[0])) {
+					found = true
+					break
+				}
+			}
+			if (!found) {
+				this.frm.fields_dict["items"].grid.grid_rows[free_item.idx - 1].remove();
+			}
+			
+		}
 	},
 
 	apply_price_list: function(item, reset_plc_conversion) {
