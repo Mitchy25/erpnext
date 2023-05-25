@@ -179,6 +179,9 @@ def get_gl_entries(filters, accounting_dimensions):
 			"Company", filters.get("company"), "default_finance_book"
 		)
 
+	if filters.get("show_outstanding_amount"):
+		filters["show_outstanding_amount"] = 1
+
 	dimension_fields = ""
 	if accounting_dimensions:
 		dimension_fields = ", ".join(accounting_dimensions) + ","
@@ -526,8 +529,20 @@ def get_result_as_list(data, filters):
 		d["balance"] = balance
 
 		d["account_currency"] = filters.account_currency
-		d["bill_no"] = inv_details.get(d.get("against_voucher"), "")
-		d["po_no"] = si_details.get(d.get("against_voucher"), "")
+		d["bill_no"] = ""
+		d["outstanding_amount"] = ""
+		if inv_details.get(d.get("against_voucher")):
+			d["bill_no"] = inv_details.get(d.get("against_voucher"), "")['bill_no']
+			d["outstanding_amount"] = inv_details.get(d.get("against_voucher"), "")['outstanding_amount']
+		
+		d["po_no"] = ""
+		if si_details.get(d.get("against_voucher")):
+			d["po_no"] = si_details.get(d.get("against_voucher"), "")["po_no"]
+			d["outstanding_amount"] = si_details.get(d.get("against_voucher"), "")['outstanding_amount']
+		
+		if d["outstanding_amount"] == 0:
+			d["outstanding_amount"] = ""
+
 		if filters.get("company") == "RN Labs":
 			d["patient_name"] = si_patient_details.get(d.get("against_voucher"), "")
 
@@ -537,11 +552,20 @@ def get_result_as_list(data, filters):
 def get_supplier_invoice_details():
 	inv_details = {}
 	for d in frappe.db.sql(
-		""" select name, bill_no from `tabPurchase Invoice`
-		where docstatus = 1 and bill_no is not null and bill_no != '' """,
+		""" 
+		select 
+			name, 
+			bill_no,
+			outstanding_amount
+		from 
+			`tabPurchase Invoice`
+		where 
+			docstatus = 1 and 
+			bill_no is not null and 
+			bill_no != '' """,
 		as_dict=1,
 	):
-		inv_details[d.name] = d.bill_no
+		inv_details[d.name] = {"bill_no":d.bill_no,"outstanding_amount":d.outstanding_amount}
 
 	return inv_details
 
@@ -549,8 +573,9 @@ def get_sales_invoice_details():
 	inv_details = {}
 	for d in frappe.db.sql(
 		"""SELECT 
-			name, 
-			po_no
+			name,
+			po_no,
+			outstanding_amount
 		FROM 
 			`tabSales Invoice`
 		WHERE 
@@ -559,7 +584,7 @@ def get_sales_invoice_details():
 			po_no != '' """,
 		as_dict=1,
 	):
-		inv_details[d.name] = d.po_no
+		inv_details[d.name] = {"po_no":d.po_no,"outstanding_amount":d.outstanding_amount}
 
 	return inv_details
 
@@ -634,6 +659,12 @@ def get_columns(filters):
 		},
 	]
 
+	if filters.get("show_outstanding_amount"):
+		columns.append(
+			{"label": _("Outstanding Amount ({0})").format(currency),  "fieldname": "outstanding_amount", "fieldtype":"Float", "width": 150}
+		)
+
+
 	columns.extend(
 		[
 			{"label": _("Voucher Type"), "fieldname": "voucher_type", "width": 120},
@@ -645,9 +676,9 @@ def get_columns(filters):
 				"width": 180,
 			},
 			{"label": _("Against Account"), "fieldname": "against", "width": 120},
-			{"label": _("Party Type"), "fieldname": "party_type", "width": 100},
-			{"label": _("Party"), "fieldname": "party", "width": 100},
-			{"label": _("Project"), "options": "Project", "fieldname": "project", "width": 100},
+			# {"label": _("Party Type"), "fieldname": "party_type", "width": 100},
+			# {"label": _("Party"), "fieldname": "party", "width": 100},
+			# {"label": _("Project"), "options": "Project", "fieldname": "project", "width": 100},
 		]
 	)
 
@@ -676,4 +707,5 @@ def get_columns(filters):
 		]
 	)
 
+	
 	return columns
