@@ -624,7 +624,8 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				frappe.show_alert(alert_string);
 				this.update_dt_cards(response.message);
 				this.dialog.hide();
-				if (values.party && values.party_type && values.party != "undefined"){
+				debugger;
+				if (values.party && values.party_type && values.party.length > 0){
 					this.route_to_payment_reconcile(values.party,values.party_type)
 				}
 			},
