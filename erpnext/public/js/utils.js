@@ -608,23 +608,6 @@ erpnext.utils.update_child_items = function(opts) {
 					to_change.push([value.item_code, value["schedule_date"]])
 				}
 			}
-			if ( frm.doc.doctype == 'Purchase Order') {
-				let old_dates = to_change.map(x => x[1])
-				frappe.call({
-					method: "fxnmrnth.fxnmrnth.doctype.backorder.backorder.purchase_order_change",
-					args: {
-						expected_date_list:old_dates,
-						item_code_list:to_change,
-						includes_itself:true,
-						recalculate:true
-					},
-					callback: function(r) {
-						console.log('purchase order change')
-					}
-				})	
-			}
-
-			//Backorder ETA Code End
 			frappe.call({
 				method: 'erpnext.controllers.accounts_controller.update_child_qty_rate',
 				freeze: true,
