@@ -577,15 +577,12 @@ def apply_pricing_rule_on_transaction(doc):
 
 		for d in pricing_rules:
 			if d.price_or_product_discount == "Price":
-				if d.apply_discount_on:
-					doc.set("apply_discount_on", d.apply_discount_on)
-
+				set_discount = False
 				for field in ["additional_discount_percentage", "discount_amount"]:
+					
 					pr_field = "discount_percentage" if field == "additional_discount_percentage" else field
-
 					if not d.get(pr_field):
 						continue
-
 					if (
 						d.validate_applied_rule and doc.get(field) is not None and doc.get(field) < d.get(pr_field)
 					):
@@ -593,6 +590,7 @@ def apply_pricing_rule_on_transaction(doc):
 					else:
 						if not d.coupon_code_based:
 							doc.set(field, d.get(pr_field))
+							set_discount = True
 						elif doc.get("coupon_code"):
 							# coupon code based pricing rule
 							coupon_code_pricing_rule = frappe.db.get_value(
@@ -601,14 +599,19 @@ def apply_pricing_rule_on_transaction(doc):
 							if coupon_code_pricing_rule == d.name:
 								# if selected coupon code is linked with pricing rule
 								doc.set(field, d.get(pr_field))
+								set_discount = True
 							else:
-								# reset discount if not linked
-								doc.set(field, 0)
+								# Do Nothing
+								pass
 						else:
 							# if coupon code based but no coupon code selected
-							doc.set(field, 0)
+							# Do nothing.
+							pass
 
-				doc.calculate_taxes_and_totals()
+				if set_discount:
+					if d.apply_discount_on and d.apply_discount_on != doc.apply_discount_on:
+						doc.set("apply_discount_on", d.apply_discount_on)
+					doc.calculate_taxes_and_totals()
 			elif d.price_or_product_discount == "Product":
 				item_details = frappe._dict({"parenttype": doc.doctype, "free_item_data": []})
 				get_product_discount_rule(d, item_details, doc=doc)
