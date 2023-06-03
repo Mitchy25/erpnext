@@ -263,7 +263,7 @@ def set_batch_nos(doc, warehouse_field, throw=False, child_table="items"):
 
 
 @frappe.whitelist()
-def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None):
+def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_batch_no=None):
 	"""
 	Get batch number using First Expiring First Out method.
 	:param item_code: `item_code` of Item Document
@@ -283,10 +283,16 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None):
 
 	for batch in batches:
 		if cint(qty) <= cint(batch.qty):
-			batch_no = batch.batch_id
-			if batch.expiry_date and (alert_date > getdate(batch.expiry_date)):
-				frappe.msgprint("Warning: Batch {0} for Item {1} will expire in less than 6 months. Expiry date: <strong>{2}</strong>".format(batch.batch_id, item_code, batch.expiry_date))
-			break
+			if not batch_no:
+				batch_no = batch.batch_id
+				selected_expiry = batch.expiry_date
+				if not cur_batch_no:
+					break
+			if cur_batch_no == batch.batch_id:
+				batch_no = cur_batch_no
+				selected_expiry = batch.expiry_date
+				break
+
 
 	if not batch_no:
 		table_html = ""
@@ -298,10 +304,16 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None):
 				<th>Expiry Date</th>
 			</tr>"""
 			for batch in batches:
+				if batch.expiry_date and (alert_date > getdate(batch.expiry_date)):
+					expiry = f"""<td  style="color: red;">{batch.expiry_date}</td>"""
+				elif batch.expiry_date:
+					expiry = f"""<td>{batch.expiry_date}</td>"""
+				else:
+					expiry = f"""<td  style="color: red;">None</td>"""
 				table_html += f"""<tr>
 					<td>{batch.batch_id}</td>
 					<td>{batch.qty}</td>
-					<td>{batch.expiry_date}</td>
+					{expiry}
 				</tr>"""
 			table_html += "</table>"
 		panels = f"""
@@ -316,10 +328,34 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None):
 		frappe.response.content = final_html
 		if throw:
 			raise UnableToSelectBatchError
-
+	else:
+		if selected_expiry and (alert_date > getdate(selected_expiry)):
+			# frappe.msgprint("Warning: Batch {0} for Item {1} will expire in less than 6 months. Expiry date: <strong>{2}</strong>".format(batch.batch_id, item_code, batch.expiry_date))
+			frappe.response.content = get_expiry_content(batch.batch_id, batch.qty, batch.expiry_date, item_code)
 	return batch_no
 
-
+def get_expiry_content(batch_id, qty, expiry_date, item_code):
+	table_html = f"""<table class="table table-striped table-bordered">
+		<tr>
+			<th>Batch ID</th>
+			<th>Qty In Stock</th>
+			<th >Expiry Date</th>
+		</tr> 
+		<tr>
+			<td>{batch_id}</td>
+			<td>{qty}</td>
+			<td style="color: red;">{expiry_date}</td>
+		</tr>"""
+	table_html += "</table>"
+	panels = f"""
+		<div class="panel panel-default" style="text-align: center;">
+			<div class="panel-heading" style="text-align:center"><h3>Batch Selection for: { item_code }</h3></div>
+			<div class="panel-body">
+				<p>The batch {batch_id} is a short dated batch. <br> Please confirm that this is correct and if not please select a batch that is not short-dated .</p>
+				<p>If it is correct you can click out of this dialog.</p>
+		</div>
+	"""
+	return table_html + panels
 def get_batches(item_code, warehouse, qty=1, throw=False, serial_no=None):
 	from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 

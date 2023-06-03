@@ -112,9 +112,10 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			'tax_id': tax_id if tax_id else None
 		})
 		col, res = get_soa(filters)
+
 		new_res = []
 		for item in res[0:]:
-			if item.debit == item.credit and item.account != "'Total'":
+			if item.debit == item.credit and item.account != "'Total'" and item.account != "'Opening'":
 				continue
 			else:
 				new_res.append(item)
