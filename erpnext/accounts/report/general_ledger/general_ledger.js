@@ -198,6 +198,12 @@ frappe.query_reports["General Ledger"] = {
 			"label": __("Hide Inactive Customers"),
 			"fieldtype": "Check",
 			"default": 1
+		},
+		{
+			"fieldname": "show_outstanding_amount",
+			"label": __("Show Outstanding Amount"),
+			"fieldtype": "Check",
+			"default": 1
 		}
 	]
 }
