@@ -152,6 +152,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "fetch_from": "item_code.item_name",
    "fieldname": "item_name",
    "fieldtype": "Data",
    "in_global_search": 1,
@@ -168,13 +169,13 @@
    "label": "Description"
   },
   {
+   "fetch_from": "item_code.description",
    "fieldname": "description",
    "fieldtype": "Text Editor",
    "label": "Description",
    "oldfieldname": "description",
    "oldfieldtype": "Text",
    "print_width": "300px",
-   "reqd": 1,
    "width": "300px"
   },
   {
@@ -238,6 +239,7 @@
    "print_hide": 1
   },
   {
+   "fetch_from": "item_code.purchase_uom",
    "fieldname": "uom",
    "fieldtype": "Link",
    "label": "UOM",
@@ -249,6 +251,7 @@
    "width": "100px"
   },
   {
+   "fetch_from": "item_code.stock_uom",
    "fieldname": "stock_uom",
    "fieldtype": "Link",
    "label": "Stock UOM",
@@ -976,15 +979,13 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2022-02-01 11:32:27.980524",
+ "modified": "2023-03-30 10:26:41.936821",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt Item",
- "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
  "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+ "sort_order": "DESC"
 }
