@@ -139,7 +139,7 @@ class SellingController(StockController):
 			return
 
 		self.round_floats_in(self, ("amount_eligible_for_commission", "commission_rate"))
-
+	
 		if not (0 <= self.commission_rate <= 100.0):
 			throw(
 				"{} {}".format(
@@ -151,11 +151,30 @@ class SellingController(StockController):
 		self.amount_eligible_for_commission = sum(
 			item.base_net_amount for item in self.items if item.grant_commission
 		)
-
-		self.total_commission = flt(
-			self.amount_eligible_for_commission * self.commission_rate / 100.0,
-			self.precision("total_commission"),
-		)
+		if self.company == "RN Labs":
+			if "Retail" not in self.selling_price_list:
+				self.total_commission = 0
+				return
+				
+			sql = """select si.amount - (si.qty * p.price_list_rate) AS total 
+					from `tabSales Invoice Item` si
+					JOIN `tabSales Invoice` s ON si.parent = s.name
+					join `tabItem Price` p on p.item_code = si.item_code and p.price_list = CONCAT(SUBSTRING_INDEX(s.selling_price_list, ' ', 1), " ", "Wholesale")
+					AND p.valid_from <= s.posting_date AND (p.valid_upto >= s.posting_date OR p.valid_upto IS NULL)
+					and si.item_code NOT IN ("HAND-FEE", "SHIP1", "SHIP2", "SHIP3")
+					WHERE s.name = %s
+			"""
+			wholesale_prices = frappe.db.sql(sql, [self.name], as_dict=True)
+			item_dict = {}
+			commission = 0
+			for item in wholesale_prices:
+				commission += item["total"]
+			self.total_commission = flt(commission, self.precision("total_commission"))
+		else:
+			self.total_commission = flt(
+				self.amount_eligible_for_commission * self.commission_rate / 100.0,
+				2,
+			)
 
 	def calculate_contribution(self):
 		if not self.meta.get_field("sales_team"):
