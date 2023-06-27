@@ -12,7 +12,7 @@ def get_data():
 			'Sales Invoice': 'return_against',
 			'Auto Repeat': 'reference_document',
 			# 'Backorder': 'backorder_references',
-			'Integration Request': 'reference_id_'
+			'Integration Request': ['reference_id_']
 		},
 		'internal_links': {
 			'Sales Order': ['items', 'sales_order']
