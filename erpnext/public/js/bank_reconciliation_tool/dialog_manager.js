@@ -353,7 +353,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 							},
 							async: false,
 							callback: function(q) { 
-								if (q.message.account_type != "Receivable" || q.message.account_type != "Payable") {
+								if (q.message.account_type != "Receivable" && q.message.account_type != "Payable") {
 									cur_dialog.set_df_property('party','hidden',1)
 									cur_dialog.set_value('party','')
 									cur_dialog.set_df_property('party_type','hidden',1)
