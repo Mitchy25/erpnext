@@ -15,7 +15,8 @@ def get_data():
 			'Medical Objects': 'customer_id',
 			'Sample': 'practitioner_id',
 			'Bank Account': 'party',
-			'Subscription': 'party'
+			'Subscription': 'party',
+			'Journal Entry': 'party'
 		},
 		'dynamic_links': {
 			'party_name': ['Customer', 'quotation_to']
@@ -27,7 +28,7 @@ def get_data():
 			# },
 			{
 				'label': _('Pricing/Payments'),
-				'items': ['Pricing Rule', 'Payment Entry', 'Bank Account', 'Statement of Account']
+				'items': ['Pricing Rule', 'Payment Entry', 'Journal Entry', 'Bank Account', 'Statement of Account']
 			},
 			{
 				'label': _('Orders'),
