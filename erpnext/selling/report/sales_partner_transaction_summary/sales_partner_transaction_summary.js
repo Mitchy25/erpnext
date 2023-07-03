@@ -67,5 +67,17 @@ frappe.query_reports["Sales Partner Transaction Summary"] = {
 			fieldtype: "Check",
 			default: 1,
 		},
+		{
+			fieldname:"get_products",
+			label: __("Get Products"),
+			fieldtype: "Check",
+			default: 1,
+		},
+		{
+			fieldname:"get_tests",
+			label: __("Get Tests and Test Kits"),
+			fieldtype: "Check",
+			default: 0,
+		},
 	]
 }
