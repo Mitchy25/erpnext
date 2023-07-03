@@ -223,6 +223,15 @@ def get_conditions(filters, date_field):
 
 	if not filters.get("show_return_entries"):
 		conditions += " and dt_item.qty > 0.0"
+	
+	if filters.get("get_products") or filters.get("get_tests"):
+		tests = "'Test Kits','Tests'" if filters.get("get_tests") == 1 else "0"
+		products = "'Products'" if filters.get("get_products") == 1 else "0"
+		conditions += f" and dt_item.item_group in ({tests},{products})"
+	frappe.msgprint(conditions)
+	
+
+
 
 	if filters.get("brand"):
 		conditions += " and dt_item.brand = %(brand)s"
@@ -235,7 +244,7 @@ def get_conditions(filters, date_field):
 			lft,
 			rgt,
 		)
-
+	
 	return conditions
 
 
@@ -253,7 +262,7 @@ def calculate_ws_commission(entries):
 		if item["item_code"] not in current_item:
 			current_item[item["item_code"]] = item["price_list_rate"] * item['qty']
 	for item in entries:
-		if not item["name"] in item_dict:
+		if not item["name"] in item_dict or item["item_code"] not in item_dict[item["name"]]:
 			item["commission_wholesale"] = 0
 		else:
 			item["commission_wholesale"] = item["amount"] - item_dict[item["name"]][item["item_code"]]
