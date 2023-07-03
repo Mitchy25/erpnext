@@ -228,7 +228,6 @@ def get_conditions(filters, date_field):
 		tests = "'Test Kits','Tests'" if filters.get("get_tests") == 1 else "0"
 		products = "'Products'" if filters.get("get_products") == 1 else "0"
 		conditions += f" and dt_item.item_group in ({tests},{products})"
-	frappe.msgprint(conditions)
 	
 
 
