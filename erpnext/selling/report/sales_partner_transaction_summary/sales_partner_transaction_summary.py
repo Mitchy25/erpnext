@@ -251,6 +251,8 @@ def get_conditions(filters, date_field):
 def calculate_ws_commission(entries):
 	
 	invoices = [i['name'] for i in entries]
+	if not invoices:
+		return
 	wholesale_prices = get_wholesales_prices(invoices)
 	item_dict = {}
 	for item in wholesale_prices:
@@ -272,6 +274,6 @@ def get_wholesales_prices(sales_invoices):
 		join `tabSales Invoice Item` si on si.parent = s.name
 		join `tabItem Price` p on p.item_code = si.item_code and p.price_list = CONCAT(SUBSTRING_INDEX(s.selling_price_list, ' ', 1), " ", "Wholesale")
 		AND p.valid_from <= s.posting_date AND (p.valid_upto >= s.posting_date OR p.valid_upto IS Null)
-		WHERE s.name IN %s
+		WHERE s.name IN (%s)
 	"""
-	return frappe.db.sql(sql, [sales_invoices], as_dict=True)
+	return frappe.db.sql(sql, ",".join(sales_invoices), as_dict=True)
