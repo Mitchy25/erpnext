@@ -225,13 +225,11 @@ def get_conditions(filters, date_field):
 		conditions += " and dt_item.qty > 0.0"
 	
 	if filters.get("get_products") or filters.get("get_tests"):
-		tests = "'Test Kits','Tests'" if filters.get("get_tests") == 1 else "0"
-		products = "'Products'" if filters.get("get_products") == 1 else "0"
-		conditions += f" and dt_item.item_group in ({tests},{products})"
+		in_group = ['"Test Kits"','"Tests"'] if filters.get("get_tests") == 1 else []
+		if filters.get("get_products") == 1:
+			in_group.append("'Products'")
+		conditions += f" and dt_item.item_group in ({','.join(in_group)})"
 	frappe.msgprint(conditions)
-	
-
-
 
 	if filters.get("brand"):
 		conditions += " and dt_item.brand = %(brand)s"
