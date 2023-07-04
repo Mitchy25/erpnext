@@ -229,7 +229,7 @@ def get_conditions(filters, date_field):
 		if filters.get("get_products") == 1:
 			in_group.append("'Products'")
 		conditions += f" and dt_item.item_group in ({','.join(in_group)})"
-	frappe.msgprint(conditions)
+	# frappe.msgprint(conditions)
 
 	if filters.get("brand"):
 		conditions += " and dt_item.brand = %(brand)s"
