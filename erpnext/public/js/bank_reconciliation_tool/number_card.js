@@ -41,7 +41,7 @@ erpnext.accounts.bank_reconciliation.NumberCardManager = class NumberCardManager
 			number_card.$card.appendTo(this.$summary);
 		});
 		this.$cards[2].set_value_color(
-			this.bank_statement_closing_balance - this.cleared_balance == 0
+			(this.bank_statement_closing_balance - this.cleared_balance).toFixed(2) == 0
 				? "text-success"
 				: "text-danger"
 		);
