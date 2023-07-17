@@ -200,7 +200,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 				this.currency
 			);
 			this.cards_manager.$cards[2].set_value_color(
-				this.bank_statement_closing_balance - this.cleared_balance == 0
+				(this.bank_statement_closing_balance - this.cleared_balance).toFixed(2) == 0
 					? "text-success"
 					: "text-danger"
 			);
