@@ -802,7 +802,7 @@ def get_customer_primary_contact(doctype, txt, searchfield, start, page_len, fil
 	customer = filters.get("customer")
 	return frappe.db.sql(
 		"""
-		select `tabContact`.name from `tabContact`, `tabDynamic Link`
+		select `tabContact`.name, `tabContact`.first_name, `tabContact`.last_name, `tabContact`.email_id from `tabContact`, `tabDynamic Link`
 			where `tabContact`.name = `tabDynamic Link`.parent and `tabDynamic Link`.link_name = %(customer)s
 			and `tabDynamic Link`.link_doctype = 'Customer'
 			and `tabContact`.name like %(txt)s
