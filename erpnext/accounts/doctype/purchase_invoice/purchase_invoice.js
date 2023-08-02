@@ -581,6 +581,12 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	make_purchase_receipt: function(frm) {
+		frappe.route_hooks.after_load = () => {
+			for (let index = 0; index < cur_frm.doc.items.length; index++) {
+				const element = cur_frm.doc.items[index];
+				frappe.model.trigger('qty', undefined, element, false)
+			}
+		}
 		frappe.model.open_mapped_doc({
 			method: "erpnext.accounts.doctype.purchase_invoice.purchase_invoice.make_purchase_receipt",
 			frm: frm,
