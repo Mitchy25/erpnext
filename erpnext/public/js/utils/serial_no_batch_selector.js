@@ -83,6 +83,19 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				label: __('Qty remaining to Allocate'),
 				default: flt(this.item.qty),
 			},
+			{
+				fieldname: 'unallocated_backorder_check',
+				fieldtype:'Check',
+				label: __('Add Unallocated To Backorder'),
+				hidden: me.frm.doc.doctype!="Sales Invoice" || me.frm.doc.accepts_backorders != 1,
+				default: 0,
+			},
+			{
+				fieldname: 'messagebackorder',
+				fieldtype:'HTML',
+				hidden: me.frm.doc.doctype != "Sales Invoice" || me.frm.doc.accepts_backorders == 1,
+				options: __("Customer does not Accept Backorders"),
+			},
 			{fieldtype:'Column Break'},
 			{
 				fieldname: 'qty',
@@ -170,6 +183,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 							return me.callback(me.item);
 						}
 					},
+					() => me.assign_remaining_to_backorder(me),
 					() => me.dialog.hide(),
 					() => {
 						if (cur_dialog) {
@@ -240,7 +254,13 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			return true;
 		}
 	},
-
+	assign_remaining_to_backorder(me) {
+		if (me.values.unallocated_backorder_check) {
+			frappe.require('assets/fxnmrnth/js/custom_doctype_assets/sales_invoice/backorder_detect.js').then(() => {
+				add_backorder_child(me.item, me.values.qty_remaining, me.frm, me.values.selected_qty)
+			})
+		}
+	},
 	update_batch_items() {
 		// clones an items if muliple batches are selected.
 		if(this.has_batch && !this.has_serial_no) {
