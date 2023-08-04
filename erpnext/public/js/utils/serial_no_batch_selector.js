@@ -74,7 +74,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				fieldtype:'Float',
 				read_only: me.has_batch && !me.has_serial_no,
 				label: __('Qty to Allocate'),
-				default: flt(this.item.qty),
+				default: -1,
 			},
 			{
 				fieldname: 'qty_remaining',
@@ -206,7 +206,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 							'batch_no': data.batch_no,
 							'actual_qty': data.actual_qty,
 							'selected_qty': data.qty,
-							'available_qty': data.actual_batch_qty
+							'available_qty': data.actual_batch_qty > 0  ? data.actual_batch_qty : data.qty
 						});
 					}
 				});
@@ -360,11 +360,17 @@ erpnext.SerialNoBatchSelector = Class.extend({
 
 	update_total_qty: function() {
 		let qty_field = this.dialog.fields_dict.qty;
+		let assigned_qty = this.dialog.fields_dict.assigned_qty
 		let total_qty = 0;
 
 		this.dialog.fields_dict.batches.df.data.forEach(data => {
 			total_qty += flt(data.selected_qty);
 		});
+		
+		if (assigned_qty.value == -1) {
+			assigned_qty.set_input(total_qty)
+		}
+		
 		qty_field.set_input(total_qty);
 	},
 	update_pending_qtys: function() {
