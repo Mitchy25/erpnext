@@ -267,9 +267,14 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			this.values.batches.map((batch, i) => {
 				let batch_no = batch.batch_no;
 				let row = '';
-
 				if (i !== 0 && !this.batch_exists(batch_no)) {
-					row = this.frm.add_child("items", { ...this.item });
+					let item_with_no_batch = this.frm.doc.items.filter((item) => item.item_code == this.item_code && !item.batch_no)
+					if (item_with_no_batch.length) {
+						row = item_with_no_batch[0]
+					} else {
+						row = this.frm.add_child("items", { ...this.item });
+					}
+					
 				} else {
 					row = this.frm.doc.items.find(i => i.batch_no === batch_no);
 				}
