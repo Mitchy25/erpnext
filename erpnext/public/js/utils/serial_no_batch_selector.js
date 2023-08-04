@@ -116,40 +116,97 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			{
 				fieldname: 'auto_fetch_button',
 				fieldtype:'Button',
-				hidden: me.has_batch && !me.has_serial_no,
 				label: __('Auto Fetch'),
-				description: __('Fetch Serial Numbers based on FIFO'),
+				description: __('Fetch Batch/Serial Numbers based on FIFO'),
 				click: () => {
-					let qty = this.dialog.fields_dict.qty.get_value();
-					let already_selected_serial_nos = get_selected_serial_nos(me);
-					let numbers = frappe.call({
-						method: "erpnext.stock.doctype.serial_no.serial_no.auto_fetch_serial_number",
-						args: {
-							qty: qty,
-							item_code: me.item_code,
-							warehouse: typeof me.warehouse_details.name == "string" ? me.warehouse_details.name : '',
-							batch_nos: me.item.batch_no || null,
-							posting_date: me.frm.doc.posting_date || me.frm.doc.transaction_date,
-							exclude_sr_nos: already_selected_serial_nos
-						}
-					});
-
-					numbers.then((data) => {
-						let auto_fetched_serial_numbers = data.message;
-						let records_length = auto_fetched_serial_numbers.length;
-						if (!records_length) {
-							const warehouse = me.dialog.fields_dict.warehouse.get_value().bold();
-							frappe.msgprint(
-								__('Serial numbers unavailable for Item {0} under warehouse {1}. Please try changing warehouse.', [me.item.item_code.bold(), warehouse])
-							);
-						}
-						if (records_length < qty) {
-							frappe.msgprint(__('Fetched only {0} available serial numbers.', [records_length]));
-						}
-						let serial_no_list_field = this.dialog.fields_dict.serial_no;
-						numbers = auto_fetched_serial_numbers.join('\n');
-						serial_no_list_field.set_value(numbers);
-					});
+					if (!(me.has_batch && !me.has_serial_no)) {
+						let qty = this.dialog.fields_dict.qty.get_value();
+						let already_selected_serial_nos = get_selected_serial_nos(me);
+						let numbers = frappe.call({
+							method: "erpnext.stock.doctype.serial_no.serial_no.auto_fetch_serial_number",
+							args: {
+								qty: qty,
+								item_code: me.item_code,
+								warehouse: typeof me.warehouse_details.name == "string" ? me.warehouse_details.name : '',
+								batch_nos: me.item.batch_no || null,
+								posting_date: me.frm.doc.posting_date || me.frm.doc.transaction_date,
+								exclude_sr_nos: already_selected_serial_nos
+							}
+						});
+	
+						numbers.then((data) => {
+							let auto_fetched_serial_numbers = data.message;
+							let records_length = auto_fetched_serial_numbers.length;
+							if (!records_length) {
+								const warehouse = me.dialog.fields_dict.warehouse.get_value().bold();
+								frappe.msgprint(
+									__('Serial numbers unavailable for Item {0} under warehouse {1}. Please try changing warehouse.', [me.item.item_code.bold(), warehouse])
+								);
+							}
+							if (records_length < qty) {
+								frappe.msgprint(__('Fetched only {0} available serial numbers.', [records_length]));
+							}
+							let serial_no_list_field = this.dialog.fields_dict.serial_no;
+							numbers = auto_fetched_serial_numbers.join('\n');
+							serial_no_list_field.set_value(numbers);
+						});
+					} else {
+						this.dialog.fields_dict.batches.df.data = this.dialog.fields_dict.batches.df.data.filter((item) => item["batch_no"]);
+						let dialog_batches = this.dialog.fields_dict.batches.get_value();
+						let qty_to_allocate = this.dialog.fields_dict.assigned_qty.value
+						let possible_batches = frappe.call({
+							method: 'erpnext.stock.doctype.batch.batch.get_batches_by_oldest',
+							args: {
+								item_code: me.item_code,
+								warehouse: me.warehouse || typeof me.warehouse_details.name == "string" ? me.warehouse_details.name : ''
+							}
+						});
+						possible_batches.then((data) => {
+							var batch_used = {}
+							for (let index = 0; index < data.message.length; index++) {
+								if (qty_to_allocate == 0) {
+									break
+								}
+								const batches_gotten = data.message[index];
+								batches_gotten[0]['org_qty'] = batches_gotten[0].qty
+								for (const current_batch_index in dialog_batches) {
+									let current_batch = dialog_batches[current_batch_index]
+									if (current_batch.batch_no == batches_gotten[0].batch_no) {
+										batches_gotten[0].qty -= current_batch.selected_qty
+										batch_used[batches_gotten[0].batch_no] = current_batch_index
+										qty_to_allocate -= current_batch.selected_qty
+									}
+								}
+								if (batches_gotten[0].qty > 0) {
+									if (batches_gotten[0].qty >= qty_to_allocate) {
+										var row_qty = qty_to_allocate
+									} else {
+										var row_qty = batches_gotten[0].qty
+										batches_gotten[0].qty = 0
+									}
+									if (batches_gotten[0].batch_no in batch_used) {
+										dialog_batches[batch_used[batches_gotten[0].batch_no]].selected_qty += row_qty
+										qty_to_allocate -= row_qty
+									} else {
+										this.dialog.fields_dict.batches.df.data.push({
+											'batch_no': batches_gotten[0].batch_no,
+											'selected_qty': row_qty,
+											'available_qty': batches_gotten[0]['org_qty']
+										});
+										qty_to_allocate -= row_qty
+									}
+								}
+							}
+							this.update_total_qty();
+							this.update_pending_qtys();
+							//debugger
+							if (qty_to_allocate > 0) {
+								this.dialog.fields_dict.unallocated_backorder_check.value = true
+								this.dialog.fields_dict.unallocated_backorder_check.refresh()
+							}
+							this.dialog.fields_dict.batches.grid.refresh();
+						});
+					}
 				}
 			}
 		];
