@@ -393,6 +393,12 @@ erpnext.buying.PurchaseOrderController = erpnext.buying.BuyingController.extend(
 	},
 
 	make_purchase_receipt: function() {
+		frappe.route_hooks.after_load = () => {
+			for (let index = 0; index < cur_frm.doc.items.length; index++) {
+				const element = cur_frm.doc.items[index];
+				frappe.model.trigger('qty', undefined, element, false)
+			}
+		}
 		frappe.model.open_mapped_doc({
 			method: "erpnext.buying.doctype.purchase_order.purchase_order.make_purchase_receipt",
 			frm: cur_frm,
@@ -400,7 +406,13 @@ erpnext.buying.PurchaseOrderController = erpnext.buying.BuyingController.extend(
 		})
 	},
 
-	make_purchase_invoice: function() {
+	make_purchase_invoice: function(me) {
+		frappe.route_hooks.after_load = () => {
+			for (let index = 0; index < cur_frm.doc.items.length; index++) {
+				const element = cur_frm.doc.items[index];
+				frappe.model.trigger('qty', undefined, element, false)
+			}
+		}
 		frappe.model.open_mapped_doc({
 			method: "erpnext.buying.doctype.purchase_order.purchase_order.make_purchase_invoice",
 			frm: cur_frm
