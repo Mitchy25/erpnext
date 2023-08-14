@@ -102,7 +102,7 @@ class Batch(Document):
 			else:
 				frappe.throw(_("Batch ID is mandatory"), frappe.MandatoryError)
 
-		self.name = self.batch_id
+		self.name = self.expiry_date + "/" + self.batch_id
 
 	def onload(self):
 		self.image = frappe.db.get_value("Item", self.item, "image")
