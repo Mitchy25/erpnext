@@ -162,7 +162,22 @@ erpnext.SerialNoBatchSelector = Class.extend({
 							}
 						});
 						possible_batches.then((data) => {
+							let allow_batches = this.dialog.fields_dict.fetch_shortdated.get_value()
+							data.message = data.message.filter((batch) => batch[0].qty > 0)
+							for (let index = 0; index < data.message.length; index++) {
+								let selected_batch = data.message[index]
+								let batch_date = new Date(selected_batch[1])
+								if (batch_date < moment().add(12, 'months')) {
+									let gotten_item = data.message.splice(index, 1)[0]
+									if (allow_batches) {
+										selected_batch['shortdated'] = 1
+										data.message.push(gotten_item);
+									}
+								}
+								
+							}
 							var batch_used = {}
+							var fetch_html = ''
 							for (let index = 0; index < data.message.length; index++) {
 								if (qty_to_allocate == 0) {
 									break
@@ -196,7 +211,13 @@ erpnext.SerialNoBatchSelector = Class.extend({
 										qty_to_allocate -= row_qty
 									}
 								}
+								if (batches_gotten.shortdated) {
+									fetch_html += `${batches_gotten[0].batch_no} is Shortdated.<br>`
+								}
 							}
+							this.dialog.fields_dict.auto_fetch_html.$wrapper.html(
+								`<div style="color=${frappe.ui.color.get('red')}"> ${fetch_html} </div>`
+					);
 							this.update_total_qty();
 							this.update_pending_qtys();
 							//debugger
@@ -208,7 +229,18 @@ erpnext.SerialNoBatchSelector = Class.extend({
 						});
 					}
 				}
-			}
+			},
+			{
+				label: __('Auto Fetch allow shortdated items'),
+				fieldname: 'fetch_shortdated',
+				default: 0,
+				fieldtype: 'Check'
+			},
+			{
+				fieldname: 'auto_fetch_html',
+				read_only: 1,
+				fieldtype: 'HTML'
+			},
 		];
 
 		if (this.has_batch && !this.has_serial_no) {
