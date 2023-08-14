@@ -444,10 +444,15 @@ function append_breakdown(element, item_code, poi_results, boi_results) {
 		boi_backgroundColor.push(Object.values(CHART_COLORS)[colorIndex])
 
 		stockRequired += boi_results[i].qty
-		let message = `${boi_results[i].parent} | ${(boi_results[i].customer_name)? (boi_results[i].customer_name): "Customer Name Unset!"} | ${boi_results[i].added_time} | Stock Required: ${stockRequired} | BO Qty ${boi_results[i].qty}`
-		message += ` | Customer ID:${boi_results[i].customer_id}`
-		let message2 = message.split(` | `)
-		boi_label_data.push(message2)
+
+		let message = [`${boi_results[i].parent}`]
+		message.push(`${(boi_results[i].customer_name)? (boi_results[i].customer_name): "Customer Name Unset!"}`)
+		message.push(`${boi_results[i].added_time}`)
+		message.push(`Stock Required: ${stockRequired}`)
+		message.push(`BO Qty ${boi_results[i].qty}`)
+		message.push(`Customer ID: ${boi_results[i].customer_id}`)
+		message.push(`Expected Arrival Time: ${boi_results[i].expected_arrival_time}`)
+		boi_label_data.push(message)
 
 	}
 
