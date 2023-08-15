@@ -162,16 +162,20 @@ erpnext.SerialNoBatchSelector = Class.extend({
 							}
 						});
 						possible_batches.then((data) => {
-							let allow_batches = this.dialog.fields_dict.fetch_shortdated.get_value()
+							let fetch_options = this.dialog.fields_dict.fetch_options.get_value()
 							data.message = data.message.filter((batch) => batch[0].qty > 0)
 							for (let index = 0; index < data.message.length; index++) {
 								let selected_batch = data.message[index]
 								let batch_date = new Date(selected_batch[1])
 								if (batch_date < moment().add(12, 'months')) {
-									let gotten_item = data.message.splice(index, 1)[0]
-									if (allow_batches) {
+									if (fetch_options == "Longdated Only") {
+										data.message.splice(index, 1)[0]
+									} else {
 										selected_batch['shortdated'] = 1
-										data.message.push(gotten_item);
+									}
+								} else { 
+									if (fetch_options == "Shortdated Only") {
+										data.message.splice(index, 1)[0]
 									}
 								}
 								
@@ -232,9 +236,11 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			},
 			{
 				label: __('Auto Fetch allow shortdated items'),
-				fieldname: 'fetch_shortdated',
+				fieldname: 'fetch_options',
 				default: 0,
-				fieldtype: 'Check'
+				fieldtype: 'Select',
+				options: ["Shortdated first", "Shortdated Only", "Longdated Only"],
+				default: "Longdated Only"
 			},
 			{
 				fieldname: 'auto_fetch_html',
