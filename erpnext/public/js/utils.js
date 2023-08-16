@@ -678,7 +678,6 @@ erpnext.utils.map_current_doc = function(opts) {
 					}
 				});
 			});
-
 			if(already_set) {
 				opts.source_name.forEach(function(src) {
 					frappe.model.with_doc(opts.source_doctype, src, function(r) {
@@ -699,6 +698,9 @@ erpnext.utils.map_current_doc = function(opts) {
 
 				})
 			}
+			$.each(cur_frm.doc.items, function(i, d) {
+				frappe.model.trigger('qty', undefined, d, false)
+			})
 		}
 
 		return frappe.call({

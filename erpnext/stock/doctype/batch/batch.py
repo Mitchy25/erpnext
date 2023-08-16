@@ -102,7 +102,7 @@ class Batch(Document):
 			else:
 				frappe.throw(_("Batch ID is mandatory"), frappe.MandatoryError)
 
-		self.name = self.item + "-" + self.batch_id
+		self.name = self.expiry_date + "/" + self.batch_id
 
 	def onload(self):
 		self.image = frappe.db.get_value("Item", self.item, "image")
@@ -295,6 +295,13 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 
 
 	if not batch_no:
+		only_zero = True
+		for batch in batches:
+			if batch.qty != 0:
+				only_zero = False
+				break
+		if only_zero:
+			return
 		table_html = ""
 		if batches:
 			table_html = """<table class="table table-striped table-bordered">
