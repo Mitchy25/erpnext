@@ -16,7 +16,8 @@ def get_data():
 			'Sample': 'practitioner_id',
 			'Bank Account': 'party',
 			'Subscription': 'party',
-			'Journal Entry': 'party'
+			'Journal Entry': 'party',
+			'Customer': 'creation'
 		},
 		'dynamic_links': {
 			'party_name': ['Customer', 'quotation_to']
@@ -56,13 +57,13 @@ def get_data():
 			# }
 		]
 	}
-
 	company = get_default_company()
-
 	if company == "RN Labs" or company == "FxMed":
 		dashboardData['transactions'].append({
 			'label': 'Testing DB',
-			'items': ['Medical Objects', 'Sample']
+			'items': ['Medical Objects', 'Sample', 'Customer']
 		})
+
+		#TODO: Placeholder so link will render
 	
 	return dashboardData
