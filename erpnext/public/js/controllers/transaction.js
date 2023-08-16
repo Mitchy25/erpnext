@@ -2429,7 +2429,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			return {
 				filters: {'item': item.item_code}
 			}
-		else if (!item.item_code) {
+		} else if (!item.item_code) {
 			frappe.throw(__("Please enter Item Code to get Batch Number"));
 		} else {
 			let filters = {
