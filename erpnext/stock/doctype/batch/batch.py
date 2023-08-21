@@ -281,18 +281,24 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 	## Filtered out the batch so that only batch have actual qty
 	batches = list(filter(lambda batch : batch.qty > 0, batches)) 
 
+	found = False
+	shortdated_available = False
 	for batch in batches:
+		if batch.expiry_date and (alert_date > getdate(batch.expiry_date)) and not cur_batch_no:
+			shortdated_available = True
+		
+		if found == True:
+			continue
 		if cint(qty) <= cint(batch.qty):
 			if not batch_no:
 				batch_no = batch.batch_id
 				selected_expiry = batch.expiry_date
 				if not cur_batch_no:
-					break
+					found = True
 			if cur_batch_no == batch.batch_id:
 				batch_no = cur_batch_no
 				selected_expiry = batch.expiry_date
-				break
-
+				found = True
 
 	if not batch_no:
 		only_zero = True
@@ -333,13 +339,53 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 		final_html = panels + table_html
 		# frappe.msgprint(final_html)
 		frappe.response.content = final_html
+		frappe.response.lock_dialog = True
+		frappe.response.dialog_type = "multi"
 		if throw:
 			raise UnableToSelectBatchError
 	else:
+		
 		if selected_expiry and (alert_date > getdate(selected_expiry)):
 			# frappe.msgprint("Warning: Batch {0} for Item {1} will expire in less than 6 months. Expiry date: <strong>{2}</strong>".format(batch.batch_id, item_code, batch.expiry_date))
 			frappe.response.content = get_expiry_content(batch.batch_id, batch.qty, batch.expiry_date, item_code)
+			frappe.response.shortdated = 1
+			frappe.response.dialog_type = "shortdated"
+		else:
+			if shortdated_available:
+				frappe.response.content = get_longdated_content(batches, batch_no, item_code, alert_date, getdate)
+				frappe.response.dialog_type = "longdated"
 	return batch_no
+
+
+def get_longdated_content(batches, batch_no, item_code, alert_date, getdate):
+	table_html = """<table class="table table-striped table-bordered">
+	<tr>
+		<th>Batch ID</th>
+		<th>Qty In Stock</th>
+		<th>Expiry Date</th>
+	</tr>"""
+	for batch in batches:
+		if batch.expiry_date and (alert_date > getdate(batch.expiry_date)):
+			expiry = f"""<td  style="color: red;">{batch.expiry_date}</td>"""
+		elif batch.expiry_date:
+			expiry = f"""<td>{batch.expiry_date}</td>"""
+		else:
+			expiry = f"""<td  style="color: red;">None</td>"""
+		table_html += f"""<tr>
+			<td>{batch.batch_id}</td>
+			<td>{batch.qty}</td>
+			{expiry}
+		</tr>"""
+	table_html += "</table>"
+	panels = f"""
+		<div class="panel panel-default" style="text-align: center;">
+			<div class="panel-heading" style="text-align:center"><h3 style="color: green;">ShortDated Batches Available for: { item_code }</h3></div>
+			<div class="panel-body">
+				<p>The batch <b>{batch_no}</b> currently selected is a long dated batch but there exists shortdated batches within our system. <br> Please confirm that this is correct and if not please select a batch that is short-dated.</p>
+				<p>If it is correct you can click out of this dialog.</p>
+		</div>
+	"""
+	return table_html + panels
 
 def get_expiry_content(batch_id, qty, expiry_date, item_code):
 	table_html = f"""<table class="table table-striped table-bordered">
@@ -356,7 +402,7 @@ def get_expiry_content(batch_id, qty, expiry_date, item_code):
 	table_html += "</table>"
 	panels = f"""
 		<div class="panel panel-default" style="text-align: center;">
-			<div class="panel-heading" style="text-align:center"><h3>Batch Selection for: { item_code }</h3></div>
+			<div class="panel-heading" style="text-align:center"><h3 style="color: red;">ShortDated Batch selected for: { item_code }</h3></div>
 			<div class="panel-body">
 				<p>The batch {batch_id} is a short dated batch. <br> Please confirm that this is correct and if not please select a batch that is not short-dated .</p>
 				<p>If it is correct you can click out of this dialog.</p>
