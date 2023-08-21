@@ -273,7 +273,7 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 	"""
 	from frappe.utils import add_months, getdate, today
 	today_date = getdate(today())
-	alert_date = add_months(today_date, 6)
+	alert_date = add_months(today_date, 12)
 
 	batch_no = None
 	batches = get_batches(item_code, warehouse, qty, throw, serial_no)
