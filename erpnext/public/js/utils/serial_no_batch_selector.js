@@ -154,6 +154,9 @@ erpnext.SerialNoBatchSelector = Class.extend({
 						this.dialog.fields_dict.batches.df.data = this.dialog.fields_dict.batches.df.data.filter((item) => item["batch_no"]);
 						let dialog_batches = this.dialog.fields_dict.batches.get_value();
 						let qty_to_allocate = this.dialog.fields_dict.assigned_qty.value
+						var batch_used = {}
+						var fetch_html = ''
+
 						let possible_batches = frappe.call({
 							method: 'erpnext.stock.doctype.batch.batch.get_batches_by_oldest',
 							args: {
@@ -162,40 +165,37 @@ erpnext.SerialNoBatchSelector = Class.extend({
 							}
 						});
 						possible_batches.then((data) => {
+							
 							let fetch_options = this.dialog.fields_dict.fetch_options.get_value()
 							data.message = data.message.filter((batch) => batch[0].qty > 0)
 							for (let index = 0; index < data.message.length; index++) {
 								let selected_batch = data.message[index]
 								let batch_date = new Date(selected_batch[1])
+
 								if (batch_date < moment().add(12, 'months')) {
-									if (fetch_options == "Longdated Only") {
-										data.message.splice(index, 1)[0]
-									} else {
-										selected_batch['shortdated'] = 1
-									}
+									selected_batch['shortdated'] = 1
 								} else { 
-									if (fetch_options == "Shortdated Only") {
-										data.message.splice(index, 1)[0]
-									}
+									selected_batch['shortdated'] = 0
 								}
-								
+
+								dialog_batches.length = 0
+
 							}
-							var batch_used = {}
-							var fetch_html = ''
+ 
 							for (let index = 0; index < data.message.length; index++) {
-								if (qty_to_allocate == 0) {
+								if (qty_to_allocate <= 0) {
 									break
 								}
 								const batches_gotten = data.message[index];
 								batches_gotten[0]['org_qty'] = batches_gotten[0].qty
-								for (const current_batch_index in dialog_batches) {
-									let current_batch = dialog_batches[current_batch_index]
-									if (current_batch.batch_no == batches_gotten[0].batch_no) {
-										batches_gotten[0].qty -= current_batch.selected_qty
-										batch_used[batches_gotten[0].batch_no] = current_batch_index
-										qty_to_allocate -= current_batch.selected_qty
-									}
-								}
+
+								
+								if (fetch_options == "Longdated Only"&& batches_gotten.shortdated == 1) {
+									continue
+								} else if (fetch_options == "Shortdated Only" && batches_gotten.shortdated == 0) {
+									continue
+								} 
+								
 								if (batches_gotten[0].qty > 0) {
 									if (batches_gotten[0].qty >= qty_to_allocate) {
 										var row_qty = qty_to_allocate
@@ -266,6 +266,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 
 		this.dialog.set_primary_action(__('Insert'), function() {
 			me.values = me.dialog.get_values();
+			// Stop dialog creation
 			if(me.validate()) {
 				frappe.run_serially([
 					() => me.update_batch_items(),
@@ -283,8 +284,9 @@ erpnext.SerialNoBatchSelector = Class.extend({
 					() => {
 						if (cur_dialog) {
 							cur_dialog.hide()
+							// Start dialog creation
 						}
-					} 
+					}
 				])
 			}
 		});
@@ -358,8 +360,11 @@ erpnext.SerialNoBatchSelector = Class.extend({
 	},
 	update_batch_items() {
 		// clones an items if muliple batches are selected.
+		var changed_rows = []
 		if(this.has_batch && !this.has_serial_no) {
+			const batch_list = this.values.batches.map((batch) => batch.batch_no)
 			this.values.batches.map((batch, i) => {
+				console.log(batch_list)
 				let batch_no = batch.batch_no;
 				let row = '';
 				if (i !== 0 && !this.batch_exists(batch_no)) {
@@ -369,9 +374,11 @@ erpnext.SerialNoBatchSelector = Class.extend({
 					} else {
 						row = this.frm.add_child("items", { ...this.item });
 					}
-					
 				} else {
 					row = this.frm.doc.items.find(i => i.batch_no === batch_no);
+				}
+				if (!row) {
+					row = this.frm.doc.items.find(i => i.item_code === this.item_code && batch_list.includes(i.batch_no));
 				}
 
 				if (!row) {
@@ -381,10 +388,24 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				this.map_row_values(row, batch, 'batch_no',
 					'selected_qty', this.values.warehouse);
 				frappe.model.trigger('qty', undefined, row, false)
+				changed_rows.push(row)
+
 			});
+			this.remove_unchanged_items(changed_rows)
 		}
 	},
-
+	remove_unchanged_items(changed_rows) {
+		var index = this.frm.doc.items.length
+		while (index--) {
+			if (index < 0) {
+				break
+			}
+			const element = this.frm.doc.items[index];
+			if (element.item_code === this.item_code && !changed_rows.includes(element)) {
+				this.frm.doc.items.splice(index, 1);
+			}
+		}
+	},
 	update_serial_no_item() {
 		// just updates serial no for the item
 		if(this.has_serial_no && !this.has_batch) {
