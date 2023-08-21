@@ -239,7 +239,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				fieldname: 'fetch_options',
 				default: 0,
 				fieldtype: 'Select',
-				options: ["Shortdated first", "Shortdated Only", "Longdated Only"],
+				options: ["Shortdated First", "Shortdated Only", "Longdated Only"],
 				default: "Longdated Only"
 			},
 			{

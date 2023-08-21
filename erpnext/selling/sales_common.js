@@ -411,14 +411,32 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 			callback: function(r) {
 				// debugger
 				frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
+				if (r.shortdated) {
+					frappe.model.set_value(doc.doctype, doc.name, 'shortdated_batch', 1);
+				} else {
+					frappe.model.set_value(doc.doctype, doc.name, 'shortdated_batch', 0);
+				}
 				if (r.content) {
-					me.batch_selection(doc, r.content);
+					me.batch_selection(doc, r.content, r.lock_dialog, r.dialog_type);
 				}
 
 			}
 		});
 	},
-	batch_selection: function(doc, content) {
+	batch_selection: function(doc, content, lock, dialog_type) {
+		let secondary_label = ""
+		switch (dialog_type) {
+			case "multi":
+				secondary_label = "Cancel"
+				break;
+			case "longdated":
+				secondary_label = "Keep as Longdated" 
+				break;
+			case "shortdated":
+				secondary_label = "Keep as Shortdated" 
+				break;
+		}
+		
 		let me = this
 		let this_frm = doc
 		let d = new frappe.ui.Dialog({
@@ -428,9 +446,14 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 					fieldtype: 'HTML',
 				}
 			],
+			static: lock ? true : false,
 			primary_action_label: 'Select Batch',
 			primary_action(values) {
 				erpnext.show_serial_batch_selector(me.frm, this_frm, "", undefined, true);
+			},
+			secondary_action_label: secondary_label,
+			secondary_action(values) {
+				d.hide()
 			}
 		});
 		d.fields_dict.html.$wrapper.append(content)
