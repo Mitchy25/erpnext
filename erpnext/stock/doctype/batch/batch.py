@@ -339,7 +339,6 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 		final_html = panels + table_html
 		# frappe.msgprint(final_html)
 		frappe.response.content = final_html
-		frappe.response.lock_dialog = True
 		frappe.response.dialog_type = "multi"
 		if throw:
 			raise UnableToSelectBatchError
@@ -382,7 +381,6 @@ def get_longdated_content(batches, batch_no, item_code, alert_date, getdate):
 			<div class="panel-heading" style="text-align:center"><h3 style="color: green;">ShortDated Batches Available for: { item_code }</h3></div>
 			<div class="panel-body">
 				<p>The batch <b>{batch_no}</b> currently selected is a long dated batch but there exists shortdated batches within our system. <br> Please confirm that this is correct and if not please select a batch that is short-dated.</p>
-				<p>If it is correct you can click out of this dialog.</p>
 		</div>
 	"""
 	return table_html + panels
@@ -405,7 +403,6 @@ def get_expiry_content(batch_id, qty, expiry_date, item_code):
 			<div class="panel-heading" style="text-align:center"><h3 style="color: red;">ShortDated Batch selected for: { item_code }</h3></div>
 			<div class="panel-body">
 				<p>The batch {batch_id} is a short dated batch. <br> Please confirm that this is correct and if not please select a batch that is not short-dated .</p>
-				<p>If it is correct you can click out of this dialog.</p>
 		</div>
 	"""
 	return table_html + panels
