@@ -446,7 +446,7 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 					fieldtype: 'HTML',
 				}
 			],
-			static: lock ? true : false,
+			static: true,
 			primary_action_label: 'Select Batch',
 			primary_action(values) {
 				erpnext.show_serial_batch_selector(me.frm, this_frm, "", undefined, true);

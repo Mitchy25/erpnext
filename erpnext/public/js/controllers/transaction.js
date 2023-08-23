@@ -1408,7 +1408,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									} else {
 										d.pricing_rules = ''
 									}
-									if (d.free_item_data) {
+									if (d.free_item_data && !d.is_free_item) {
 										me.apply_product_discount(d);
 									}
 								},
