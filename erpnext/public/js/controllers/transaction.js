@@ -1840,7 +1840,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			} else if(!d.pricing_rules) {
 				me.remove_pricing_rule(frappe.get_doc(d.doctype, d.name));
 			}
-
+			
 			if (d.free_item_data) {
 				me.apply_product_discount(d);
 			}
@@ -1863,7 +1863,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		for(var k in args) {
 			let data = args[k];
 			me.frm.doc.items.forEach(item => {
-				if(item["ignore_pricing_rules"] != 1){
+				if(item["ignore_pricing_rules"] != 1 && item["is_free_item"] != 1){
 					if(!me.set_items.includes(item.name) && data.apply_rule_on_other_items.includes(item[data.apply_rule_on])){
 						me.get_and_set_item_details(me.frm.doc, data.doctype, item.name)
 						me.set_items.push(item.name)
@@ -1895,8 +1895,17 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 	},
 
 	apply_product_discount: function(args) {
+		
 		const items = this.frm.doc.items.filter(d => (d.is_free_item)) || [];
-		var exist_items = items.map(row => row.item_code + "-" + JSON.stringify(JSON.parse(row.pricing_rules)));
+
+		var exist_items = items.map(row => {
+			if (row.pricing_rules) {
+				return row.item_code + "-" + JSON.stringify(JSON.parse(row.pricing_rules))
+			} else {
+				return ""
+			}
+		})
+		exist_items = exist_items.filter((str) => str.length > 0)
 		exist_items = exist_items.flat()
 		
 
@@ -1905,34 +1914,38 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			var adjust = 0;
 			
 			if (typeof pr_row.pricing_rules === 'string' || pr_row.pricing_rules instanceof String) {
-				var test_var = [pr_row.pricing_rules]
+				pr_row.pricing_rules = JSON.stringify([pr_row.pricing_rules])
 			} else {
-				var test_var = pr_row.pricing_rules
+				pr_row.pricing_rules = JSON.stringify(pr_row.pricing_rules)
 			}
-
-			if (!items || !in_list(exist_items, (pr_row.item_code + "-" + JSON.stringify(test_var)))) {
+			
+			if (!items || !in_list(exist_items, (pr_row.item_code + "-" + pr_row.pricing_rules))) {
+				
 				row_to_modify = frappe.model.add_child(this.frm.doc,this.frm.doc.doctype + ' Item', 'items');
 				//@Stan - Perhaps we need to use get_basic_details here to get Income Acc?
 			} else if(items) {
 				
 				row_to_modify = items.filter(d => {
 					const multipleexist = JSON.parse(d.pricing_rules).every(value => {
-						return test_var.includes(value);
+						return pr_row.pricing_rules.includes(value);
 					});
 					return (d.item_code === pr_row.item_code && multipleexist)
 				});
 				adjust = 1
 			}
+			
 			if(!("income_account" in row_to_modify)) {
 				row_to_modify["income_account"] = args["income_account"]
 			}
 			if(!("expense_account" in row_to_modify)) {
 				row_to_modify["expense_account"] = args["expense_account"]
 			}
+			
 			for (let key in pr_row) {
 				if (adjust){
 					this.frm.doc.items[row_to_modify[0].idx-1][key] = pr_row[key]
 				} else {
+					
 					row_to_modify[key] = pr_row[key];
 				}
 				
