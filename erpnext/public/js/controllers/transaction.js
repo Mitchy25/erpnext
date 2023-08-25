@@ -1408,8 +1408,13 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									} else {
 										d.pricing_rules = ''
 									}
-									if (d.free_item_data && !d.is_free_item) {
-										me.apply_product_discount(d);
+									if (d.free_item_data) {
+										if (!d.is_free_item) {
+											me.apply_product_discount(d);
+										} else {
+											delete d['free_item_data']
+										}
+										
 									}
 								},
 								() => {
@@ -1891,17 +1896,31 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 	apply_product_discount: function(args) {
 		const items = this.frm.doc.items.filter(d => (d.is_free_item)) || [];
-		var exist_items = items.map(row => row.item_code + "-" + row.pricing_rules);
+		var exist_items = items.map(row => row.item_code + "-" + JSON.stringify(JSON.parse(row.pricing_rules)));
 		exist_items = exist_items.flat()
+		
 
 		args.free_item_data.forEach(pr_row => {
 			let row_to_modify = {};
 			var adjust = 0;
-			if (!items || !in_list(exist_items, (pr_row.item_code + "-" + pr_row.pricing_rules))) {
+			
+			if (typeof pr_row.pricing_rules === 'string' || pr_row.pricing_rules instanceof String) {
+				var test_var = [pr_row.pricing_rules]
+			} else {
+				var test_var = pr_row.pricing_rules
+			}
+
+			if (!items || !in_list(exist_items, (pr_row.item_code + "-" + JSON.stringify(test_var)))) {
 				row_to_modify = frappe.model.add_child(this.frm.doc,this.frm.doc.doctype + ' Item', 'items');
 				//@Stan - Perhaps we need to use get_basic_details here to get Income Acc?
 			} else if(items) {
-				row_to_modify = items.filter(d => (d.item_code === pr_row.item_code	&& d.pricing_rules === pr_row.pricing_rules));
+				
+				row_to_modify = items.filter(d => {
+					const multipleexist = JSON.parse(d.pricing_rules).every(value => {
+						return test_var.includes(value);
+					});
+					return (d.item_code === pr_row.item_code && multipleexist)
+				});
 				adjust = 1
 			}
 			if(!("income_account" in row_to_modify)) {
@@ -1922,7 +1941,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		});
 		this.remove_missing_products(args);
 		// free_item_data is a temporary variable
-		args.free_item_data = '';
+		delete args['free_item_data']
 		refresh_field('items');
 	},
 	remove_missing_products: function(args) {
@@ -1937,9 +1956,10 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			try {
 				free_item_rule = JSON.parse(free_item['pricing_rules']);
 			} catch (e) {
-				free_item_rule = [free_item['pricing_rules']];
+				free_item_rule = free_item['pricing_rules'];
 			}
-			let found = false
+			let found = true
+			
 			for (let normal_index = 0; normal_index < normal_items.length; normal_index++) {
 				const normal_item = normal_items[normal_index];
 				let normal_item_rule
@@ -1948,13 +1968,27 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 				} catch (e) {
 					normal_item_rule = [normal_item['pricing_rules']];
 				}
-				if (normal_item_rule.includes(free_item_rule[0])) {
-					found = true
+				let found = true
+				
+				if (typeof free_item_rule === 'string' || free_item_rule instanceof String) {
+					if (!normal_item_rule.includes(free_item_rule)) {
+						found = false
+					}	
+				} else {
+					free_item_rule.forEach(element => {
+						if (!normal_item_rule.includes(element)) {
+							found = false
+						}	
+					});
+				}
+				
+				if (found) {
 					break
 				}
+				
 			}
 			if (!found) {
-				this.frm.fields_dict["items"].grid.grid_rows[free_item.idx - 1].remove();
+				this.frm.doc.items.splice(free_item.idx - 1, 1);
 			}
 			
 		}
