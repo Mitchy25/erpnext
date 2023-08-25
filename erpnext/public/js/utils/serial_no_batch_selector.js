@@ -219,6 +219,9 @@ erpnext.SerialNoBatchSelector = Class.extend({
 									fetch_html += `${batches_gotten[0].batch_no} is Shortdated.<br>`
 								}
 							}
+							if (this.dialog.fields_dict.batches.df.data.length == 0) {
+								fetch_html += `<b>No batches found that are ${fetch_options}</b>`
+							}
 							this.dialog.fields_dict.auto_fetch_html.$wrapper.html(
 								`<div style="color=${frappe.ui.color.get('red')}"> ${fetch_html} </div>`
 					);
