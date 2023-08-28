@@ -650,7 +650,11 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 
 	qty = pricing_rule.free_qty or 1
 	if pricing_rule.is_recursive:
-		transaction_qty = args.get("qty") if args else doc.total_qty
+		if pricing_rule.mixed_conditions:
+			pr_doc = frappe.get_doc("Pricing Rule", pricing_rule.name)
+			transaction_qty, item_amt, items = get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args)
+		else:
+			transaction_qty = args.get("qty") if args else doc.total_qty
 		if transaction_qty:
 			qty = math.floor((flt(transaction_qty) * qty)/pricing_rule.min_qty)
 
