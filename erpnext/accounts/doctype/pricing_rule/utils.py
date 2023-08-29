@@ -101,7 +101,7 @@ def filter_pricing_rule_based_on_condition(pricing_rules, doc=None, args = None)
 		for pricing_rule in pricing_rules:
 			if pricing_rule.condition:
 				try:
-					if frappe.safe_eval(pricing_rule.condition, None, {'doc': doc.as_dict(), 'item': args}):
+					if frappe.safe_eval(pricing_rule.condition, None, {'doc': doc.as_dict(), 'args': args}):
 						filtered_pricing_rules.append(pricing_rule)
 				except Exception:
 					pass
@@ -650,7 +650,11 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 
 	qty = pricing_rule.free_qty or 1
 	if pricing_rule.is_recursive:
-		transaction_qty = args.get("qty") if args else doc.total_qty
+		if pricing_rule.mixed_conditions:
+			pr_doc = frappe.get_doc("Pricing Rule", pricing_rule.name)
+			transaction_qty, item_amt, items = get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args)
+		else:
+			transaction_qty = args.get("qty") if args else doc.total_qty
 		if transaction_qty:
 			qty = math.floor((flt(transaction_qty) * qty)/pricing_rule.min_qty)
 
@@ -686,9 +690,12 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 
 def apply_pricing_rule_for_free_items(doc, pricing_rule_args, set_missing_values=False):
 	if pricing_rule_args:
-		items = tuple((d.item_code, d.pricing_rules) for d in doc.items if d.is_free_item)
-
+		items = tuple((d.item_code, json.dumps(json.loads(d.pricing_rules))) for d in doc.items if d.is_free_item)
+		
 		for args in pricing_rule_args:
+			if args.get("pricing_rules") :
+				args["pricing_rules"] = json.dumps([args.get("pricing_rules")])
+				test = args["pricing_rules"]
 			if not items or (args.get("item_code"), args.get("pricing_rules")) not in items:
 				doc.append("items", args)
 
