@@ -101,7 +101,7 @@ def filter_pricing_rule_based_on_condition(pricing_rules, doc=None, args = None)
 		for pricing_rule in pricing_rules:
 			if pricing_rule.condition:
 				try:
-					if frappe.safe_eval(pricing_rule.condition, None, {'doc': doc.as_dict(), 'item': args}):
+					if frappe.safe_eval(pricing_rule.condition, None, {'doc': doc.as_dict(), 'args': args}):
 						filtered_pricing_rules.append(pricing_rule)
 				except Exception:
 					pass
