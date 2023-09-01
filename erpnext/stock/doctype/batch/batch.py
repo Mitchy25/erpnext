@@ -102,7 +102,7 @@ class Batch(Document):
 			else:
 				frappe.throw(_("Batch ID is mandatory"), frappe.MandatoryError)
 
-		self.name = self.expiry_date + "/" + self.batch_id
+		self.name = self.batch_id
 
 	def onload(self):
 		self.image = frappe.db.get_value("Item", self.item, "image")
@@ -497,3 +497,281 @@ def get_pos_reserved_batch_qty(filters):
 
 	flt_reserved_batch_qty = flt(reserved_batch_qty[0][0])
 	return flt_reserved_batch_qty
+
+
+@frappe.whitelist()
+def allocate_batches_table(doc, item_code, warehouse, type_required, qty_required):
+	from erpnext.accounts.doctype.pricing_rule.utils import get_pricing_rules
+	import datetime
+	import json
+	org_qty_required = float(qty_required)
+	qty_required = float(qty_required)
+	fetch_html = ""
+
+	doc = json.loads(doc)
+
+	batches = get_batches_by_oldest(item_code, warehouse)
+
+	batches = [batch for batch in batches if batch[0]['qty'] > 0]
+	batch_dict = {}
+	for batch in batches:
+		batch_date = batch[1]
+		if batch_date < datetime.date.today() + datetime.timedelta(days=365):
+			batch[0]['shortdated'] = 1
+		else:
+			batch[0]['shortdated'] = 0
+		if type_required == "Longdated Only" and batch[0]['shortdated'] == 1:
+			continue
+		elif type_required == "Shortdated Only" and batch[0]['shortdated'] == 0:
+			continue
+		batch[0]['result_qty'] = 0
+		batch_dict[batch[0]['batch_no']] = batch
+		
+
+
+	items_from_table = []
+	remove_from_list = []
+	result_items = []
+	free_items_from_table = []
+	free_pricing_rules = []
+	pricing_rules = []
+	brand = None
+	item_group = None
+
+
+
+	pricing_rules = convert_to_set([i['pricing_rules'] for i in doc['items'] if i['item_code'] == item_code and 'ignore_pricing_rules' not in i and i['pricing_rules']])
+	pricing_rules = list(pricing_rules)
+	
+	if pricing_rules:
+		sql = """
+		SELECT name, min_qty, max_qty from `tabPricing Rule` where name IN %(data)s 
+		"""
+		pricing_rule_info = frappe.db.sql(sql, {'data':tuple(pricing_rules)}, as_dict=True, debug=True)
+		
+		pricing_rule_dict = {}
+		for rule in pricing_rule_info:
+			pricing_rule_dict[rule['name']] = {'min_qty':rule['min_qty'],'max_qty':rule['max_qty']}
+
+	qty_in_list = 0
+
+
+	for i in doc['items']:
+		if i['item_code'] == item_code:
+			if not brand:
+				brand = i['brand']
+			if not item_group:
+				item_group = i['item_group']
+			i["qty"] = float(i["qty"])
+			item = {
+				'name': i['name'],
+				'qty': i["qty"],
+				'pricing_rules': i['pricing_rules'],
+				"ignore_pricing_rule": doc['ignore_pricing_rule'],
+				
+				"brand": brand,
+				"brand": brand,
+				"item_group": item_group,
+				"rate": i['rate'],
+				"discount_percentage": i['discount_percentage'],
+				'ignore_pricing_rules': 0
+			}
+			if "batch_no" in i:
+				item['batch_no'] = i["batch_no"]
+				item['shortdated_batch'] = i["shortdated_batch"]
+			if i['is_free_item'] == 0:
+				add_to_list = False
+				if i['batch_no']:
+					if i['batch_no'] not in batch_dict:
+						continue
+					add_to_list = True
+				elif (i['pricing_rules']):
+					add_to_list = True
+					for rule in json.loads(i['pricing_rules']):
+						if pricing_rule_dict[rule]['max_qty'] > 0:
+							if "max_qty" not in item:
+								item['max_qty'] = pricing_rule_dict[rule]['max_qty']
+				if 'ignore_pricing_rules' in i:
+					item['ignore_pricing_rules'] = i['ignore_pricing_rules']
+					add_to_list = True
+
+				if add_to_list:
+					qty_in_list += i['qty']
+					items_from_table.append(item)
+	items_from_table = sorted(items_from_table, key=lambda k: (k['batch_no'].lower(), k['qty']), reverse=True)
+	results = []
+	for key in batch_dict:
+		if qty_required <= 0:
+			break
+		batches_gotten = batch_dict[key][0]
+		
+		batches_gotten['org_qty'] = batches_gotten['qty']
+		batch_no = batches_gotten['batch_no']
+
+		batch_qty = batches_gotten['qty']
+		print(f"batch_qty: {batch_qty}")
+		if batch_qty > 0:
+			if batch_qty >= qty_required:
+				row_qty = qty_required
+			else:
+				row_qty = batch_qty
+				batch_qty = 0
+			results.append({
+				'name':'new',
+				'batch_no': batch_no,
+				'available_qty': batches_gotten['org_qty'],
+				'qty': row_qty,
+				"ignore_pricing_rule": "0",
+				"shortdated_batch": batches_gotten['shortdated'],
+				"brand": brand,
+				"item_group": item_group,
+			})
+			qty_required -= row_qty
+			print(qty_required)
+		
+		batches_gotten['qty'] = batch_qty
+
+	for item in items_from_table:
+		max_qty = float('inf')
+		min_qty = 0
+		if item['pricing_rules']:
+			pricing_rules = json.loads(item['pricing_rules'])
+			for rule in pricing_rules:
+				pr_max_qty = pricing_rule_dict[rule]['max_qty']
+				if pr_max_qty == 0:
+					pr_max_qty = float('inf')
+				max_qty = min(max_qty, pr_max_qty)
+
+				pr_min_qty = pricing_rule_dict[rule]['max_qty']
+				min_qty = max(min_qty, pr_min_qty)
+		for i in range(len(results)):
+			result = results[i]
+			if result['name'] != "new":
+				continue 
+			if result['batch_no'] == item['batch_no'] or batch_dict[item['batch_no']][0]['result_qty'] >= batch_dict[item['batch_no']][0]['org_qty']:
+				if min_qty <= result['qty']:
+					if max_qty >= result['qty']:
+						result['name'] = item['name']
+						batch_dict[result['batch_no']][0]['result_qty'] += result['qty']
+						break
+					else:
+						item['qty'], result['qty']  = result['qty'], max_qty
+						result['name'] = item['name']
+						batch_dict[result['batch_no']][0]['result_qty'] += result['qty']
+						results.append(result.copy())
+						result['qty'] = item['qty'] - result['qty']
+						result['name'] = "new"
+						break
+					batch_dict[result['batch_no']][0]['result_qty'] += result['name'] 
+	
+	org_items = [i for i in doc['items'].copy() if i['item_code'] == item_code and i['is_free_item']]
+	doc['items'] = [i for i in doc['items'] if i['item_code'] != item_code ]
+	free_item_results = {}
+	for item in results:
+		data = {}
+		data.update(item)
+		# args.update({
+		# 	"doctype": item.doctype,
+		# 	"parent": doc['doctype'],
+		# 	"transaction_type": "selling",
+		# 	"price_list": doc['selling_price_list'],
+		# 	"customer_group": doc['customer_group'],
+		# 	"company": doc["company"],
+		# })
+		data.update({
+			"item_code":item_code,
+			"brand": brand ,
+			"qty": item['qty'],
+			"stock_qty": item['qty'],
+			"transaction_type": "selling",
+			"price_list": doc["selling_price_list"],
+			"customer_group": doc["customer_group"],
+			"company": doc["company"],
+			"conversion_rate": 1,
+			"for_shopping_cart": True,
+			"currency": frappe.db.get_value("Price List", doc['selling_price_list'], "currency"),
+			"customer": doc['customer'],
+			"transaction_date": doc['posting_date'],
+			"territory": doc['territory']
+		})
+
+		pricing_rules = get_pricing_rules(args=frappe._dict(data),doc=frappe._dict(doc))
+		for pricing_rule in pricing_rules:
+			if pricing_rule["price_or_product_discount"] == "Product":
+				found = False
+				for i in org_items:
+					if pricing_rule['name'] in json.loads(i['pricing_rules']):
+						if pricing_rule['same_item'] or pricing_rule['free_item'] == item_code:
+							if pricing_rule['name'] in free_item_results:
+								qty_required -= free_item_results[pricing_rule['name']]['qty']
+
+							i['qty'] = pricing_rule["free_qty"]
+							i.update({
+								'is_free_item': "True",
+								"pricing_rules": json.dumps([pricing_rule['name']])
+							})
+							free_item_results[pricing_rule['name']] = i
+							found = True
+							break
+				
+				if not found:
+					if pricing_rule['same_item'] or pricing_rule['free_item'] == item_code:
+						if pricing_rule['name'] in free_item_results:
+							qty_required -= free_item_results[pricing_rule['name']]['qty']
+
+						free_item_results[pricing_rule['name']] = {
+							'item_code': item_code,
+							'qty': pricing_rule["free_qty"],
+							'name':'new',
+							'is_free_item': "True",
+							"pricing_rules": json.dumps([pricing_rule['name']])
+						}
+						
+				qty_required += pricing_rule["free_qty"]
+
+	for key in batch_dict:
+		if qty_required <= 0:
+			break
+		batches_gotten = batch_dict[key][0]
+		batches_gotten['org_qty'] = batches_gotten['qty']
+		batch_no = batches_gotten['batch_no']
+		batch_qty = batches_gotten['qty']
+		
+		for key, value in free_item_results.items():
+			if batch_qty <= 0:
+				break
+			if value['qty'] > batch_qty:
+				pass
+			else:
+				value['batch_no'] = batches_gotten['batch_no']
+				batch_qty -= value['qty']
+				qty_required -= value['qty']
+				results.append(value)
+		batches_gotten['qty'] = batch_qty
+	actual_results = []
+	for result in results:
+		value = {
+			"qty":result['qty'], 
+			"name":result['name'], 
+			"batch_no":result['batch_no']
+		}
+		if "pricing_rules" in result:
+			value["pricing_rules"] = result["pricing_rules"]
+		if "is_free_item" in result:
+			value["results_free_item"] = result["is_free_item"]
+		actual_results.append(value)
+	breakpoint()
+	return [actual_results, qty_remaining]
+
+def convert_to_set(strings_list):
+    import json
+    result_set = set()
+    for item in strings_list:
+        try:
+            # Try to convert the item from a string to a list
+            item_list = json.loads(item)
+            if isinstance(item_list, list):
+                result_set.update(item_list)
+        except ValueError:
+            result_set.add(item)
+    return result_set
