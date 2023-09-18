@@ -152,7 +152,7 @@ def get_columns(filters):
 		{
 			"label": _('Rebate (SalePrice - WS)'),
 			"fieldname": "commission_wholesale",
-			"fieldtype": "Currency",
+			"fieldtype": "Data",
 			"width": 120
 		}
 		# {
@@ -249,7 +249,7 @@ def get_conditions(filters, date_field):
 
 
 def calculate_ws_commission(entries):
-	
+	from frappe.utils import flt
 	invoices = [i['name'] for i in entries]
 	if not invoices:
 		return
@@ -265,7 +265,10 @@ def calculate_ws_commission(entries):
 		if not item["name"] in item_dict or item["item_code"] not in item_dict[item["name"]]:
 			item["commission_wholesale"] = 0
 		else:
-			item["commission_wholesale"] = item["amount"] - item_dict[item["name"]][item["item_code"]]
+			if item_dict[item["name"]][item["item_code"]]== 0:
+				item["commission_wholesale"] = "No WS Price"
+			else:
+				item["commission_wholesale"] = "$ " + str(flt(item["amount"] - item_dict[item["name"]][item["item_code"]], 2))
 	return entries
 
 
