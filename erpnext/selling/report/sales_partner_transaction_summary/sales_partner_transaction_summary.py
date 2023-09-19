@@ -4,6 +4,7 @@
 
 import frappe
 from frappe import _, msgprint
+from frappe.utils import get_url
 
 def execute(filters=None):
 	if not filters:
@@ -152,7 +153,7 @@ def get_columns(filters):
 		{
 			"label": _('Rebate (SalePrice - WS)'),
 			"fieldname": "commission_wholesale",
-			"fieldtype": "Data",
+			"fieldtype": "Currency",
 			"width": 120
 		}
 		# {
@@ -266,9 +267,10 @@ def calculate_ws_commission(entries):
 			item["commission_wholesale"] = 0
 		else:
 			if item_dict[item["name"]][item["item_code"]]== 0:
-				item["commission_wholesale"] = "No WS Price"
+				msgprint("No wholesale price for <a href='" + get_url() + "/app/item/" + item["item_code"] + "' target='_blank'>" + item["item_code"] + "</a>. Please set a wholesale price and then re-run report")
+				entries = []
 			else:
-				item["commission_wholesale"] = "$ " + str(flt(item["amount"] - item_dict[item["name"]][item["item_code"]], 2))
+				item["commission_wholesale"] = flt(item["amount"] - item_dict[item["name"]][item["item_code"]], 2)
 	return entries
 
 
