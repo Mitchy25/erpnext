@@ -126,6 +126,11 @@ frappe.ui.form.on('Batch', {
 							fieldname: 'new_batch_id',
 							label: __('New Batch ID (Optional)'),
 							fieldtype: 'Data',
+						},
+						{
+							fieldname: 'new_batch_expiry',
+							label: __('New Batch Expiry'),
+							fieldtype: 'Date',
 						}],
 						(data) => {
 							frappe.call({
@@ -135,7 +140,8 @@ frappe.ui.form.on('Batch', {
 									batch_no: frm.doc.name,
 									qty: data.qty,
 									warehouse: $btn.attr('data-warehouse'),
-									new_batch_id: data.new_batch_id
+									new_batch_id: data.new_batch_id,
+									new_batch_expiry: data.new_batch_expiry
 								},
 								callback: (r) => {
 									frm.refresh();

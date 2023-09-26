@@ -216,9 +216,9 @@ def get_batches_by_oldest(item_code, warehouse):
 
 
 @frappe.whitelist()
-def split_batch(batch_no, item_code, warehouse, qty, new_batch_id=None):
+def split_batch(batch_no, item_code, warehouse, qty, new_batch_id=None, new_batch_expiry=None):
 	"""Split the batch into a new batch"""
-	batch = frappe.get_doc(dict(doctype="Batch", item=item_code, batch_id=new_batch_id)).insert()
+	batch = frappe.get_doc(dict(doctype="Batch", item=item_code, batch_id=new_batch_id, expiry_date=new_batch_expiry)).insert()
 
 	company = frappe.db.get_value(
 		"Stock Ledger Entry",
@@ -342,6 +342,7 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 		frappe.response.content = final_html
 		frappe.response.dialog_type = "multi"
 		if throw:
+			#TODO: Issue raised here
 			raise UnableToSelectBatchError
 	else:
 		
@@ -500,279 +501,302 @@ def get_pos_reserved_batch_qty(filters):
 	return flt_reserved_batch_qty
 
 
-# @frappe.whitelist()
-# def allocate_batches_table(doc, item_code, warehouse, type_required, qty_required):
-# 	from erpnext.accounts.doctype.pricing_rule.utils import get_pricing_rules
-# 	import datetime
-# 	import json
-# 	org_qty_required = float(qty_required)
-# 	qty_required = float(qty_required)
-# 	fetch_html = ""
-
-# 	doc = json.loads(doc)
-
-# 	batches = get_batches_by_oldest(item_code, warehouse)
-
-# 	batches = [batch for batch in batches if batch[0]['qty'] > 0]
-# 	batch_dict = {}
-# 	for batch in batches:
-# 		batch_date = batch[1]
-# 		if batch_date < datetime.date.today() + datetime.timedelta(days=365):
-# 			batch[0]['shortdated'] = 1
-# 		else:
-# 			batch[0]['shortdated'] = 0
-# 		if type_required == "Longdated Only" and batch[0]['shortdated'] == 1:
-# 			continue
-# 		elif type_required == "Shortdated Only" and batch[0]['shortdated'] == 0:
-# 			continue
-# 		batch[0]['result_qty'] = 0
-# 		batch_dict[batch[0]['batch_no']] = batch
-		
-
-
-# 	items_from_table = []
-# 	remove_from_list = []
-# 	result_items = []
-# 	free_items_from_table = []
-# 	free_pricing_rules = []
-# 	pricing_rules = []
-# 	brand = None
-# 	item_group = None
-
-
-
-# 	pricing_rules = convert_to_set([i['pricing_rules'] for i in doc['items'] if i['item_code'] == item_code and 'ignore_pricing_rules' not in i and i['pricing_rules']])
-# 	pricing_rules = list(pricing_rules)
+@frappe.whitelist()
+def allocate_batches_table(doc, item_code, warehouse, type_required, qty_required):
+	from erpnext.accounts.doctype.pricing_rule.pricing_rule import (
+			get_pricing_rule_for_item
+	)
+	from erpnext.stock.get_item_details import get_price_list_rate_for
+	from erpnext.accounts.doctype.pricing_rule.utils import (
+		get_pricing_rules,
+		get_product_discount_rule,
+	)
+	import datetime
+	import json
+	qty_required = float(qty_required)
+	doc = json.loads(doc)
+	price_list_rate = get_price_list_rate_for({"price_list":doc['selling_price_list'], 'item_code':item_code, "customer":doc['customer']},item_code)
 	
-# 	if pricing_rules:
-# 		sql = """
-# 		SELECT name, min_qty, max_qty from `tabPricing Rule` where name IN %(data)s 
-# 		"""
-# 		pricing_rule_info = frappe.db.sql(sql, {'data':tuple(pricing_rules)}, as_dict=True, debug=True)
-		
-# 		pricing_rule_dict = {}
-# 		for rule in pricing_rule_info:
-# 			pricing_rule_dict[rule['name']] = {'min_qty':rule['min_qty'],'max_qty':rule['max_qty']}
-
-# 	qty_in_list = 0
-
-
-# 	for i in doc['items']:
-# 		if i['item_code'] == item_code:
-# 			if not brand:
-# 				brand = i['brand']
-# 			if not item_group:
-# 				item_group = i['item_group']
-# 			i["qty"] = float(i["qty"])
-# 			item = {
-# 				'name': i['name'],
-# 				'qty': i["qty"],
-# 				'pricing_rules': i['pricing_rules'],
-# 				"ignore_pricing_rule": doc['ignore_pricing_rule'],
-				
-# 				"brand": brand,
-# 				"brand": brand,
-# 				"item_group": item_group,
-# 				"rate": i['rate'],
-# 				"discount_percentage": i['discount_percentage'],
-# 				'ignore_pricing_rules': 0
-# 			}
-# 			if "batch_no" in i:
-# 				item['batch_no'] = i["batch_no"]
-# 				item['shortdated_batch'] = i["shortdated_batch"]
-# 			if i['is_free_item'] == 0:
-# 				add_to_list = False
-# 				if i['batch_no']:
-# 					if i['batch_no'] not in batch_dict:
-# 						continue
-# 					add_to_list = True
-# 				elif (i['pricing_rules']):
-# 					add_to_list = True
-# 					for rule in json.loads(i['pricing_rules']):
-# 						if pricing_rule_dict[rule]['max_qty'] > 0:
-# 							if "max_qty" not in item:
-# 								item['max_qty'] = pricing_rule_dict[rule]['max_qty']
-# 				if 'ignore_pricing_rules' in i:
-# 					item['ignore_pricing_rules'] = i['ignore_pricing_rules']
-# 					add_to_list = True
-
-# 				if add_to_list:
-# 					qty_in_list += i['qty']
-# 					items_from_table.append(item)
-# 	items_from_table = sorted(items_from_table, key=lambda k: (k['batch_no'].lower(), k['qty']), reverse=True)
-# 	results = []
-# 	for key in batch_dict:
-# 		if qty_required <= 0:
-# 			break
-# 		batches_gotten = batch_dict[key][0]
-		
-# 		batches_gotten['org_qty'] = batches_gotten['qty']
-# 		batch_no = batches_gotten['batch_no']
-
-# 		batch_qty = batches_gotten['qty']
-# 		print(f"batch_qty: {batch_qty}")
-# 		if batch_qty > 0:
-# 			if batch_qty >= qty_required:
-# 				row_qty = qty_required
-# 			else:
-# 				row_qty = batch_qty
-# 				batch_qty = 0
-# 			results.append({
-# 				'name':'new',
-# 				'batch_no': batch_no,
-# 				'available_qty': batches_gotten['org_qty'],
-# 				'qty': row_qty,
-# 				"ignore_pricing_rule": "0",
-# 				"shortdated_batch": batches_gotten['shortdated'],
-# 				"brand": brand,
-# 				"item_group": item_group,
-# 			})
-# 			qty_required -= row_qty
-# 			print(qty_required)
-		
-# 		batches_gotten['qty'] = batch_qty
-
-# 	for item in items_from_table:
-# 		max_qty = float('inf')
-# 		min_qty = 0
-# 		if item['pricing_rules']:
-# 			pricing_rules = json.loads(item['pricing_rules'])
-# 			for rule in pricing_rules:
-# 				pr_max_qty = pricing_rule_dict[rule]['max_qty']
-# 				if pr_max_qty == 0:
-# 					pr_max_qty = float('inf')
-# 				max_qty = min(max_qty, pr_max_qty)
-
-# 				pr_min_qty = pricing_rule_dict[rule]['max_qty']
-# 				min_qty = max(min_qty, pr_min_qty)
-# 		for i in range(len(results)):
-# 			result = results[i]
-# 			if result['name'] != "new":
-# 				continue 
-# 			if result['batch_no'] == item['batch_no'] or batch_dict[item['batch_no']][0]['result_qty'] >= batch_dict[item['batch_no']][0]['org_qty']:
-# 				if min_qty <= result['qty']:
-# 					if max_qty >= result['qty']:
-# 						result['name'] = item['name']
-# 						batch_dict[result['batch_no']][0]['result_qty'] += result['qty']
-# 						break
-# 					else:
-# 						item['qty'], result['qty']  = result['qty'], max_qty
-# 						result['name'] = item['name']
-# 						batch_dict[result['batch_no']][0]['result_qty'] += result['qty']
-# 						results.append(result.copy())
-# 						result['qty'] = item['qty'] - result['qty']
-# 						result['name'] = "new"
-# 						break
-# 					batch_dict[result['batch_no']][0]['result_qty'] += result['name'] 
+	#Get batches and turn into dict
+	def get_batch():
+		batches = get_batches_by_oldest(item_code, warehouse)
+		batches = [batch for batch in batches if batch[0]['qty'] > 0]
+		batch_dict = {}
+		for batch in batches:
+			batch_date = batch[1]
+			if batch_date < datetime.date.today() + datetime.timedelta(days=365):
+				batch[0]['shortdated'] = 1
+			else:
+				batch[0]['shortdated'] = 0
+			if type_required == "Longdated Only" and batch[0]['shortdated'] == 1:
+				continue
+			elif type_required == "Shortdated Only" and batch[0]['shortdated'] == 0:
+				continue
+			batch[0]['result_qty'] = 0
+			batch[0]['org_qty'] = batch[0]['qty']
+			batch_dict[batch[0]['batch_no']] = batch
+		return batch_dict
 	
-# 	org_items = [i for i in doc['items'].copy() if i['item_code'] == item_code and i['is_free_item']]
-# 	doc['items'] = [i for i in doc['items'] if i['item_code'] != item_code ]
-# 	free_item_results = {}
-# 	for item in results:
-# 		data = {}
-# 		data.update(item)
-# 		# args.update({
-# 		# 	"doctype": item.doctype,
-# 		# 	"parent": doc['doctype'],
-# 		# 	"transaction_type": "selling",
-# 		# 	"price_list": doc['selling_price_list'],
-# 		# 	"customer_group": doc['customer_group'],
-# 		# 	"company": doc["company"],
-# 		# })
-# 		data.update({
-# 			"item_code":item_code,
-# 			"brand": brand ,
-# 			"qty": item['qty'],
-# 			"stock_qty": item['qty'],
-# 			"transaction_type": "selling",
-# 			"price_list": doc["selling_price_list"],
-# 			"customer_group": doc["customer_group"],
-# 			"company": doc["company"],
-# 			"conversion_rate": 1,
-# 			"for_shopping_cart": True,
-# 			"currency": frappe.db.get_value("Price List", doc['selling_price_list'], "currency"),
-# 			"customer": doc['customer'],
-# 			"transaction_date": doc['posting_date'],
-# 			"territory": doc['territory']
-# 		})
-
-# 		pricing_rules = get_pricing_rules(args=frappe._dict(data),doc=frappe._dict(doc))
-# 		for pricing_rule in pricing_rules:
-# 			if pricing_rule["price_or_product_discount"] == "Product":
-# 				found = False
-# 				for i in org_items:
-# 					if pricing_rule['name'] in json.loads(i['pricing_rules']):
-# 						if pricing_rule['same_item'] or pricing_rule['free_item'] == item_code:
-# 							if pricing_rule['name'] in free_item_results:
-# 								qty_required -= free_item_results[pricing_rule['name']]['qty']
-
-# 							i['qty'] = pricing_rule["free_qty"]
-# 							i.update({
-# 								'is_free_item': "True",
-# 								"pricing_rules": json.dumps([pricing_rule['name']])
-# 							})
-# 							free_item_results[pricing_rule['name']] = i
-# 							found = True
-# 							break
-				
-# 				if not found:
-# 					if pricing_rule['same_item'] or pricing_rule['free_item'] == item_code:
-# 						if pricing_rule['name'] in free_item_results:
-# 							qty_required -= free_item_results[pricing_rule['name']]['qty']
-
-# 						free_item_results[pricing_rule['name']] = {
-# 							'item_code': item_code,
-# 							'qty': pricing_rule["free_qty"],
-# 							'name':'new',
-# 							'is_free_item': "True",
-# 							"pricing_rules": json.dumps([pricing_rule['name']])
-# 						}
-						
-# 				qty_required += pricing_rule["free_qty"]
-
-# 	for key in batch_dict:
-# 		if qty_required <= 0:
-# 			break
-# 		batches_gotten = batch_dict[key][0]
-# 		batches_gotten['org_qty'] = batches_gotten['qty']
-# 		batch_no = batches_gotten['batch_no']
-# 		batch_qty = batches_gotten['qty']
+	batch_dict = get_batch()
+	
+	items_from_table = []
+	pricing_rules = []
+	brand = None
+	item_group = None
+	doc['items'] = [i for i in doc['items'] if i.get('item_code')]
+	pricing_rules = convert_to_set([i['pricing_rules'] for i in doc['items'] if i['item_code'] == item_code and ('ignore_pricing_rules' not in i or i['ignore_pricing_rules'] != 1) and i['pricing_rules']])
+	pricing_rules = list(pricing_rules)
+	pricing_rule_dict = {}
+	if pricing_rules:
+		sql = """
+		SELECT name, min_qty, max_qty from `tabPricing Rule` where name IN %(data)s 
+		"""
+		pricing_rule_info = frappe.db.sql(sql, {'data':tuple(pricing_rules)}, as_dict=True)
 		
-# 		for key, value in free_item_results.items():
-# 			if batch_qty <= 0:
-# 				break
-# 			if value['qty'] > batch_qty:
-# 				pass
-# 			else:
-# 				value['batch_no'] = batches_gotten['batch_no']
-# 				batch_qty -= value['qty']
-# 				qty_required -= value['qty']
-# 				results.append(value)
-# 		batches_gotten['qty'] = batch_qty
-# 	actual_results = []
-# 	for result in results:
-# 		value = {
-# 			"qty":result['qty'], 
-# 			"name":result['name'], 
-# 			"batch_no":result['batch_no']
-# 		}
-# 		if "pricing_rules" in result:
-# 			value["pricing_rules"] = result["pricing_rules"]
-# 		if "is_free_item" in result:
-# 			value["results_free_item"] = result["is_free_item"]
-# 		actual_results.append(value)
-# 	breakpoint()
-# 	return [actual_results, qty_remaining]
+		
+		for rule in pricing_rule_info:
+			pricing_rule_dict[rule['name']] = {'min_qty':rule['min_qty'],'max_qty':rule['max_qty']}
+	qty_in_list = 0
 
-# def convert_to_set(strings_list):
-#     import json
-#     result_set = set()
-#     for item in strings_list:
-#         try:
-#             # Try to convert the item from a string to a list
-#             item_list = json.loads(item)
-#             if isinstance(item_list, list):
-#                 result_set.update(item_list)
-#         except ValueError:
-#             result_set.add(item)
-#     return result_set
+
+	for i in doc['items']:
+		if i['item_code'] == item_code:
+			if 'batch_no' not in i:
+				i['batch_no'] = ""
+			if not brand:
+				brand = i.get('brand')
+			if not item_group:
+				item_group = i.get('item_group')
+			i['qty'] = float(i['qty']) 
+			item = {
+				'name': i['name'],
+				'qty': i['qty'],
+				'pricing_rules': i['pricing_rules'],
+				'ignore_pricing_rule': doc['ignore_pricing_rule'],
+				'brand': brand,
+				'item_group': item_group,
+				'rate': i['rate'],
+				'discount_percentage': i['discount_percentage'],
+				'ignore_pricing_rules': 0
+			}
+			item['batch_no'] = i['batch_no']
+			if i['is_free_item'] == 0:
+				add_to_list = False
+				if 'batch_no' in i and i['batch_no']:
+					if i['batch_no'] not in batch_dict:
+						continue
+					add_to_list = True
+				elif (i['pricing_rules']):
+					add_to_list = True
+					for rule in json.loads(i['pricing_rules']):
+						if pricing_rule_dict[rule]['max_qty'] > 0:
+							if 'max_qty' not in item:
+								item['max_qty'] = pricing_rule_dict[rule]['max_qty']
+				if 'ignore_pricing_rules' in i:
+					item['ignore_pricing_rules'] = i['ignore_pricing_rules']
+					add_to_list = True
+				if add_to_list:
+					qty_in_list += i['qty']
+					items_from_table.append(item)
+			else:
+				qty_required -= i['qty']
+	items_from_table = sorted(items_from_table, key=lambda k: (k['batch_no'].lower(), k['qty']), reverse=True)
+	results = []
+	for key in batch_dict:
+		if qty_required <= 0:
+			break
+		batches_gotten = batch_dict[key][0]
+
+		batch_no = batches_gotten['batch_no']
+
+		batch_qty = batches_gotten['qty']
+		if batch_qty > 0:
+			if batch_qty >= qty_required:
+				row_qty = qty_required
+				batch_qty -= qty_required
+			else:
+				row_qty = batch_qty
+				batch_qty = 0
+			results.append({
+				'name':'new',
+				'batch_no': batch_no,
+				'available_qty': batches_gotten['org_qty'],
+				'qty': row_qty,
+				'ignore_pricing_rule': '0',
+				'shortdated_batch': batches_gotten['shortdated'],
+				'brand': brand,
+				'item_group': item_group,
+			})
+			qty_required -= row_qty
+		
+		batches_gotten['qty'] = batch_qty
+
+	for item in items_from_table:
+		max_qty = float('inf')
+		min_qty = 0
+		if item['pricing_rules']:
+			pricing_rules = json.loads(item['pricing_rules'])
+			for rule in pricing_rules:
+				pr_max_qty = pricing_rule_dict[rule]['max_qty']
+				if pr_max_qty == 0:
+					pr_max_qty = float('inf')
+				max_qty = min(max_qty, pr_max_qty)
+				pr_min_qty = pricing_rule_dict[rule]['max_qty']
+				min_qty = max(min_qty, pr_min_qty)
+		for i in range(len(results)):
+			result = results[i]
+			if result['name'] != 'new':
+				continue 
+			if not item['batch_no'] or batch_dict[item['batch_no']][0]['result_qty'] >= batch_dict[item['batch_no']][0]['org_qty']:
+				if min_qty <= result['qty']:
+					if max_qty >= result['qty']:
+						result['name'] = item['name']
+						batch_dict[result['batch_no']][0]['result_qty'] += result['qty']
+						break
+					else:
+						item['qty'], result['qty']  = result['qty'], max_qty
+						result['name'] = item['name']
+						batch_dict[result['batch_no']][0]['result_qty'] += result['qty']
+						results.append(result.copy())
+						result['qty'] = item['qty'] - result['qty']
+						result['name'] = 'new'
+						break
+					batch_dict[result['batch_no']][0]['result_qty'] += result['name'] 
+	
+	free_items = [i for i in doc['items'].copy() if i['item_code'] == item_code and i['is_free_item']]
+	doc['items'] = [i for i in doc['items'] if i['item_code'] != item_code ]
+	free_item_results = {}
+	for item in results:
+		data = {}
+		data.update(item)
+		data.update({
+			'item_code':item_code,
+			'brand': brand ,
+			'qty': item['qty'],
+			'stock_qty': item['qty'],
+			'transaction_type': 'selling',
+			'price_list': doc['selling_price_list'],
+			'customer_group': doc['customer_group'],
+			'company': doc['company'],
+			'conversion_rate': 1,
+			'for_shopping_cart': True,
+			'currency': frappe.db.get_value('Price List', doc['selling_price_list'], 'currency'),
+			'customer': doc['customer'],
+			'transaction_date': doc['posting_date'],
+			'territory': doc['territory'],
+			'ignore_pricing_rule': False if data['ignore_pricing_rule'] == '0' else True
+		})
+
+		pricing_rule = get_pricing_rule_for_item(frappe._dict(data), price_list_rate, frappe._dict(doc))
+		if pricing_rule.get('price_or_product_discount') == 'Product':
+			found = False
+			pricing_rules = pricing_rule['pricing_rules']
+			if pricing_rule['free_item_data'][0]['item_code'] == item_code:
+				for i in free_items:
+					if json.loads(pricing_rules) == json.loads(i['pricing_rules']):
+						i.update({
+							'rate': pricing_rule['free_item_data'][0]['rate'],
+							'is_free_item': 'True',
+							'pricing_rules': pricing_rules
+						})
+						if pricing_rules not in free_item_results or pricing_rule['free_item_data'][0]['qty'] > free_item_results[pricing_rules]['qty']:
+							i['qty'] = pricing_rule['free_item_data'][0]['qty']
+						else:
+							i['qty'] = free_item_results[pricing_rules]['qty']
+						free_item_results[pricing_rules] = i
+						found = True
+						break
+				
+				if not found:
+					if pricing_rule['pricing_rules'] in free_item_results:
+						if free_item_results[pricing_rule['pricing_rules']]['qty'] > pricing_rule['free_item_data'][0]['qty']:
+							pricing_rule['free_item_data'][0]['qty'] = free_item_results[pricing_rule['pricing_rules']]['qty']
+					free_item_results[pricing_rule['pricing_rules']] = {
+						'item_code': item_code,
+						'rate': pricing_rule['free_item_data'][0]['rate'],
+						'qty': pricing_rule['free_item_data'][0]['qty'],
+						'name':'new',
+						'is_free_item': True,
+						'pricing_rules': pricing_rule['pricing_rules']
+					}
+					
+					free_item_data = free_item_results[pricing_rule['pricing_rules']]
+					free_item_data['discount_percentage'] = ((price_list_rate-free_item_data['rate'])/price_list_rate)*100
+		doc['items'].append(item)
+	for pricing_rule in free_item_results:
+		qty_required += free_item_results[pricing_rule]['qty']
+	for key in batch_dict:
+		if qty_required <= 0:
+			break
+		batches_gotten = batch_dict[key][0]
+		
+		batch_no = batches_gotten['batch_no']
+		batch_qty = batches_gotten['qty']
+		
+		for key, value in free_item_results.items():
+			if batch_qty <= 0:
+				break
+			if value['qty'] > batch_qty or 'done' in value:
+				value['batch_no'] = batches_gotten['batch_no']
+				value_copy = value.copy()
+				value_copy['qty'] = batch_qty
+				results.append(value_copy)
+				value['qty'] = value['qty'] - batch_qty
+			else:
+				value['batch_no'] = batches_gotten['batch_no']
+				batch_qty -= value['qty']
+				qty_required -= value['qty']
+				results.append(value)
+				free_item_results[key]['done'] = True
+		batches_gotten['qty'] = batch_qty
+	backorder_items = []
+	for i in free_item_results:
+		i = free_item_results[i]
+		if 'done' not in i:
+			backorder_items.append({
+				'qty': i['qty'],
+				'rate':i['rate'],
+				'is_free_item': True,
+				'pricing_rules': i['pricing_rules']
+			})
+	actual_results = []
+
+	
+	for result in results:
+		value = {
+			'qty':result['qty'], 
+			'name':result['name'], 
+			'batch_no':result['batch_no'],
+			'available_qty': batch_dict[result['batch_no']][0]['org_qty'],
+			'shortdated': batch_dict[result['batch_no']][0]['shortdated']
+		}
+		if 'pricing_rules' in result:
+			value['pricing_rules'] = result['pricing_rules']
+		if 'is_free_item' in result:
+			value['is_free_item'] = result['is_free_item']
+		if 'discount_percentage' in result:
+			value['discount_percentage'] = result['discount_percentage']
+		actual_results.append(value)
+	return [actual_results, qty_required, backorder_items]
+
+def convert_to_set(strings_list):
+    import json
+    result_set = set()
+    for item in strings_list:
+        try:
+            # Try to convert the item from a string to a list
+            item_list = json.loads(item)
+            if isinstance(item_list, list):
+                result_set.update(item_list)
+        except ValueError:
+            result_set.add(item)
+    return result_set
+
+
+def test():
+	doc = '{"name":"NM-0129349","owner":"Administrator","creation":"2023-08-31 09:41:46.530248","modified":"2023-09-20 14:00:35.297203","modified_by":"Administrator","idx":0,"docstatus":0,"title":"Life Pharmacy Franklins","naming_series":"NM-.#######","customer":"10031","customer_name":"Life Pharmacy Franklins","email":"accounts@franklinspharmacy.co.nz","order_type":"Customer Order","order_source":"Backorder","is_pos":0,"is_consolidated":0,"is_return":0,"woocommerce_order":0,"is_debit_note":0,"update_billed_amount_in_sales_order":0,"company":"NaturalMeds","posting_date":"2023-09-20","posting_time":"14:00:35.559121","set_posting_time":0,"due_date":"2023-09-20","temporary_address":0,"cost_center":"NaturalMeds - Nm","delivery_provider":"NZ Couriers","po_no":"","payment_category":"Pay after Dispatch","transaction_date":"2023-08-31","po_date":"2023-08-31","credit_card_on_file":0,"customer_address":"10031-Billing","address_display":"\\nAccount: 10031,<br>\\n\\n48 Queen Street,\\n, Warkworth<br>\\nNew Zealand, 0910<br>\\n","contact_person":"CONTACT-07971","contact_display_name":"Example Contact  Current Primary ","contact_display":"double contact","contact_mobile":"","contact_email":"email@emailaddress.com","territory":"Auckland North/West/Northland","phone_number":"09 425 8014","shipping_address_name":"10031-Shipping","shipping_address":"\\nAccount: 10031,<br>\\n\\n42 Queen Street,\\n, Warkworth<br>\\nNew Zealand, 0910<br>\\n","company_address":"TOLL - AIR-Shipping","company_address_display":"\\nAccount: TOLL - AIR,<br>\\n\\nTOLL Warehouse Handler – St George CFS – AIR,\\n<br>1650 South Central Ave, DOCK 1-5 FOR AIR WINDOW 11, Compton<br>\\nCA<br>United States, 90220<br>\\n","currency":"NZD","conversion_rate":1,"selling_price_list":"NZ Wholesale","price_list_currency":"NZD","plc_conversion_rate":1,"ignore_pricing_rule":0,"set_warehouse":"Napier - Nm","update_stock":1,"disable_bo_check":0,"total_billing_amount":0,"total_billing_hours":0,"total_qty":30,"base_total":0,"base_net_total":0,"total_net_weight":0,"total":0,"net_total":0,"taxes_and_charges":"NZ GST 15% Wholesale - Nm","tax_category":"","other_charges_calculation":"<div class=\\"tax-break-up\\" style=\\"overflow-x: auto;\\">\\n\\t<table class=\\"table table-bordered table-hover\\">\\n\\t\\t<thead>\\n\\t\\t\\t<tr>\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-left\\">Item</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-right\\">Taxable Amount</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-right\\">GST @ 15.0</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t</tr>\\n\\t\\t</thead>\\n\\t\\t<tbody>\\n\\t\\t\\t\\n\\t\\t\\t\\t<tr>\\n\\t\\t\\t\\t\\t<td>Batch-test-002</td>\\n\\t\\t\\t\\t\\t<td class=\\"text-right\\">\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t$ 0.00\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t</td>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t<td class=\\"text-right\\">\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t(15.0%)\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t$ 0.00\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t</td>\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t</tr>\\n\\t\\t\\t\\n\\t\\t</tbody>\\n\\t</table>\\n</div>","base_total_taxes_and_charges":0,"total_taxes_and_charges":0,"loyalty_points":0,"loyalty_amount":0,"redeem_loyalty_points":0,"apply_discount_on":"Grand Total","base_discount_amount":0,"additional_discount_percentage":0,"discount_amount":0,"base_grand_total":0,"base_rounding_adjustment":0,"base_rounded_total":0,"base_in_words":"","grand_total":0,"rounding_adjustment":0,"rounded_total":0,"in_words":"","total_advance":0,"outstanding_amount":0,"disable_rounded_total":1,"write_off_amount":0,"base_write_off_amount":0,"write_off_outstanding_amount_automatically":0,"allocate_advances_automatically":0,"ignore_default_payment_terms_template":0,"payment_terms_template":"Default Customer Payment Terms","base_paid_amount":0,"paid_amount":0,"base_change_amount":0,"change_amount":0,"letter_head":"NaturalMeds Statements Header","group_same_items":0,"language":"en","status":"Draft","customer_group":"Gutsi NZ","is_internal_customer":0,"is_discounted":0,"isbackorder":1,"barcode_svg":"<svg id=\\"barcode\\" height=\\"29px\\" width=\\"127px\\" x=\\"0px\\" y=\\"0px\\" viewBox=\\"0 0 127 29\\" xmlns=\\"http://www.w3.org/2000/svg\\" version=\\"1.1\\" style=\\"transform: translate(0,0)\\"><rect x=\\"0\\" y=\\"0\\" width=\\"127\\" height=\\"29\\" style=\\"fill:#ffffff;\\"></rect><g transform=\\"translate(2, 2)\\" style=\\"fill:#000000;\\"><rect x=\\"0\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"3\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"6\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"11\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"13\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"19\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"22\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"24\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"28\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"33\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"36\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"39\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"44\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"47\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"51\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"55\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"57\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"61\\" y=\\"0\\" width=\\"4\\" height=\\"25\\"></rect><rect x=\\"66\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"68\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"72\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"77\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"79\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"83\\" y=\\"0\\" width=\\"4\\" height=\\"25\\"></rect><rect x=\\"88\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"91\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"95\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"99\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"101\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"105\\" y=\\"0\\" width=\\"4\\" height=\\"25\\"></rect><rect x=\\"110\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"115\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"119\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"121\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect></g></svg>","debit_to":"Debtors NZ - Nm","party_account_currency":"NZD","is_opening":"No","c_form_applicable":"No","remarks":"No Remarks","amount_eligible_for_commission":0,"commission_rate":0,"total_commission":0,"against_income_account":"1143 - Gaia Herbs - Nm","exclude_invoice":0,"doctype":"Sales Invoice","items":[{"name":"a27ebb0ff8","owner":"Administrator","creation":"2023-08-31 09:41:46.530248","modified":"2023-09-20 14:00:35.297203","modified_by":"Administrator","parent":"NM-0129349","parentfield":"items","parenttype":"Sales Invoice","idx":1,"docstatus":0,"item_code":"Batch-test-002","item_name":"Batch-test-002","description":"Batch-test-002","item_group":"Products","brand":"Gaia Herbs","image":"","qty":20,"stock_uom":"Unit","uom":"Unit","conversion_factor":1,"stock_qty":20,"price_list_rate":0,"base_price_list_rate":0,"margin_type":null,"margin_rate_or_amount":0,"rate_with_margin":0,"discount_percentage":0,"discount_amount":0,"base_rate_with_margin":0,"rate":0,"amount":0,"base_rate":0,"base_amount":0,"ignore_pricing_rules":0,"pricing_rules":"[\\n \\"PRLE-0340\\"\\n]","stock_uom_rate":0,"is_free_item":0,"grant_commission":1,"net_rate":0,"net_amount":0,"base_net_rate":0,"base_net_amount":0,"delivered_by_supplier":0,"income_account":"1143 - Gaia Herbs - Nm","is_fixed_asset":0,"expense_account":"2146 - Gaia Herbs - Nm","enable_deferred_revenue":0,"weight_per_unit":0,"total_weight":0,"warehouse":"Napier - Nm","shortdated_batch":0,"incoming_rate":7.94,"allow_zero_valuation_rate":0,"item_tax_rate":"{}","actual_batch_qty":68,"actual_qty":20,"delivered_qty":0,"cost_center":"NaturalMeds - Nm","page_break":0,"doctype":"Sales Invoice Item","weight_uom":null,"discount_account":null,"has_serial_no":0,"has_batch_no":1,"min_order_qty":"","supplier":"Gaia Herbs","update_stock":0,"last_purchase_rate":0,"transaction_date":"2023-08-31","against_blanket_order":null,"bom_no":null,"manufacturer":null,"manufacturer_part_no":null,"customer_item_code":null,"valuation_rate":7.9365,"projected_qty":25,"reserved_qty":0,"has_margin":false,"child_docname":"a27ebb0ff8","validate_applied_rule":0,"price_or_product_discount":"Product","has_pricing_rule":1,"gross_profit":-158.73},{"docstatus":0,"doctype":"Sales Invoice Item","name":"new-sales-invoice-item-1","__islocal":1,"__unsaved":1,"owner":"Administrator","stock_uom":"Unit","margin_type":"","is_free_item":1,"grant_commission":0,"delivered_by_supplier":0,"is_fixed_asset":0,"enable_deferred_revenue":0,"allow_zero_valuation_rate":0,"cost_center":"NaturalMeds - Nm","page_break":0,"parent":"NM-0129349","parentfield":"items","parenttype":"Sales Invoice","idx":2,"item_code":"Batch-test-002","qty":10,"pricing_rules":"[\\"PRLE-0340\\"]","rate":0,"price_list_rate":0,"discount_percentage":100,"item_name":"Batch-test-002","description":"Batch-test-002","uom":"Unit","conversion_factor":1,"stock_qty":0,"base_price_list_rate":0,"margin_rate_or_amount":0,"rate_with_margin":0,"discount_amount":0,"base_rate_with_margin":0,"amount":0,"base_rate":0,"base_amount":0,"stock_uom_rate":0,"net_rate":0,"net_amount":0,"base_net_rate":0,"base_net_amount":0,"weight_per_unit":0,"total_weight":0,"incoming_rate":0,"actual_batch_qty":0,"actual_qty":0,"delivered_qty":0}],"backorder_items":[],"pricing_rules":[{"name":"855df1843d","creation":"2023-09-20 14:00:35.655030","modified":"2023-09-20 14:00:35.655030","modified_by":"Administrator","parent":"NM-0129349","parentfield":"pricing_rules","parenttype":"Sales Invoice","idx":1,"docstatus":0,"pricing_rule":"PRLE-0339","item_code":"Batch-test-002","child_docname":"a27ebb0ff8","rule_applied":1,"doctype":"Pricing Rule Detail"}],"packed_items":[],"timesheets":[],"taxes":[{"name":"9acb1348ed","owner":"Administrator","creation":"2023-08-31 09:41:46.530248","modified":"2023-09-20 14:00:35.297203","modified_by":"Administrator","parent":"NM-0129349","parentfield":"taxes","parenttype":"Sales Invoice","idx":1,"docstatus":0,"charge_type":"On Net Total","account_head":"9640 - GST Accrued NZ - Nm","description":"GST @ 15.0","included_in_print_rate":0,"included_in_paid_amount":0,"cost_center":"NaturalMeds - Nm","rate":15,"account_currency":"NZD","tax_amount":0,"total":0,"tax_amount_after_discount_amount":0,"base_tax_amount":0,"base_total":0,"base_tax_amount_after_discount_amount":0,"item_wise_tax_detail":"{\\"Batch-test-002\\":[15,0]}","dont_recompute_tax":0,"doctype":"Sales Taxes and Charges"}],"advances":[],"payment_schedule":[{"name":"cbff053b88","owner":"Administrator","creation":"2023-08-31 09:41:46.831787","modified":"2023-09-20 14:00:35.297203","modified_by":"Administrator","parent":"NM-0129349","parentfield":"payment_schedule","parenttype":"Sales Invoice","idx":1,"docstatus":0,"payment_term":"Default Customer Payment Terms","due_date":"2023-09-20","invoice_portion":100,"discount_type":"Percentage","discount_date":"2023-08-31","discount":0,"payment_amount":0,"outstanding":0,"paid_amount":0,"discounted_amount":0,"base_payment_amount":0,"doctype":"Payment Schedule"}],"payments":[],"sales_team":[],"_user_tags":",BO_2023-08-31","__onload":{"make_payment_via_journal_entry":0},"__last_sync_on":"2023-09-21T22:49:45.955Z","accepts_backorders":1,"__unsaved":1}'
+	item_code = 'Batch-test-002'
+	warehouse = 'Napier - Nm'
+	qty_required = '30'
+	type_required = 'Shortdated First'
+	allocate_batches_table(doc, item_code, warehouse, type_required, qty_required)
