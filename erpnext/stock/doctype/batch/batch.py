@@ -294,10 +294,12 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 			if not batch_no:
 				batch_no = batch.batch_id
 				selected_expiry = batch.expiry_date
+				batch_qty = batch.qty
 				if not cur_batch_no:
 					found = True
 			if cur_batch_no == batch.batch_id:
 				batch_no = cur_batch_no
+				batch_qty = batch.qty
 				selected_expiry = batch.expiry_date
 				found = True
 
@@ -345,10 +347,9 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 			#TODO: Issue raised here
 			raise UnableToSelectBatchError
 	else:
-		
 		if selected_expiry and (alert_date > getdate(selected_expiry)):
 			# frappe.msgprint("Warning: Batch {0} for Item {1} will expire in less than 6 months. Expiry date: <strong>{2}</strong>".format(batch.batch_id, item_code, batch.expiry_date))
-			frappe.response.content = get_expiry_content(batch.batch_id, batch.qty, batch.expiry_date, item_code)
+			frappe.response.content = get_expiry_content(batch_no, batch_qty, selected_expiry, item_code)
 			frappe.response.shortdated = 1
 			frappe.response.dialog_type = "shortdated"
 		else:
