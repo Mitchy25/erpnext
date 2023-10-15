@@ -253,7 +253,7 @@ def send_email(pricing_rules):
 )
 
 def get_other_conditions(conditions, values, args):
-	for field in ["company", "customer", "supplier", "campaign", "sales_partner"]:
+	for field in ["company", "customer", "supplier", "modality", "campaign", "sales_partner"]:
 		if args.get(field):
 			conditions += " and ifnull(`tabPricing Rule`.{0}, '') in (%({1})s, '')".format(field, field)
 			values[field] = args.get(field)
