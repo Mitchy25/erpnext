@@ -156,7 +156,7 @@ class SellingController(StockController):
 				self.total_commission = 0
 				return
 				
-			sql = """select si.amount - (si.qty * p.price_list_rate) AS total 
+			sql = """select si.amount - (si.qty * p.price_list_rate) AS total, p.price_list_rate as price_list_rate
 					from `tabSales Invoice Item` si
 					JOIN `tabSales Invoice` s ON si.parent = s.name
 					join `tabItem Price` p on p.item_code = si.item_code and p.price_list = CONCAT(SUBSTRING_INDEX(s.selling_price_list, ' ', 1), " ", "Wholesale")
@@ -168,7 +168,8 @@ class SellingController(StockController):
 			item_dict = {}
 			commission = 0
 			for item in wholesale_prices:
-				commission += item["total"]
+				if item["price_list_rate"] != 0:
+					commission += item["total"]
 			self.total_commission = flt(commission, self.precision("total_commission"))
 		else:
 			self.total_commission = flt(

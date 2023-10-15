@@ -167,7 +167,7 @@ class Lead(SellingController):
 		if len(names) > 1:
 			first_name, last_name = names[0], " ".join(names[1:])
 		else:
-			first_name, last_name = self.lead_name, None
+			first_name, last_name = self.lead_name, "Unknown"
 
 		contact = frappe.new_doc("Contact")
 		contact.update(

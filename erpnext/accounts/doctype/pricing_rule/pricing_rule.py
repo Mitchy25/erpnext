@@ -87,6 +87,7 @@ class PricingRule(Document):
 			"Territory",
 			"Sales Partner",
 			"Campaign",
+			"Modality"
 		]:
 			throw(
 				_("Selling must be checked, if Applicable For is selected as {0}").format(self.applicable_for)
@@ -281,6 +282,13 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 	if args.get("is_free_item") or args.get("parenttype") == "Material Request":
 		return {}
 
+	test = args
+	if doc and doc.get("backorder_items"):
+		for bo_item in doc.get("backorder_items"):
+			if bo_item.derived_from == args.child_docname:
+				args.qty += bo_item.qty
+
+
 	item_details = frappe._dict(
 		{
 			"doctype": args.doctype,
@@ -398,10 +406,10 @@ def update_args_for_pricing_rule(args):
 			if args.quotation_to and args.quotation_to != "Customer":
 				customer = frappe._dict()
 			else:
-				customer = frappe.get_cached_value("Customer", args.customer, ["customer_group", "territory"])
+				customer = frappe.get_cached_value("Customer", args.customer, ["customer_group", "territory", "modality"])
 
 			if customer:
-				args.customer_group, args.territory = customer
+				args.customer_group, args.territory, args.modality = customer
 
 		args.supplier = args.supplier_group = None
 
