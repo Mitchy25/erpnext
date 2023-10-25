@@ -144,12 +144,12 @@ def get_columns(filters):
 		# 	"fieldtype": "Data",
 		# 	"width": 80
 		# },
-		{
-			"label": _("Commission"),
-			"fieldname": "commission",
-			"fieldtype": "Currency",
-			"width": 120
-		},
+		# {
+		# 	"label": _("Commission"),
+		# 	"fieldname": "commission",
+		# 	"fieldtype": "Currency",
+		# 	"width": 120
+		# },
 		{
 			"label": _('Rebate (SalePrice - WS)'),
 			"fieldname": "commission_wholesale",
