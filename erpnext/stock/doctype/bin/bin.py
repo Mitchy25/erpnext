@@ -133,6 +133,7 @@ def update_qty(bin_name, args):
 	from erpnext.controllers.stock_controller import future_sle_exists
 
 	bin_details = get_bin_details(bin_name)
+	bin_doc = frappe.get_doc("Bin", bin_name)
 	# actual qty is already updated by processing current voucher
 	actual_qty = bin_details.actual_qty
 
@@ -180,3 +181,14 @@ def update_qty(bin_name, args):
 			"projected_qty": projected_qty,
 		},
 	)
+	from frappe.email.doctype.notification.notification import evaluate_alert
+	alerts = frappe.cache().hget("notifications", "Bin")
+	if alerts == None:
+		alerts = frappe.get_all(
+			"Notification",
+			fields=["name", "event", "method"],
+			filters={"enabled": 1, "document_type": "Bin"},
+		)
+		frappe.cache().hset("notifications", "Bin", alerts)
+	for alert in alerts:
+		evaluate_alert(bin_doc, alert.name, alert.event)
