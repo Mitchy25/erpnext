@@ -34,6 +34,7 @@ def execute(filters=None):
 								item_map[item]["description"],
 								wh,
 								batch,
+								qty_dict.batch_expiry,
 								flt(qty_dict.opening_qty, float_precision),
 								flt(qty_dict.in_qty, float_precision),
 								flt(qty_dict.out_qty, float_precision),
@@ -54,6 +55,7 @@ def get_columns(filters):
 		+ [_("Description") + "::150"]
 		+ [_("Warehouse") + ":Link/Warehouse:100"]
 		+ [_("Batch") + ":Link/Batch:100"]
+		+ [_("Batch Expiry") + "::100"]
 		+ [_("Opening Qty") + ":Float:90"]
 		+ [_("In Qty") + ":Float:80"]
 		+ [_("Out Qty") + ":Float:80"]
@@ -70,13 +72,13 @@ def get_conditions(filters):
 		frappe.throw(_("'From Date' is required"))
 
 	if filters.get("to_date"):
-		conditions += " and posting_date <= '%s'" % filters["to_date"]
+		conditions += " and s.posting_date <= '%s'" % filters["to_date"]
 	else:
 		frappe.throw(_("'To Date' is required"))
 
 	for field in ["item_code", "warehouse", "batch_no", "company"]:
 		if filters.get(field):
-			conditions += " and {0} = {1}".format(field, frappe.db.escape(filters.get(field)))
+			conditions += " and {0} = {1}".format("s."+field, frappe.db.escape(filters.get(field)))
 
 	return conditions
 
@@ -86,11 +88,12 @@ def get_stock_ledger_entries(filters):
 	conditions = get_conditions(filters)
 	return frappe.db.sql(
 		"""
-		select item_code, batch_no, warehouse, posting_date, sum(actual_qty) as actual_qty
-		from `tabStock Ledger Entry`
-		where is_cancelled = 0 and docstatus < 2 and ifnull(batch_no, '') != '' %s
-		group by voucher_no, batch_no, item_code, warehouse
-		order by item_code, warehouse"""
+		select s.item_code, s.batch_no, b.expiry_date as batch_expiry, s.warehouse, s.posting_date, sum(s.actual_qty) as actual_qty
+		from `tabStock Ledger Entry` s
+		join `tabBatch` b on b.name = s.batch_no
+		where s.is_cancelled = 0 and s.docstatus < 2 and ifnull(s.batch_no, '') != '' %s
+		group by s.voucher_no, s.batch_no, s.item_code, s.warehouse
+		order by s.item_code, s.warehouse"""
 		% conditions,
 		as_dict=1,
 	)
@@ -108,6 +111,9 @@ def get_item_warehouse_batch_map(filters, float_precision):
 			d.batch_no, frappe._dict({"opening_qty": 0.0, "in_qty": 0.0, "out_qty": 0.0, "bal_qty": 0.0})
 		)
 		qty_dict = iwb_map[d.item_code][d.warehouse][d.batch_no]
+		test = d
+		if d.batch_expiry:
+			qty_dict.batch_expiry = d.batch_expiry.strftime("%Y-%m-%d")
 		if d.posting_date < from_date:
 			qty_dict.opening_qty = flt(qty_dict.opening_qty, float_precision) + flt(
 				d.actual_qty, float_precision
