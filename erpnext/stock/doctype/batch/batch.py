@@ -665,7 +665,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 					batch_dict[result['batch_no']][0]['result_qty'] += result['name'] 
 	
 	free_items = [i for i in doc['items'].copy() if i['item_code'] == item_code and i['is_free_item']]
-	doc['items'] = [i for i in doc['items'] if i['item_code'] != item_code ]
+	# doc['items'] = [i for i in doc['items'] if i['item_code'] != item_code ]
 	free_item_results = {}
 	for item in results:
 		data = {}
@@ -687,7 +687,6 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 			'territory': doc['territory'],
 			'ignore_pricing_rule': False if data['ignore_pricing_rule'] == '0' else True
 		})
-
 		pricing_rule = get_pricing_rule_for_item(frappe._dict(data), price_list_rate, frappe._dict(doc))
 		if pricing_rule.get('price_or_product_discount') == 'Product':
 			found = False
@@ -741,22 +740,13 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 				value['batch_no'] = batches_gotten['batch_no']
 				value_copy = value.copy()
 				value_copy['qty'] = batch_qty
+				qty_required -= value_copy['qty']
 				results.append(value_copy)
 				value['qty'] = value['qty'] - batch_qty
 			else:
 				value['batch_no'] = batches_gotten['batch_no']
 				batch_qty -= value['qty']
 				qty_required -= value['qty']
-				results.append(value)
-				free_item_results[key]['done'] = True
-		batches_gotten['qty'] = batch_qty
-	backorder_items = []
-	for i in free_item_results:
-		i = free_item_results[i]
-		if 'done' not in i:
-			backorder_items.append({
-				'qty': i['qty'],
-				'rate':i['rate'],
 				'is_free_item': True,
 				'pricing_rules': i['pricing_rules']
 			})
@@ -771,6 +761,8 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 			'available_qty': batch_dict[result['batch_no']][0]['org_qty'],
 			'shortdated': batch_dict[result['batch_no']][0]['shortdated']
 		}
+		if 'rate' in result:
+			value['rate'] = result['rate']
 		if 'pricing_rules' in result:
 			value['pricing_rules'] = result['pricing_rules']
 		if 'is_free_item' in result:
@@ -778,13 +770,24 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 		if 'discount_percentage' in result:
 			value['discount_percentage'] = result['discount_percentage']
 		actual_results.append(value)
+	
 	return [actual_results, qty_required, backorder_items]
 
 def convert_to_set(strings_list):
     import json
     result_set = set()
     for item in strings_list:
-        try:
+        try:results.append(value)
+				free_item_results[key]['done'] = True
+		batches_gotten['qty'] = batch_qty
+	backorder_items = []
+	for i in free_item_results:
+		i = free_item_results[i]
+		if 'done' not in i:
+			backorder_items.append({
+				'qty': i['qty'],
+				'rate':i['rate'],
+				
             # Try to convert the item from a string to a list
             item_list = json.loads(item)
             if isinstance(item_list, list):
