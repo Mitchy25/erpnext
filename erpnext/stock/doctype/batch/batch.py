@@ -747,6 +747,16 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 				value['batch_no'] = batches_gotten['batch_no']
 				batch_qty -= value['qty']
 				qty_required -= value['qty']
+				results.append(value)
+				free_item_results[key]['done'] = True
+		batches_gotten['qty'] = batch_qty
+	backorder_items = []
+	for i in free_item_results:
+		i = free_item_results[i]
+		if 'done' not in i:
+			backorder_items.append({
+				'qty': i['qty'],
+				'rate':i['rate'],
 				'is_free_item': True,
 				'pricing_rules': i['pricing_rules']
 			})
@@ -774,27 +784,17 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 	return [actual_results, qty_required, backorder_items]
 
 def convert_to_set(strings_list):
-    import json
-    result_set = set()
-    for item in strings_list:
-        try:results.append(value)
-				free_item_results[key]['done'] = True
-		batches_gotten['qty'] = batch_qty
-	backorder_items = []
-	for i in free_item_results:
-		i = free_item_results[i]
-		if 'done' not in i:
-			backorder_items.append({
-				'qty': i['qty'],
-				'rate':i['rate'],
-				
-            # Try to convert the item from a string to a list
-            item_list = json.loads(item)
-            if isinstance(item_list, list):
-                result_set.update(item_list)
-        except ValueError:
-            result_set.add(item)
-    return result_set
+	import json
+	result_set = set()
+	for item in strings_list:
+		try:
+			# Try to convert the item from a string to a list
+			item_list = json.loads(item)
+			if isinstance(item_list, list):
+				result_set.update(item_list)
+		except ValueError:
+			result_set.add(item)
+	return result_set
 
 
 def test():
