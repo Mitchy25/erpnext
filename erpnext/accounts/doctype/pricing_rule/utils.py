@@ -467,13 +467,12 @@ def get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args):
 
 	if items and doc.get("items"):
 		for row in doc.get("items"):
-			if (row.get(apply_on) or row.get(apply_on)) not in items:
+			if (row.get(apply_on)) not in items or row.is_free_item or (row.pricing_rules and pr_doc.name not in row.pricing_rules):
 				continue
-
 			if pr_doc.mixed_conditions:
-				amt = args.get("qty") * args.get("price_list_rate")
+				amt = args.get("qty") * args.get("price_list_rate", 0)
 				if args.get("item_code") != row.get("item_code"):
-					amt = flt(row.get("qty")) * flt(row.get("price_list_rate") or args.get("rate"))
+					amt = flt(row.get("qty")) * flt(row.get("price_list_rate", 0) or args.get("rate", 0))
 
 				sum_qty += flt(row.get("stock_qty")) or flt(args.get("stock_qty")) or flt(args.get("qty"))
 				sum_amt += amt
@@ -484,7 +483,6 @@ def get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args):
 			if data and data[0]:
 				sum_qty += data[0]
 				sum_amt += data[1]
-
 	return sum_qty, sum_amt, items
 
 
@@ -695,6 +693,7 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 def apply_pricing_rule_for_free_items(doc, pricing_rule_args, set_missing_values=False):
 	if pricing_rule_args:
 		items = []
+		bo_items = []
 		for d in doc.items:
 			if d.is_free_item:
 				try:
@@ -702,11 +701,28 @@ def apply_pricing_rule_for_free_items(doc, pricing_rule_args, set_missing_values
 					items.append(data)
 				except ValueError:
 					items.append((d.item_code, f'["{d.pricing_rules}"]'))
-		
+		for d in doc.backorder_items:
+			if d.is_free_item:
+				try:
+					data = (d.item_code, json.dumps(json.loads(d.pricing_rules)))
+					bo_items.append(data)
+				except ValueError:
+					bo_items.append((d.item_code, f'["{d.pricing_rules}"]'))
 		for args in pricing_rule_args:
 			if args.get("pricing_rules") :
 				args["pricing_rules"] = json.dumps([args.get("pricing_rules")])
 				test = args["pricing_rules"]
+
+			for bo_item in doc.backorder_items:
+				if bo_item.pricing_rules:
+					try:
+						data = (bo_item.item_code, json.dumps(json.loads(bo_item.pricing_rules)))
+					except ValueError:
+						data = (bo_item.item_code, f'["{bo_item.pricing_rules}"]')
+
+					if (args.get("item_code"), args.get("pricing_rules")) == data:
+						args["qty"] -= bo_item.qty
+
 			if not items or (args.get("item_code"), args.get("pricing_rules")) not in items:
 				doc.append("items", args)
 
