@@ -153,7 +153,7 @@ def get_batch_qty(
 	batch_no=None, warehouse=None, item_code=None, posting_date=None, posting_time=None
 ):
 	"""Returns batch actual qty if warehouse is passed,
-	        or returns dict of qty by warehouse if warehouse is None
+			or returns dict of qty by warehouse if warehouse is None
 
 	The user must pass either batch_no or batch_no + warehouse or item_code + warehouse
 
