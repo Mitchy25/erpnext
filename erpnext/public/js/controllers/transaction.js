@@ -1435,6 +1435,13 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									}
 								},
 								() => {
+									if (item.is_coldship_item) {
+										if (me.frm.doctype == "Sales Invoice") {
+											me.frm.set_value('is_coldship', 1)
+										}
+									}
+								},
+								() => {
 									frappe.model.trigger('after_qty', undefined, locals[cdt][cdn], false)
 								}
 								// () => {

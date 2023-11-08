@@ -372,6 +372,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			"weight_per_unit": args.get("weight_per_unit") or item.get("weight_per_unit"),
 			"weight_uom": args.get("weight_uom") or item.get("weight_uom"),
 			"grant_commission": item.get("grant_commission"),
+			"is_coldship_item": item.get('is_coldship_item')
 		}
 	)
 
