@@ -534,11 +534,13 @@ def get_result_as_list(data, filters):
 		if inv_details.get(d.get("against_voucher")):
 			d["bill_no"] = inv_details.get(d.get("against_voucher"), "")['bill_no']
 			d["outstanding_amount"] = inv_details.get(d.get("against_voucher"), "")['outstanding_amount']
+			d["due_date"] = inv_details.get(d.get("against_voucher"), "")['due_date']
 		
 		d["po_no"] = ""
 		if si_details.get(d.get("against_voucher")):
 			d["po_no"] = si_details.get(d.get("against_voucher"), "")["po_no"]
 			d["outstanding_amount"] = si_details.get(d.get("against_voucher"), "")['outstanding_amount']
+			d["due_date"] = si_details.get(d.get("against_voucher"), "")['due_date']
 		
 		if d["outstanding_amount"] == 0:
 			d["outstanding_amount"] = ""
@@ -556,7 +558,8 @@ def get_supplier_invoice_details():
 		select 
 			name, 
 			bill_no,
-			outstanding_amount
+			outstanding_amount,
+			due_date
 		from 
 			`tabPurchase Invoice`
 		where 
@@ -565,7 +568,7 @@ def get_supplier_invoice_details():
 			bill_no != '' """,
 		as_dict=1,
 	):
-		inv_details[d.name] = {"bill_no":d.bill_no,"outstanding_amount":d.outstanding_amount}
+		inv_details[d.name] = {"bill_no":d.bill_no,"outstanding_amount":d.outstanding_amount,"due_date":d.due_date}
 
 	return inv_details
 
@@ -575,7 +578,8 @@ def get_sales_invoice_details():
 		"""SELECT 
 			name,
 			po_no,
-			outstanding_amount
+			outstanding_amount,
+			due_date
 		FROM 
 			`tabSales Invoice`
 		WHERE 
@@ -584,7 +588,7 @@ def get_sales_invoice_details():
 			po_no != '' """,
 		as_dict=1,
 	):
-		inv_details[d.name] = {"po_no":d.po_no,"outstanding_amount":d.outstanding_amount}
+		inv_details[d.name] = {"po_no":d.po_no,"outstanding_amount":d.outstanding_amount,"due_date":d.due_date}
 
 	return inv_details
 
@@ -663,7 +667,11 @@ def get_columns(filters):
 		columns.append(
 			{"label": _("Outstanding Amount ({0})").format(currency),  "fieldname": "outstanding_amount", "fieldtype":"Float", "width": 150}
 		)
-
+	
+	if filters.get("show_due_date"):
+		columns.append(
+			{"label": _("Due Date"),  "fieldname": "due_date", "fieldtype":"Date", "width": 150}
+		)
 
 	columns.extend(
 		[

@@ -372,6 +372,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			"weight_per_unit": args.get("weight_per_unit") or item.get("weight_per_unit"),
 			"weight_uom": args.get("weight_uom") or item.get("weight_uom"),
 			"grant_commission": item.get("grant_commission"),
+			"is_coldship_item": item.get('is_coldship_item')
 		}
 	)
 
@@ -1265,7 +1266,7 @@ def apply_price_list(args, as_doc=False, doc=None):
 		for item in item_list:
 			args_copy = frappe._dict(args.copy())
 			args_copy.update(item)
-			item_details = apply_price_list_on_item(args_copy)
+			item_details = apply_price_list_on_item(args_copy, doc)
 			children.append(item_details)
 
 	if as_doc:

@@ -617,12 +617,15 @@ class JournalEntry(AccountsController):
 			if not flt(d.debit) and not flt(d.credit):
 				frappe.throw(_("Row {0}: Both Debit and Credit values cannot be zero").format(d.idx))
 
-	def validate_total_debit_and_credit(self):
+	def validate_total_debit_and_credit(self, throw_error=True):
 		self.set_total_debit_credit()
 		if self.difference:
-			frappe.throw(
-				_("Total Debit must be equal to Total Credit. The difference is {0}").format(self.difference)
-			)
+			if throw_error:
+				frappe.throw(
+					_("Total Debit must be equal to Total Credit. The difference is {0}").format(self.difference)
+				)
+			else:
+				return self.difference
 
 	def set_total_debit_credit(self):
 		self.total_debit, self.total_credit, self.difference = 0, 0, 0

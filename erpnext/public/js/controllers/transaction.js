@@ -1435,6 +1435,13 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									}
 								},
 								() => {
+									if (item.is_coldship_item) {
+										if (me.frm.doctype == "Sales Invoice") {
+											me.frm.set_value('is_coldship', 1)
+										}
+									}
+								},
+								() => {
 									frappe.model.trigger('after_qty', undefined, locals[cdt][cdn], false)
 								}
 								// () => {
@@ -1895,67 +1902,158 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 	},
 
 	apply_product_discount: function(args) {
-		
-		const items = this.frm.doc.items.filter(d => (d.is_free_item)) || [];
+		let repeat = false;
 
-		var exist_items = items.map(row => {
-			if (row.pricing_rules) {
-				return row.item_code + "-" + JSON.stringify(JSON.parse(row.pricing_rules))
-			} else {
-				return ""
+		function apply_discount_once(data, me) {
+			let use_backorder;
+			var backorder_items = [];
+			if (me.frm.doc.backorder_items) {
+				backorder_items = me.frm.doc.backorder_items.filter(d => (d.is_free_item)) || [];
 			}
-		})
-		exist_items = exist_items.filter((str) => str.length > 0)
-		exist_items = exist_items.flat()
-		
-
-		args.free_item_data.forEach(pr_row => {
-			let row_to_modify = {};
-			var adjust = 0;
-			
-			if (typeof pr_row.pricing_rules === 'string' || pr_row.pricing_rules instanceof String) {
-				pr_row.pricing_rules = JSON.stringify([pr_row.pricing_rules])
-			} else {
-				pr_row.pricing_rules = JSON.stringify(pr_row.pricing_rules)
-			}
-			
-			if (!items || !in_list(exist_items, (pr_row.item_code + "-" + pr_row.pricing_rules))) {
-				
-				row_to_modify = frappe.model.add_child(this.frm.doc,this.frm.doc.doctype + ' Item', 'items');
-				//@Stan - Perhaps we need to use get_basic_details here to get Income Acc?
-			} else if(items) {
-				
-				row_to_modify = items.filter(d => {
-					const multipleexist = JSON.parse(d.pricing_rules).every(value => {
-						return pr_row.pricing_rules.includes(value);
-					});
-					return (d.item_code === pr_row.item_code && multipleexist)
-				});
-				adjust = 1
-			}
-			
-			if(!("income_account" in row_to_modify)) {
-				row_to_modify["income_account"] = args["income_account"]
-			}
-			if(!("expense_account" in row_to_modify)) {
-				row_to_modify["expense_account"] = args["expense_account"]
-			}
-			
-			for (let key in pr_row) {
-				if (adjust){
-					this.frm.doc.items[row_to_modify[0].idx-1][key] = pr_row[key]
+			const items = me.frm.doc.items.filter(d => (d.is_free_item)) || [];
+			var exist_items = items.map(row => {
+				if (row.pricing_rules) {
+					return row.item_code + "-" + JSON.stringify(JSON.parse(row.pricing_rules))
 				} else {
+					return ""
+				}
+			})
+			var exist_backorder_items = backorder_items.map(row => {
+				if (row.pricing_rules) {
+					return row.item_code + "-" + JSON.stringify(JSON.parse(row.pricing_rules))
+				} else {
+					return ""
+				}
+			})
+			exist_items = exist_items.concat(exist_backorder_items)
+			exist_items = exist_items.filter((str) => str.length > 0)
+			exist_items = exist_items.flat()
+			cur_frm.refresh_fields()
+			
+			console.log(me.frm.doc.items)
+			data.free_item_data.forEach(pr_row => {
+				let rows_to_modify = {};
+				let backorder_rows_to_modify = {};
+				var reduce_items = false
+				let item_qty = 0;
+				var reduce_qty;
+				// Ensure pricing rules are in the correct format
+				try {
+					if (pr_row.pricing_rules.constructor !== Array) {
+						let parsed_json = JSON.parse(pr_row.pricing_rules);
+						pr_row.pricing_rules = JSON.stringify(parsed_json)
+					} else {
+						pr_row.pricing_rules = JSON.stringify(pr_row.pricing_rules)
+					}
 					
-					row_to_modify[key] = pr_row[key];
+				} catch (e) {
+					pr_row.pricing_rules = JSON.stringify([pr_row.pricing_rules])
 				}
 				
-			}
+				// Check if there are even items to modify
+				if (!items || !in_list(exist_items, (pr_row.item_code + "-" + pr_row.pricing_rules))) {
+					rows_to_modify = frappe.model.add_child(me.frm.doc,me.frm.doc.doctype + ' Item', 'items');
+					rows_to_modify = [rows_to_modify]
+					//@Stan - Perhaps we need to use get_basic_details here to get Income Acc?
+				} else if(items || backorder_items) {
+					rows_to_modify = items.filter(d => {
+						const multipleexist = JSON.parse(d.pricing_rules).every(value => {
+							return pr_row.pricing_rules.includes(value);
+						});
+						return (d.item_code === pr_row.item_code && multipleexist)
+					});
+					
+				
+					backorder_rows_to_modify = backorder_items.filter(d => {
+						const multipleexist = JSON.parse(d.pricing_rules).every(value => {
+							return pr_row.pricing_rules.includes(value);
+						});
+						return (d.item_code === pr_row.item_code && multipleexist)
+					});
+					// Check if reduction
+					let si_item_qty = rows_to_modify.reduce((count, item) => {
+						return count + item['qty']
+					}, 0)
+					item_qty = si_item_qty + backorder_rows_to_modify.reduce((count, item) => {
+						return count + item['qty']
+					}, 0)
+					// if greater  then reduce eg 70 > 60
+					// count = 50 from ex
+					
+					if (item_qty > pr_row.qty) {
+						reduce_items = true
+						reduce_qty = item_qty - pr_row.qty
+					}
+					// eg free item qty = 60 item 1 = 20 item 2 = 30
+					// count = 50
+					
 
-		});
+					if (backorder_rows_to_modify.length > 0) {
+						use_backorder = true
+						if (rows_to_modify.length > 0) {
+							// eg 60-50 = 10. therefore add to backorder
+							// count = 50
+							if (!reduce_items) {
+								pr_row['qty'] -= si_item_qty
+							}
+							
+						}
+						rows_to_modify = backorder_rows_to_modify
+
+					}
+				}
+				for (let index = 0; index < rows_to_modify.length; index++) {
+					const row_to_modify = rows_to_modify[index];
+					// Set values of free item on item
+					let removed = false
+					if (reduce_items) {
+						if (reduce_qty >= row_to_modify.qty) {
+							if (use_backorder) {
+								var item_row = me.frm.doc.backorder_items.indexOf(row_to_modify)
+								console.log(me.frm.doc.backorder_items[item_row])
+								me.frm.doc.backorder_items.splice(item_row, 1);
+								
+							} else {
+								var item_row = me.frm.doc.items.indexOf(row_to_modify)
+								console.log(me.frm.doc.items[item_row])
+								me.frm.doc.items.splice(item_row, 1);
+							}
+							removed = true
+							item_qty -= row_to_modify.qty
+							if (pr_row.qty < item_qty) { 
+								apply_discount_once(data, me);
+							}
+							return
+						} else {
+							pr_row.qty = row_to_modify.qty	- reduce_qty
+						}
+					}
+					for (let key in pr_row) {
+						row_to_modify[key] = pr_row[key]
+					}
+					//Add Income Accounts
+					if(!("income_account" in row_to_modify)) {
+						row_to_modify["income_account"] = args["income_account"]
+					}
+					if(!("expense_account" in row_to_modify)) {
+						row_to_modify["expense_account"] = args["expense_account"]
+					}
+					debugger
+					if (!use_backorder && !removed) {
+						frappe.model.trigger('after_qty', undefined, locals[row_to_modify.doctype][row_to_modify.name], false)
+					}
+					break
+				}
+			});
+		}
+
+		let info = JSON.parse(JSON.stringify(args));
+		apply_discount_once(info, this)
 		this.remove_missing_products(args);
 		// free_item_data is a temporary variable
 		delete args['free_item_data']
 		refresh_field('items');
+		refresh_field('backorder_items');
 	},
 	remove_missing_products: function(args) {
 		const items = this.frm.doc.items.filter(d => (d.is_free_item)) || [];

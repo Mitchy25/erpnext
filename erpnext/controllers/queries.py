@@ -95,7 +95,7 @@ def customer_query(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.db.sql(
 		"""select {fields} from `tabCustomer`
 		where docstatus < 2
-			and ({scond}) and disabled=0
+			and ({scond}) and disabled=0 and customer_status != "Closed"
 			{fcond} {mcond}
 		order by
 			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),

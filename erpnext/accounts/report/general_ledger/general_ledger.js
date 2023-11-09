@@ -204,6 +204,12 @@ frappe.query_reports["General Ledger"] = {
 			"label": __("Show Outstanding Amount"),
 			"fieldtype": "Check",
 			"default": 1
+		},
+		{
+			"fieldname": "show_due_date",
+			"label": __("Show Due Date"),
+			"fieldtype": "Check",
+			"default": 0
 		}
 	]
 }

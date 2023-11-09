@@ -157,83 +157,56 @@ erpnext.SerialNoBatchSelector = Class.extend({
 						var batch_used = {}
 						var fetch_html = ''
 
-						let possible_batches = frappe.call({
-							method: 'erpnext.stock.doctype.batch.batch.get_batches_by_oldest',
+						
+						let backorder_data = frappe.call({
+							method: 'erpnext.stock.doctype.batch.batch.allocate_batches_table',
 							args: {
+								doc: me.frm.doc,
 								item_code: me.item_code,
-								warehouse: me.warehouse || typeof me.warehouse_details.name == "string" ? me.warehouse_details.name : ''
+								warehouse: me.warehouse || typeof me.warehouse_details.name == "string" ? me.warehouse_details.name : '',
+								type_required: this.dialog.fields_dict.fetch_options.get_value(),
+								qty_required: qty_to_allocate
 							}
 						});
-						possible_batches.then((data) => {
-							
-							let fetch_options = this.dialog.fields_dict.fetch_options.get_value()
-							data.message = data.message.filter((batch) => batch[0].qty > 0)
-							for (let index = 0; index < data.message.length; index++) {
-								let selected_batch = data.message[index]
-								let batch_date = new Date(selected_batch[1])
+						backorder_data.then((message) => {
+							this.dialog.fields_dict.batches.df.data = []
 
-								if (batch_date < moment().add(12, 'months')) {
-									selected_batch['shortdated'] = 1
-								} else { 
-									selected_batch['shortdated'] = 0
+							this.backorder_data = message.message[2]
+							console.log(message.message)
+							for (let index = 0; index < message.message[0].length; index++) {
+								const item = message.message[0][index];
+								if (item.is_free_item == "True") {
+									item.is_free_item = true
 								}
-
-								dialog_batches.length = 0
-
-							}
- 
-							for (let index = 0; index < data.message.length; index++) {
-								if (qty_to_allocate <= 0) {
-									break
-								}
-								const batches_gotten = data.message[index];
-								batches_gotten[0]['org_qty'] = batches_gotten[0].qty
-
-								
-								if (fetch_options == "Longdated Only"&& batches_gotten.shortdated == 1) {
-									continue
-								} else if (fetch_options == "Shortdated Only" && batches_gotten.shortdated == 0) {
-									continue
-								} 
-								
-								if (batches_gotten[0].qty > 0) {
-									if (batches_gotten[0].qty >= qty_to_allocate) {
-										var row_qty = qty_to_allocate
-									} else {
-										var row_qty = batches_gotten[0].qty
-										batches_gotten[0].qty = 0
-									}
-									if (batches_gotten[0].batch_no in batch_used) {
-										dialog_batches[batch_used[batches_gotten[0].batch_no]].selected_qty += row_qty
-										qty_to_allocate -= row_qty
-									} else {
-										this.dialog.fields_dict.batches.df.data.push({
-											'batch_no': batches_gotten[0].batch_no,
-											'selected_qty': row_qty,
-											'available_qty': batches_gotten[0]['org_qty']
-										});
-										qty_to_allocate -= row_qty
-									}
-								}
-								if (batches_gotten.shortdated) {
-									fetch_html += `${batches_gotten[0].batch_no} is Shortdated.<br>`
+								this.dialog.fields_dict.batches.df.data.push({
+									'batch_no': item.batch_no,
+									'selected_qty': item.qty,
+									'available_qty': item.available_qty,
+									"name": item.name,
+									"is_free_item": item.is_free_item,
+									"pricing_rules": item.pricing_rules,
+									"discount_percentage": item.discount_percentage,
+									"rate":item.rate
+								});
+								if (item.shortdated) {
+									fetch_html += `${item.batch_no} is Shortdated.<br>`
 								}
 							}
-							if (this.dialog.fields_dict.batches.df.data.length == 0) {
-								fetch_html += `<b>No batches found that are ${fetch_options}</b>`
-							}
-							this.dialog.fields_dict.auto_fetch_html.$wrapper.html(
-								`<div style="color=${frappe.ui.color.get('red')}"> ${fetch_html} </div>`
-					);
 							this.update_total_qty();
 							this.update_pending_qtys();
-							//debugger
-							if (qty_to_allocate > 0) {
+							this.dialog.fields_dict.qty_remaining.set_input(message.message[1]);
+							if (message.message[1] > 0) {
 								this.dialog.fields_dict.unallocated_backorder_check.value = true
 								this.dialog.fields_dict.unallocated_backorder_check.refresh()
 							}
+							if (this.dialog.fields_dict.batches.df.data.length == 0) {
+								fetch_html += `<b>No batches found that are ${this.dialog.fields_dict.fetch_options.value}</b>`
+							}
+							this.dialog.fields_dict.auto_fetch_html.$wrapper.html(
+								`<div style="color=${frappe.ui.color.get('red')}"> ${fetch_html} </div>`
+							)
 							this.dialog.fields_dict.batches.grid.refresh();
-						});
+						})
 					}
 				}
 			},
@@ -249,6 +222,12 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				fieldname: 'auto_fetch_html',
 				read_only: 1,
 				fieldtype: 'HTML'
+			},
+			{
+				fieldname: 'backorder_data',
+				read_only: 1,
+				fieldtype: 'Data',
+				hidden: 1
 			},
 		];
 
@@ -285,9 +264,16 @@ erpnext.SerialNoBatchSelector = Class.extend({
 					() => me.assign_remaining_to_backorder(me),
 					() => me.dialog.hide(),
 					() => {
+						let data = me.changed_rows.sort((firstItem, secondItem) => firstItem.qty - secondItem.qty);
+						data.forEach(row => {
+							if (!row.is_free_item) {
+								frappe.model.trigger('qty', undefined, row, false)
+							}
+						});
+					},
+					() => {
 						if (cur_dialog) {
 							cur_dialog.hide()
-							// Start dialog creation
 						}
 					}
 				])
@@ -357,44 +343,74 @@ erpnext.SerialNoBatchSelector = Class.extend({
 	assign_remaining_to_backorder(me) {
 		if (me.values.unallocated_backorder_check) {
 			frappe.require('assets/fxnmrnth/js/custom_doctype_assets/sales_invoice/backorder_detect.js').then(() => {
-				add_backorder_child(me.item, me.values.qty_remaining, me.frm, me.values.selected_qty)
+				let item = new export_backorder_detect()
+				if (this.backorder_data.length > 0) {
+					var org_item = JSON.parse(JSON.stringify(me.item));
+					this.backorder_data.forEach(bo_item => {
+						for (let key in bo_item) {
+							org_item[key] = bo_item[key]
+						}
+						me.values.qty_remaining -= bo_item.qty
+						item.add_backorder_child(org_item, bo_item.qty, me.frm, 0)
+					});
+				}
+				if (me.values.qty_remaining > 0) {
+					item.add_backorder_child(me.item, me.values.qty_remaining, me.frm, 0)
+				}
+				
 			})
 		}
 	},
 	update_batch_items() {
 		// clones an items if muliple batches are selected.
-		var changed_rows = []
+		this.changed_rows = []
 		if(this.has_batch && !this.has_serial_no) {
-			const batch_list = this.values.batches.map((batch) => batch.batch_no)
-			this.values.batches.map((batch, i) => {
-				console.log(batch_list)
-				let batch_no = batch.batch_no;
-				let row = '';
-				if (i !== 0 && !this.batch_exists(batch_no)) {
-					let item_with_no_batch = this.frm.doc.items.filter((item) => item.item_code == this.item_code && !item.batch_no)
-					if (item_with_no_batch.length) {
-						row = item_with_no_batch[0]
-					} else {
-						row = this.frm.add_child("items", { ...this.item });
-					}
+			const items = this.values.batches
+			console.log(items)
+			
+			items.forEach(item => {
+				let row = ''
+				if (item.name != 'new' && !this.changed_rows.includes(item.name)) {
+					row = this.frm.doc.items.find(i => i.name === item.name);
 				} else {
-					row = this.frm.doc.items.find(i => i.batch_no === batch_no);
+					row = this.frm.add_child("items", { ...this.item });
+					
 				}
-				if (!row) {
-					row = this.frm.doc.items.find(i => i.item_code === this.item_code && batch_list.includes(i.batch_no));
-				}
-
-				if (!row) {
-					row = this.item;
-				}
-				// this ensures that qty & batch no is set
-				this.map_row_values(row, batch, 'batch_no',
-					'selected_qty', this.values.warehouse);
-				frappe.model.trigger('qty', undefined, row, false)
-				changed_rows.push(row)
-
+				this.map_row_values(row, item, 'batch_no',
+				'selected_qty', this.values.warehouse);
+				this.changed_rows.push(row.name)
 			});
-			this.remove_unchanged_items(changed_rows)
+			this.remove_unchanged_items(this.changed_rows)
+			// const batch_list = this.values.batches.map((batch) => batch.batch_no)
+			// this.values.batches.map((batch, i) => {
+			// 	console.log(batch_list)
+			// 	let batch_no = batch.batch_no;
+			// 	let row = '';
+			// 	if (i !== 0 && !this.batch_exists(batch_no)) {
+			// 		let item_with_no_batch = this.frm.doc.items.filter((item) => item.item_code == this.item_code && !item.batch_no)
+			// 		if (item_with_no_batch.length) {
+			// 			row = item_with_no_batch[0]
+			// 		} else {
+			// 			row = this.frm.add_child("items", { ...this.item });
+			// 		}
+			// 	} else {
+			// 		row = this.frm.doc.items.find(i => i.batch_no === batch_no);
+			// 	}
+			// 	if (!row) {
+			// 		row = this.frm.doc.items.find(i => i.item_code === this.item_code && batch_list.includes(i.batch_no));
+			// 	}
+
+			// 	if (!row) {
+			// 		row = this.item;
+			// 	}
+			// 	// this ensures that qty & batch no is set
+			// 	this.map_row_values(row, batch, 'batch_no',
+			// 		'selected_qty', this.values.warehouse);
+			// 	frappe.model.trigger('qty', undefined, row, false)
+			// 	changed_rows.push(row)
+
+			// });
+			// this.remove_unchanged_items(changed_rows)
 		}
 	},
 	remove_unchanged_items(changed_rows) {
@@ -404,7 +420,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				break
 			}
 			const element = this.frm.doc.items[index];
-			if (element.item_code === this.item_code && !changed_rows.includes(element)) {
+			if (element.item_code === this.item_code && !changed_rows.includes(element.name)) {
 				this.frm.doc.items.splice(index, 1);
 			}
 		}
@@ -472,6 +488,22 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			row.t_warehouse = values.warehouse || warehouse;
 		} else {
 			row.warehouse = values.warehouse || warehouse;
+		}
+		if (number == 'batch_no') {
+			if (values.is_free_item) {
+				row.is_free_item = values.is_free_item
+			}
+			if (values.rate != undefined) {
+				row.rate = values.rate
+			}
+			if (values.discount_percentage != undefined) {
+				row.discount_percentage = values.discount_percentage
+			}
+			if (values.pricing_rules) {
+				row.pricing_rules = values.pricing_rules
+			} else {
+				row.pricing_rules = ""
+			}
 		}
 
 		this.frm.dirty();
@@ -620,6 +652,32 @@ erpnext.SerialNoBatchSelector = Class.extend({
 							me.update_total_qty();
 							me.update_pending_qtys();
 						}
+					},
+					{
+						'fieldtype': 'Data',
+						'read_only': 1,
+						'fieldname': 'pricing_rule',
+						'label': __('Pricing Rules'),
+					},
+					{
+						'fieldtype': 'Check',
+						'read_only': 1,
+						'fieldname': 'is_free_item',
+						'label': __('is free item'),
+						'default': 0
+					},
+					{
+						'fieldtype': 'Data',
+						'read_only': 1,
+						'fieldname': 'rate',
+						'label': __('rate'),
+						'default': 0
+					},
+					{
+						'fieldtype': 'name',
+						'read_only': 1,
+						'fieldname': 'name',
+						'label': __('name'),
 					},
 				],
 				in_place_edit: true,
