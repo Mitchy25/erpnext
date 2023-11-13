@@ -547,7 +547,8 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 	doc['items'] = [i for i in doc['items'] if i.get('item_code')]
 
 	if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
-		pricing_rules = convert_to_set([i['pricing_rules'] for i in doc['items'] if i['item_code'] == item_code and ('ignore_pricing_rules' not in i or i['ignore_pricing_rules'] != 1) and i['pricing_rules']])
+		pricing_rules = convert_to_set([i['pricing_rules'] for i in doc['items'] if i['item_code'] == item_code and not i.get('ignore_pricing_rules') and i['pricing_rules']])
+
 		pricing_rules = list(pricing_rules)
 		pricing_rule_dict = {}
 		if pricing_rules:
@@ -580,15 +581,20 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 			item['batch_no'] = i['batch_no']
 			if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
 				item.update({
-					'ignore_pricing_rules': doc['ignore_pricing_rule'] or i['ignore_pricing_rules'],
-					'pricing_rules': i['pricing_rules'],
+					'ignore_pricing_rules': doc['ignore_pricing_rule'] or i.get('ignore_pricing_rules'),
 					'discount_percentage': i['discount_percentage'],
 				})
+				if not item['ignore_pricing_rules']: 
+					item['pricing_rules'] = i['pricing_rules'] 
+
 				if i['is_free_item'] == 0:
 					add_to_list = False
 					if 'batch_no' in i and i['batch_no']:
 						if i['batch_no'] not in batch_dict:
 							continue
+						add_to_list = True
+					if 'ignore_pricing_rules' in i:
+						item['ignore_pricing_rules'] = i['ignore_pricing_rules']
 						add_to_list = True
 					elif (i['pricing_rules']):
 						add_to_list = True
@@ -596,9 +602,6 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 							if pricing_rule_dict[rule]['max_qty'] > 0:
 								if 'max_qty' not in item:
 									item['max_qty'] = pricing_rule_dict[rule]['max_qty']
-					if 'ignore_pricing_rules' in i:
-						item['ignore_pricing_rules'] = i['ignore_pricing_rules']
-						add_to_list = True
 					if add_to_list:
 						qty_in_list += i['qty']
 						items_from_table.append(item)
@@ -642,7 +645,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 		max_qty = float('inf')
 		min_qty = 0
 		if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
-			if item['pricing_rules']:
+			if item.get('pricing_rules'):
 				pricing_rules = json.loads(item['pricing_rules'])
 				for rule in pricing_rules:
 					pr_max_qty = pricing_rule_dict[rule]['max_qty']
