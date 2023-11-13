@@ -182,7 +182,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 									'batch_no': item.batch_no,
 									'selected_qty': item.qty,
 									'available_qty': item.available_qty,
-									"name": item.name,
+									"row_name": item.name,
 									"is_free_item": item.is_free_item,
 									"pricing_rules": item.pricing_rules,
 									"discount_percentage": item.discount_percentage,
@@ -367,11 +367,11 @@ erpnext.SerialNoBatchSelector = Class.extend({
 		if(this.has_batch && !this.has_serial_no) {
 			const items = this.values.batches
 			console.log(items)
-			
 			items.forEach(item => {
 				let row = ''
-				if (item.name != 'new' && !this.changed_rows.includes(item.name)) {
-					row = this.frm.doc.items.find(i => i.name === item.name);
+				if (item.row_name != 'new' && !this.changed_rows.includes(item.row_name) && item.row_name) {
+					debugger
+					row = this.frm.doc.items.find(i => i.name === item.row_name);
 				} else {
 					row = this.frm.add_child("items", { ...this.item });
 					
@@ -674,10 +674,10 @@ erpnext.SerialNoBatchSelector = Class.extend({
 						'default': 0
 					},
 					{
-						'fieldtype': 'name',
+						'fieldtype': 'Data',
 						'read_only': 1,
-						'fieldname': 'name',
-						'label': __('name'),
+						'fieldname': 'row_name',
+						'label': __('row_name'),
 					},
 				],
 				in_place_edit: true,
