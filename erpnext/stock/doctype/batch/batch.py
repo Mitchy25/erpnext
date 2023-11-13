@@ -516,7 +516,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 	import json
 	qty_required = float(qty_required)
 	doc = json.loads(doc)
-	price_list_rate = get_price_list_rate_for({"price_list":doc['selling_price_list'], 'item_code':item_code, "customer":doc['customer']},item_code)
+
 	
 	#Get batches and turn into dict
 	def get_batch():
@@ -545,18 +545,18 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 	brand = None
 	item_group = None
 	doc['items'] = [i for i in doc['items'] if i.get('item_code')]
-	pricing_rules = convert_to_set([i['pricing_rules'] for i in doc['items'] if i['item_code'] == item_code and ('ignore_pricing_rules' not in i or i['ignore_pricing_rules'] != 1) and i['pricing_rules']])
-	pricing_rules = list(pricing_rules)
-	pricing_rule_dict = {}
-	if pricing_rules:
-		sql = """
-		SELECT name, min_qty, max_qty from `tabPricing Rule` where name IN %(data)s 
-		"""
-		pricing_rule_info = frappe.db.sql(sql, {'data':tuple(pricing_rules)}, as_dict=True)
-		
-		
-		for rule in pricing_rule_info:
-			pricing_rule_dict[rule['name']] = {'min_qty':rule['min_qty'],'max_qty':rule['max_qty']}
+
+	if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
+		pricing_rules = convert_to_set([i['pricing_rules'] for i in doc['items'] if i['item_code'] == item_code and ('ignore_pricing_rules' not in i or i['ignore_pricing_rules'] != 1) and i['pricing_rules']])
+		pricing_rules = list(pricing_rules)
+		pricing_rule_dict = {}
+		if pricing_rules:
+			sql = """
+			SELECT name, min_qty, max_qty from `tabPricing Rule` where name IN %(data)s 
+			"""
+			for rule in frappe.db.sql(sql, {'data':tuple(pricing_rules)}, as_dict=True):
+				pricing_rule_dict[rule['name']] = {'min_qty':rule['min_qty'],'max_qty':rule['max_qty']}
+
 	qty_in_list = 0
 
 
@@ -572,35 +572,41 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 			item = {
 				'name': i['name'],
 				'qty': i['qty'],
-				'pricing_rules': i['pricing_rules'],
-				'ignore_pricing_rule': doc['ignore_pricing_rule'],
 				'brand': brand,
 				'item_group': item_group,
-				'rate': i['rate'],
-				'discount_percentage': i['discount_percentage'],
-				'ignore_pricing_rules': 0
+				'rate': i.get('rate'),
+				'basic_rate': i.get('basic_rate')
 			}
 			item['batch_no'] = i['batch_no']
-			if i['is_free_item'] == 0:
-				add_to_list = False
-				if 'batch_no' in i and i['batch_no']:
-					if i['batch_no'] not in batch_dict:
-						continue
-					add_to_list = True
-				elif (i['pricing_rules']):
-					add_to_list = True
-					for rule in json.loads(i['pricing_rules']):
-						if pricing_rule_dict[rule]['max_qty'] > 0:
-							if 'max_qty' not in item:
-								item['max_qty'] = pricing_rule_dict[rule]['max_qty']
-				if 'ignore_pricing_rules' in i:
-					item['ignore_pricing_rules'] = i['ignore_pricing_rules']
-					add_to_list = True
-				if add_to_list:
-					qty_in_list += i['qty']
-					items_from_table.append(item)
+			if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
+				item.update({
+					'ignore_pricing_rules': doc['ignore_pricing_rule'] or i['ignore_pricing_rules'],
+					'pricing_rules': i['pricing_rules'],
+					'discount_percentage': i['discount_percentage'],
+				})
+				if i['is_free_item'] == 0:
+					add_to_list = False
+					if 'batch_no' in i and i['batch_no']:
+						if i['batch_no'] not in batch_dict:
+							continue
+						add_to_list = True
+					elif (i['pricing_rules']):
+						add_to_list = True
+						for rule in json.loads(i['pricing_rules']):
+							if pricing_rule_dict[rule]['max_qty'] > 0:
+								if 'max_qty' not in item:
+									item['max_qty'] = pricing_rule_dict[rule]['max_qty']
+					if 'ignore_pricing_rules' in i:
+						item['ignore_pricing_rules'] = i['ignore_pricing_rules']
+						add_to_list = True
+					if add_to_list:
+						qty_in_list += i['qty']
+						items_from_table.append(item)
+				else:
+					qty_required -= i['qty']
 			else:
-				qty_required -= i['qty']
+				items_from_table.append(item)
+				
 	items_from_table = sorted(items_from_table, key=lambda k: (k['batch_no'].lower(), k['qty']), reverse=True)
 	results = []
 	for key in batch_dict:
@@ -623,7 +629,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 				'batch_no': batch_no,
 				'available_qty': batches_gotten['org_qty'],
 				'qty': row_qty,
-				'ignore_pricing_rule': '0',
+				'ignore_pricing_rules': '0',
 				'shortdated_batch': batches_gotten['shortdated'],
 				'brand': brand,
 				'item_group': item_group,
@@ -635,15 +641,16 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 	for item in items_from_table:
 		max_qty = float('inf')
 		min_qty = 0
-		if item['pricing_rules']:
-			pricing_rules = json.loads(item['pricing_rules'])
-			for rule in pricing_rules:
-				pr_max_qty = pricing_rule_dict[rule]['max_qty']
-				if pr_max_qty == 0:
-					pr_max_qty = float('inf')
-				max_qty = min(max_qty, pr_max_qty)
-				pr_min_qty = pricing_rule_dict[rule]['max_qty']
-				min_qty = max(min_qty, pr_min_qty)
+		if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
+			if item['pricing_rules']:
+				pricing_rules = json.loads(item['pricing_rules'])
+				for rule in pricing_rules:
+					pr_max_qty = pricing_rule_dict[rule]['max_qty']
+					if pr_max_qty == 0:
+						pr_max_qty = float('inf')
+					max_qty = min(max_qty, pr_max_qty)
+					pr_min_qty = pricing_rule_dict[rule]['max_qty']
+					min_qty = max(min_qty, pr_min_qty)
 		for i in range(len(results)):
 			result = results[i]
 			if result['name'] != 'new':
@@ -663,103 +670,110 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 						result['name'] = 'new'
 						break
 					batch_dict[result['batch_no']][0]['result_qty'] += result['name'] 
-	
-	free_items = [i for i in doc['items'].copy() if i['item_code'] == item_code and i['is_free_item']]
-	# doc['items'] = [i for i in doc['items'] if i['item_code'] != item_code ]
-	free_item_results = {}
-	for item in results:
-		data = {}
-		data.update(item)
-		data.update({
-			'item_code':item_code,
-			'brand': brand ,
-			'qty': item['qty'],
-			'stock_qty': item['qty'],
-			'transaction_type': 'selling',
-			'price_list': doc['selling_price_list'],
-			'customer_group': doc['customer_group'],
-			'company': doc['company'],
-			'conversion_rate': 1,
-			'for_shopping_cart': True,
-			'currency': frappe.db.get_value('Price List', doc['selling_price_list'], 'currency'),
-			'customer': doc['customer'],
-			'transaction_date': doc['posting_date'],
-			'territory': doc['territory'],
-			'ignore_pricing_rule': False if data['ignore_pricing_rule'] == '0' else True
-		})
-		pricing_rule = get_pricing_rule_for_item(frappe._dict(data), price_list_rate, frappe._dict(doc))
-		if pricing_rule.get('price_or_product_discount') == 'Product':
-			found = False
-			pricing_rules = pricing_rule['pricing_rules']
-			if pricing_rule['free_item_data'][0]['item_code'] == item_code:
-				for i in free_items:
-					if json.loads(pricing_rules) == json.loads(i['pricing_rules']):
-						i.update({
-							'rate': pricing_rule['free_item_data'][0]['rate'],
-							'is_free_item': 'True',
-							'pricing_rules': pricing_rules
-						})
-						if pricing_rules not in free_item_results or pricing_rule['free_item_data'][0]['qty'] > free_item_results[pricing_rules]['qty']:
-							i['qty'] = pricing_rule['free_item_data'][0]['qty']
-						else:
-							i['qty'] = free_item_results[pricing_rules]['qty']
-						free_item_results[pricing_rules] = i
-						found = True
-						break
-				
-				if not found:
-					if pricing_rule['pricing_rules'] in free_item_results:
-						if free_item_results[pricing_rule['pricing_rules']]['qty'] > pricing_rule['free_item_data'][0]['qty']:
-							pricing_rule['free_item_data'][0]['qty'] = free_item_results[pricing_rule['pricing_rules']]['qty']
-					free_item_results[pricing_rule['pricing_rules']] = {
-						'item_code': item_code,
-						'rate': pricing_rule['free_item_data'][0]['rate'],
-						'qty': pricing_rule['free_item_data'][0]['qty'],
-						'name':'new',
-						'is_free_item': True,
-						'pricing_rules': pricing_rule['pricing_rules']
-					}
-					
-					free_item_data = free_item_results[pricing_rule['pricing_rules']]
-					free_item_data['discount_percentage'] = ((price_list_rate-free_item_data['rate'])/price_list_rate)*100
-		doc['items'].append(item)
-	for pricing_rule in free_item_results:
-		qty_required += free_item_results[pricing_rule]['qty']
-	for key in batch_dict:
-		if qty_required <= 0:
-			break
-		batches_gotten = batch_dict[key][0]
-		
-		batch_no = batches_gotten['batch_no']
-		batch_qty = batches_gotten['qty']
-		
-		for key, value in free_item_results.items():
-			if batch_qty <= 0:
-				break
-			if value['qty'] > batch_qty or 'done' in value:
-				value['batch_no'] = batches_gotten['batch_no']
-				value_copy = value.copy()
-				value_copy['qty'] = batch_qty
-				qty_required -= value_copy['qty']
-				results.append(value_copy)
-				value['qty'] = value['qty'] - batch_qty
-			else:
-				value['batch_no'] = batches_gotten['batch_no']
-				batch_qty -= value['qty']
-				qty_required -= value['qty']
-				results.append(value)
-				free_item_results[key]['done'] = True
-		batches_gotten['qty'] = batch_qty
+	"""Pricing Rule calculation section"""
 	backorder_items = []
-	for i in free_item_results:
-		i = free_item_results[i]
-		if 'done' not in i:
-			backorder_items.append({
-				'qty': i['qty'],
-				'rate':i['rate'],
-				'is_free_item': True,
-				'pricing_rules': i['pricing_rules']
+	if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
+		free_items = [i for i in doc['items'].copy() if i['item_code'] == item_code and i['is_free_item']]
+		# doc['items'] = [i for i in doc['items'] if i['item_code'] != item_code ]
+		free_item_results = {}
+
+		price_list = doc.get('selling_price_list')
+		price_list_rate = get_price_list_rate_for({"price_list":price_list, 'item_code':item_code, "customer":doc['customer']},item_code)
+		for item in results:
+			data = {}
+			data.update(item)
+			data.update({
+				'item_code':item_code,
+				'brand': brand ,
+				'qty': item['qty'],
+				'stock_qty': item['qty'],
+				'transaction_type': 'selling',
+				'price_list': price_list,
+				'customer_group': doc['customer_group'],
+				'company': doc['company'],
+				'conversion_rate': 1,
+				'for_shopping_cart': True,
+				'currency': frappe.db.get_value('Price List', price_list, 'currency'),
+				'customer': doc['customer'],
+				'transaction_date': doc['posting_date'],
+				'territory': doc['territory'],
+				'ignore_pricing_rules': False if data['ignore_pricing_rules'] == '0' else True
 			})
+
+			pricing_rule = get_pricing_rule_for_item(frappe._dict(data), price_list_rate, frappe._dict(doc))
+			if pricing_rule.get('price_or_product_discount') == 'Product':
+				found = False
+				pricing_rules = pricing_rule['pricing_rules']
+				if pricing_rule['free_item_data'][0]['item_code'] == item_code:
+					for i in free_items:
+						if json.loads(pricing_rules) == json.loads(i['pricing_rules']):
+							i.update({
+								'rate': pricing_rule['free_item_data'][0]['rate'],
+								'is_free_item': 'True',
+								'pricing_rules': pricing_rules
+							})
+							if pricing_rules not in free_item_results or pricing_rule['free_item_data'][0]['qty'] > free_item_results[pricing_rules]['qty']:
+								i['qty'] = pricing_rule['free_item_data'][0]['qty']
+							else:
+								i['qty'] = free_item_results[pricing_rules]['qty']
+							free_item_results[pricing_rules] = i
+							found = True
+							break
+					
+					if not found:
+						if pricing_rule['pricing_rules'] in free_item_results:
+							if free_item_results[pricing_rule['pricing_rules']]['qty'] > pricing_rule['free_item_data'][0]['qty']:
+								pricing_rule['free_item_data'][0]['qty'] = free_item_results[pricing_rule['pricing_rules']]['qty']
+						free_item_results[pricing_rule['pricing_rules']] = {
+							'item_code': item_code,
+							'rate': pricing_rule['free_item_data'][0]['rate'],
+							'qty': pricing_rule['free_item_data'][0]['qty'],
+							'name':'new',
+							'is_free_item': True,
+							'pricing_rules': pricing_rule['pricing_rules']
+						}
+						
+						free_item_data = free_item_results[pricing_rule['pricing_rules']]
+						free_item_data['discount_percentage'] = ((price_list_rate-free_item_data['rate'])/price_list_rate)*100
+			doc['items'].append(item)
+		for pricing_rule in free_item_results:
+			qty_required += free_item_results[pricing_rule]['qty']
+		for key in batch_dict:
+			if qty_required <= 0:
+				break
+			batches_gotten = batch_dict[key][0]
+			
+			batch_no = batches_gotten['batch_no']
+			batch_qty = batches_gotten['qty']
+			
+			for key, value in free_item_results.items():
+				if batch_qty <= 0:
+					break
+				if value['qty'] > batch_qty or 'done' in value:
+					value['batch_no'] = batches_gotten['batch_no']
+					value_copy = value.copy()
+					value_copy['qty'] = batch_qty
+					qty_required -= value_copy['qty']
+					results.append(value_copy)
+					value['qty'] = value['qty'] - batch_qty
+				else:
+					value['batch_no'] = batches_gotten['batch_no']
+					batch_qty -= value['qty']
+					qty_required -= value['qty']
+					results.append(value)
+					free_item_results[key]['done'] = True
+			batches_gotten['qty'] = batch_qty
+		
+		for i in free_item_results:
+			i = free_item_results[i]
+			if 'done' not in i:
+				backorder_items.append({
+					'qty': i['qty'],
+					'rate':i['rate'],
+					'is_free_item': True,
+					'pricing_rules': i['pricing_rules']
+				})
+	"""End of Pricing Rule calculation section"""
 	actual_results = []
 
 	
@@ -773,12 +787,15 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 		}
 		if 'rate' in result:
 			value['rate'] = result['rate']
-		if 'pricing_rules' in result:
-			value['pricing_rules'] = result['pricing_rules']
-		if 'is_free_item' in result:
-			value['is_free_item'] = result['is_free_item']
-		if 'discount_percentage' in result:
-			value['discount_percentage'] = result['discount_percentage']
+		if 'basic_rate' in result:
+			value['basic_rate'] = result['basic_rate']
+		if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
+			if 'pricing_rules' in result:
+				value['pricing_rules'] = result['pricing_rules']
+			if 'is_free_item' in result:
+				value['is_free_item'] = result['is_free_item']
+			if 'discount_percentage' in result:
+				value['discount_percentage'] = result['discount_percentage']
 		actual_results.append(value)
 	
 	return [actual_results, qty_required, backorder_items]
@@ -798,9 +815,22 @@ def convert_to_set(strings_list):
 
 
 def test():
-	doc = '{"name":"NM-0129349","owner":"Administrator","creation":"2023-08-31 09:41:46.530248","modified":"2023-09-20 14:00:35.297203","modified_by":"Administrator","idx":0,"docstatus":0,"title":"Life Pharmacy Franklins","naming_series":"NM-.#######","customer":"10031","customer_name":"Life Pharmacy Franklins","email":"accounts@franklinspharmacy.co.nz","order_type":"Customer Order","order_source":"Backorder","is_pos":0,"is_consolidated":0,"is_return":0,"woocommerce_order":0,"is_debit_note":0,"update_billed_amount_in_sales_order":0,"company":"NaturalMeds","posting_date":"2023-09-20","posting_time":"14:00:35.559121","set_posting_time":0,"due_date":"2023-09-20","temporary_address":0,"cost_center":"NaturalMeds - Nm","delivery_provider":"NZ Couriers","po_no":"","payment_category":"Pay after Dispatch","transaction_date":"2023-08-31","po_date":"2023-08-31","credit_card_on_file":0,"customer_address":"10031-Billing","address_display":"\\nAccount: 10031,<br>\\n\\n48 Queen Street,\\n, Warkworth<br>\\nNew Zealand, 0910<br>\\n","contact_person":"CONTACT-07971","contact_display_name":"Example Contact  Current Primary ","contact_display":"double contact","contact_mobile":"","contact_email":"email@emailaddress.com","territory":"Auckland North/West/Northland","phone_number":"09 425 8014","shipping_address_name":"10031-Shipping","shipping_address":"\\nAccount: 10031,<br>\\n\\n42 Queen Street,\\n, Warkworth<br>\\nNew Zealand, 0910<br>\\n","company_address":"TOLL - AIR-Shipping","company_address_display":"\\nAccount: TOLL - AIR,<br>\\n\\nTOLL Warehouse Handler – St George CFS – AIR,\\n<br>1650 South Central Ave, DOCK 1-5 FOR AIR WINDOW 11, Compton<br>\\nCA<br>United States, 90220<br>\\n","currency":"NZD","conversion_rate":1,"selling_price_list":"NZ Wholesale","price_list_currency":"NZD","plc_conversion_rate":1,"ignore_pricing_rule":0,"set_warehouse":"Napier - Nm","update_stock":1,"disable_bo_check":0,"total_billing_amount":0,"total_billing_hours":0,"total_qty":30,"base_total":0,"base_net_total":0,"total_net_weight":0,"total":0,"net_total":0,"taxes_and_charges":"NZ GST 15% Wholesale - Nm","tax_category":"","other_charges_calculation":"<div class=\\"tax-break-up\\" style=\\"overflow-x: auto;\\">\\n\\t<table class=\\"table table-bordered table-hover\\">\\n\\t\\t<thead>\\n\\t\\t\\t<tr>\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-left\\">Item</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-right\\">Taxable Amount</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-right\\">GST @ 15.0</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t</tr>\\n\\t\\t</thead>\\n\\t\\t<tbody>\\n\\t\\t\\t\\n\\t\\t\\t\\t<tr>\\n\\t\\t\\t\\t\\t<td>Batch-test-002</td>\\n\\t\\t\\t\\t\\t<td class=\\"text-right\\">\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t$ 0.00\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t</td>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t<td class=\\"text-right\\">\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t(15.0%)\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t$ 0.00\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t</td>\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t</tr>\\n\\t\\t\\t\\n\\t\\t</tbody>\\n\\t</table>\\n</div>","base_total_taxes_and_charges":0,"total_taxes_and_charges":0,"loyalty_points":0,"loyalty_amount":0,"redeem_loyalty_points":0,"apply_discount_on":"Grand Total","base_discount_amount":0,"additional_discount_percentage":0,"discount_amount":0,"base_grand_total":0,"base_rounding_adjustment":0,"base_rounded_total":0,"base_in_words":"","grand_total":0,"rounding_adjustment":0,"rounded_total":0,"in_words":"","total_advance":0,"outstanding_amount":0,"disable_rounded_total":1,"write_off_amount":0,"base_write_off_amount":0,"write_off_outstanding_amount_automatically":0,"allocate_advances_automatically":0,"ignore_default_payment_terms_template":0,"payment_terms_template":"Default Customer Payment Terms","base_paid_amount":0,"paid_amount":0,"base_change_amount":0,"change_amount":0,"letter_head":"NaturalMeds Statements Header","group_same_items":0,"language":"en","status":"Draft","customer_group":"Gutsi NZ","is_internal_customer":0,"is_discounted":0,"isbackorder":1,"barcode_svg":"<svg id=\\"barcode\\" height=\\"29px\\" width=\\"127px\\" x=\\"0px\\" y=\\"0px\\" viewBox=\\"0 0 127 29\\" xmlns=\\"http://www.w3.org/2000/svg\\" version=\\"1.1\\" style=\\"transform: translate(0,0)\\"><rect x=\\"0\\" y=\\"0\\" width=\\"127\\" height=\\"29\\" style=\\"fill:#ffffff;\\"></rect><g transform=\\"translate(2, 2)\\" style=\\"fill:#000000;\\"><rect x=\\"0\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"3\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"6\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"11\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"13\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"19\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"22\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"24\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"28\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"33\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"36\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"39\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"44\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"47\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"51\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"55\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"57\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"61\\" y=\\"0\\" width=\\"4\\" height=\\"25\\"></rect><rect x=\\"66\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"68\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"72\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"77\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"79\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"83\\" y=\\"0\\" width=\\"4\\" height=\\"25\\"></rect><rect x=\\"88\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"91\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"95\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"99\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"101\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"105\\" y=\\"0\\" width=\\"4\\" height=\\"25\\"></rect><rect x=\\"110\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"115\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"119\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"121\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect></g></svg>","debit_to":"Debtors NZ - Nm","party_account_currency":"NZD","is_opening":"No","c_form_applicable":"No","remarks":"No Remarks","amount_eligible_for_commission":0,"commission_rate":0,"total_commission":0,"against_income_account":"1143 - Gaia Herbs - Nm","exclude_invoice":0,"doctype":"Sales Invoice","items":[{"name":"a27ebb0ff8","owner":"Administrator","creation":"2023-08-31 09:41:46.530248","modified":"2023-09-20 14:00:35.297203","modified_by":"Administrator","parent":"NM-0129349","parentfield":"items","parenttype":"Sales Invoice","idx":1,"docstatus":0,"item_code":"Batch-test-002","item_name":"Batch-test-002","description":"Batch-test-002","item_group":"Products","brand":"Gaia Herbs","image":"","qty":20,"stock_uom":"Unit","uom":"Unit","conversion_factor":1,"stock_qty":20,"price_list_rate":0,"base_price_list_rate":0,"margin_type":null,"margin_rate_or_amount":0,"rate_with_margin":0,"discount_percentage":0,"discount_amount":0,"base_rate_with_margin":0,"rate":0,"amount":0,"base_rate":0,"base_amount":0,"ignore_pricing_rules":0,"pricing_rules":"[\\n \\"PRLE-0340\\"\\n]","stock_uom_rate":0,"is_free_item":0,"grant_commission":1,"net_rate":0,"net_amount":0,"base_net_rate":0,"base_net_amount":0,"delivered_by_supplier":0,"income_account":"1143 - Gaia Herbs - Nm","is_fixed_asset":0,"expense_account":"2146 - Gaia Herbs - Nm","enable_deferred_revenue":0,"weight_per_unit":0,"total_weight":0,"warehouse":"Napier - Nm","shortdated_batch":0,"incoming_rate":7.94,"allow_zero_valuation_rate":0,"item_tax_rate":"{}","actual_batch_qty":68,"actual_qty":20,"delivered_qty":0,"cost_center":"NaturalMeds - Nm","page_break":0,"doctype":"Sales Invoice Item","weight_uom":null,"discount_account":null,"has_serial_no":0,"has_batch_no":1,"min_order_qty":"","supplier":"Gaia Herbs","update_stock":0,"last_purchase_rate":0,"transaction_date":"2023-08-31","against_blanket_order":null,"bom_no":null,"manufacturer":null,"manufacturer_part_no":null,"customer_item_code":null,"valuation_rate":7.9365,"projected_qty":25,"reserved_qty":0,"has_margin":false,"child_docname":"a27ebb0ff8","validate_applied_rule":0,"price_or_product_discount":"Product","has_pricing_rule":1,"gross_profit":-158.73},{"docstatus":0,"doctype":"Sales Invoice Item","name":"new-sales-invoice-item-1","__islocal":1,"__unsaved":1,"owner":"Administrator","stock_uom":"Unit","margin_type":"","is_free_item":1,"grant_commission":0,"delivered_by_supplier":0,"is_fixed_asset":0,"enable_deferred_revenue":0,"allow_zero_valuation_rate":0,"cost_center":"NaturalMeds - Nm","page_break":0,"parent":"NM-0129349","parentfield":"items","parenttype":"Sales Invoice","idx":2,"item_code":"Batch-test-002","qty":10,"pricing_rules":"[\\"PRLE-0340\\"]","rate":0,"price_list_rate":0,"discount_percentage":100,"item_name":"Batch-test-002","description":"Batch-test-002","uom":"Unit","conversion_factor":1,"stock_qty":0,"base_price_list_rate":0,"margin_rate_or_amount":0,"rate_with_margin":0,"discount_amount":0,"base_rate_with_margin":0,"amount":0,"base_rate":0,"base_amount":0,"stock_uom_rate":0,"net_rate":0,"net_amount":0,"base_net_rate":0,"base_net_amount":0,"weight_per_unit":0,"total_weight":0,"incoming_rate":0,"actual_batch_qty":0,"actual_qty":0,"delivered_qty":0}],"backorder_items":[],"pricing_rules":[{"name":"855df1843d","creation":"2023-09-20 14:00:35.655030","modified":"2023-09-20 14:00:35.655030","modified_by":"Administrator","parent":"NM-0129349","parentfield":"pricing_rules","parenttype":"Sales Invoice","idx":1,"docstatus":0,"pricing_rule":"PRLE-0339","item_code":"Batch-test-002","child_docname":"a27ebb0ff8","rule_applied":1,"doctype":"Pricing Rule Detail"}],"packed_items":[],"timesheets":[],"taxes":[{"name":"9acb1348ed","owner":"Administrator","creation":"2023-08-31 09:41:46.530248","modified":"2023-09-20 14:00:35.297203","modified_by":"Administrator","parent":"NM-0129349","parentfield":"taxes","parenttype":"Sales Invoice","idx":1,"docstatus":0,"charge_type":"On Net Total","account_head":"9640 - GST Accrued NZ - Nm","description":"GST @ 15.0","included_in_print_rate":0,"included_in_paid_amount":0,"cost_center":"NaturalMeds - Nm","rate":15,"account_currency":"NZD","tax_amount":0,"total":0,"tax_amount_after_discount_amount":0,"base_tax_amount":0,"base_total":0,"base_tax_amount_after_discount_amount":0,"item_wise_tax_detail":"{\\"Batch-test-002\\":[15,0]}","dont_recompute_tax":0,"doctype":"Sales Taxes and Charges"}],"advances":[],"payment_schedule":[{"name":"cbff053b88","owner":"Administrator","creation":"2023-08-31 09:41:46.831787","modified":"2023-09-20 14:00:35.297203","modified_by":"Administrator","parent":"NM-0129349","parentfield":"payment_schedule","parenttype":"Sales Invoice","idx":1,"docstatus":0,"payment_term":"Default Customer Payment Terms","due_date":"2023-09-20","invoice_portion":100,"discount_type":"Percentage","discount_date":"2023-08-31","discount":0,"payment_amount":0,"outstanding":0,"paid_amount":0,"discounted_amount":0,"base_payment_amount":0,"doctype":"Payment Schedule"}],"payments":[],"sales_team":[],"_user_tags":",BO_2023-08-31","__onload":{"make_payment_via_journal_entry":0},"__last_sync_on":"2023-09-21T22:49:45.955Z","accepts_backorders":1,"__unsaved":1}'
-	item_code = 'Batch-test-002'
+	doc = '{"name":"NM-0134215","owner":"Administrator","creation":"2023-10-16 10:44:36.701108","modified":"2023-10-16 10:44:36.701108","modified_by":"Administrator","idx":0,"docstatus":0,"title":"Pharmacy @ Ferrymead","naming_series":"NM-.#######","customer":"11828","customer_name":"Pharmacy @ Ferrymead","email":"grant@ferrymeadpharmacy.co.nz","order_type":"Customer Order","order_source":"Other","is_pos":0,"is_consolidated":0,"is_return":0,"woocommerce_order":0,"is_debit_note":0,"update_billed_amount_in_sales_order":0,"company":"NaturalMeds","posting_date":"2023-10-16","posting_time":"10:44:36.874581","set_posting_time":0,"due_date":"2023-11-20","temporary_address":0,"cost_center":"NaturalMeds - Nm","delivery_provider":"NZ Couriers","po_no":"","payment_category":"Pay after Dispatch","transaction_date":"2023-11-16","credit_card_on_file":0,"customer_address":"11828-Billing","address_display":"\\nAccount: 11828,<br>\\n\\nPO BOX 41053,\\n<br>Ferrymead, Christchurch<br>\\nNew Zealand, 8247<br>\\n","contact_person":"CONTACT-00327","contact_display_name":"Grant Bell","contact_display":"Grant Bell","contact_mobile":"","contact_email":"grant@ferrymeadpharmacy.co.nz","territory":"Christchurch","phone_number":"03 943 9635","shipping_address_name":"11828-Shipping","shipping_address":"\\nAccount: 11828,<br>\\n\\n1005 Ferry Road,\\n<br>Ferrymead, Christchurch<br>\\nNew Zealand, 8023<br>\\n","company_address":"TOLL - AIR-Shipping","company_address_display":"\\nAccount: TOLL - AIR,<br>\\n\\nTOLL Warehouse Handler – St George CFS – AIR,\\n<br>1650 South Central Ave, DOCK 1-5 FOR AIR WINDOW 11, Compton<br>\\nCA<br>United States, 90220<br>\\n","currency":"NZD","conversion_rate":1,"selling_price_list":"NZ Wholesale","price_list_currency":"NZD","plc_conversion_rate":1,"ignore_pricing_rule":0,"set_warehouse":"Napier - Nm","update_stock":1,"disable_bo_check":0,"total_billing_amount":0,"total_billing_hours":0,"total_qty":198,"base_total":2044.35,"base_net_total":2044.35,"total_net_weight":0,"total":2044.35,"net_total":2044.35,"taxes_and_charges":"NZ GST 15% Wholesale - Nm","tax_category":"","other_charges_calculation":"<div class=\\"tax-break-up\\" style=\\"overflow-x: auto;\\">\\n\\t<table class=\\"table table-bordered table-hover\\">\\n\\t\\t<thead>\\n\\t\\t\\t<tr>\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-left\\">Item</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-right\\">Taxable Amount</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t<th class=\\"text-right\\">GST @ 15.0</th>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\n\\t\\t\\t</tr>\\n\\t\\t</thead>\\n\\t\\t<tbody>\\n\\t\\t\\t\\n\\t\\t\\t\\t<tr>\\n\\t\\t\\t\\t\\t<td>90E14060</td>\\n\\t\\t\\t\\t\\t<td class=\\"text-right\\">\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t$ 206.50\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t</td>\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t<td class=\\"text-right\\">\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t(15.0%)\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t$ 30.98\\n\\t\\t\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\t\\t</td>\\n\\t\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t</tr>\\n\\t\\t\\t\\n\\t\\t</tbody>\\n\\t</table>\\n</div>","base_total_taxes_and_charges":306.65,"total_taxes_and_charges":306.65,"loyalty_points":0,"loyalty_amount":0,"redeem_loyalty_points":0,"apply_discount_on":"Grand Total","base_discount_amount":0,"additional_discount_percentage":0,"discount_amount":0,"base_grand_total":2351,"base_rounding_adjustment":0,"base_rounded_total":0,"base_in_words":"","grand_total":2351,"rounding_adjustment":0,"rounded_total":0,"in_words":"","total_advance":0,"outstanding_amount":2351,"disable_rounded_total":1,"write_off_amount":0,"base_write_off_amount":0,"write_off_outstanding_amount_automatically":0,"allocate_advances_automatically":0,"ignore_default_payment_terms_template":0,"payment_terms_template":"Default Customer Payment Terms","base_paid_amount":0,"paid_amount":0,"base_change_amount":0,"change_amount":0,"letter_head":"NaturalMeds Statements Header","group_same_items":0,"language":"en","status":"Draft","customer_group":"Hardy\'s Health Hub","is_internal_customer":0,"is_discounted":0,"isbackorder":0,"barcode_svg":"<svg id=\\"barcode\\" height=\\"29px\\" width=\\"127px\\" x=\\"0px\\" y=\\"0px\\" viewBox=\\"0 0 127 29\\" xmlns=\\"http://www.w3.org/2000/svg\\" version=\\"1.1\\" style=\\"transform: translate(0,0)\\"><rect x=\\"0\\" y=\\"0\\" width=\\"127\\" height=\\"29\\" style=\\"fill:#ffffff;\\"></rect><g transform=\\"translate(2, 2)\\" style=\\"fill:#000000;\\"><rect x=\\"0\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"3\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"6\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"11\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"13\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"19\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"22\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"24\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"28\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"33\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"36\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"39\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"44\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"47\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"51\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"55\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"57\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"61\\" y=\\"0\\" width=\\"4\\" height=\\"25\\"></rect><rect x=\\"66\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"69\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"72\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"77\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"79\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"82\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"88\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"90\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"95\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"99\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"103\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"105\\" y=\\"0\\" width=\\"4\\" height=\\"25\\"></rect><rect x=\\"110\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect><rect x=\\"115\\" y=\\"0\\" width=\\"3\\" height=\\"25\\"></rect><rect x=\\"119\\" y=\\"0\\" width=\\"1\\" height=\\"25\\"></rect><rect x=\\"121\\" y=\\"0\\" width=\\"2\\" height=\\"25\\"></rect></g></svg>","debit_to":"Debtors NZ - Nm","party_account_currency":"NZD","is_opening":"No","c_form_applicable":"No","remarks":"No Remarks","amount_eligible_for_commission":2044.35,"commission_rate":0,"total_commission":0,"against_income_account":"1143 - Gaia Herbs - Nm,2210 - Freight Charges Recovered - Nm","exclude_invoice":0,"doctype":"Sales Invoice","items":[{"name":"4a305fd6e2","owner":"Administrator","creation":"2023-10-16 10:44:36.701108","modified":"2023-10-16 10:44:36.701108","modified_by":"Administrator","parent":"NM-0134215","parentfield":"items","parenttype":"Sales Invoice","idx":1,"docstatus":0,"barcode":"751063144308","item_code":"90E14060","item_name":"Vitex Berry 60vc","description":"Vitex Berry 60vc","item_group":"Products","brand":"Gaia Herbs","image":"","qty":99,"stock_uom":"Unit","uom":"Unit","conversion_factor":1,"stock_qty":99,"price_list_rate":20.65,"base_price_list_rate":20.65,"margin_rate_or_amount":0,"rate_with_margin":0,"discount_percentage":0,"discount_amount":0,"base_rate_with_margin":0,"rate":20.65,"amount":2044.35,"base_rate":20.65,"base_amount":2044.35,"ignore_pricing_rules":0,"pricing_rules":"[\\n \\"PRLE-0394\\"\\n]","stock_uom_rate":20.65,"is_free_item":0,"grant_commission":1,"net_rate":20.65,"net_amount":2044.35,"base_net_rate":20.65,"base_net_amount":2044.35,"delivered_by_supplier":0,"income_account":"1143 - Gaia Herbs - Nm","is_fixed_asset":0,"expense_account":"2146 - Gaia Herbs - Nm","enable_deferred_revenue":0,"weight_per_unit":0,"total_weight":0,"weight_uom":"Unit","warehouse":"Napier - Nm","shortdated_batch":0,"incoming_rate":12.58,"allow_zero_valuation_rate":0,"item_tax_rate":"{}","actual_batch_qty":0,"actual_qty":193,"delivered_qty":0,"cost_center":"NaturalMeds - Nm","page_break":0,"doctype":"Sales Invoice Item","discount_account":null,"has_serial_no":0,"has_batch_no":1,"min_order_qty":"","supplier":"Gaia Herbs","update_stock":0,"last_purchase_rate":0,"transaction_date":"2023-11-16","against_blanket_order":null,"bom_no":null,"manufacturer":null,"manufacturer_part_no":null,"customer_item_code":null,"valuation_rate":12.575128193,"projected_qty":301,"reserved_qty":0,"has_margin":false,"child_docname":"4a305fd6e2","validate_applied_rule":0,"price_or_product_discount":"Product","margin_type":null,"has_pricing_rule":1,"gross_profit":-1244.9376911069999},{"name":"bd7be633b9","owner":"Administrator","creation":"2023-10-16 10:44:36.701108","modified":"2023-10-16 10:44:36.701108","modified_by":"Administrator","parent":"NM-0134215","parentfield":"items","parenttype":"Sales Invoice","idx":2,"docstatus":0,"barcode":"751063144308","item_code":"90E14060","item_name":"Vitex Berry 60vc","description":"Vitex Berry 60vc","item_group":"Products","brand":"Gaia Herbs","image":"","qty":99,"stock_uom":"Unit","uom":"Unit","conversion_factor":1,"stock_qty":10,"price_list_rate":0,"base_price_list_rate":0,"margin_type":"","margin_rate_or_amount":0,"rate_with_margin":0,"discount_percentage":100,"discount_amount":0,"base_rate_with_margin":0,"rate":0,"amount":0,"base_rate":0,"base_amount":0,"ignore_pricing_rules":0,"pricing_rules":"[\\"PRLE-0394\\"]","stock_uom_rate":0,"is_free_item":1,"grant_commission":1,"net_rate":0,"net_amount":0,"base_net_rate":0,"base_net_amount":0,"delivered_by_supplier":0,"income_account":"2210 - Freight Charges Recovered - Nm","is_fixed_asset":0,"expense_account":"2146 - Gaia Herbs - Nm","enable_deferred_revenue":0,"weight_per_unit":0,"total_weight":0,"weight_uom":"Unit","warehouse":"Napier - Nm","batch_no":"2024-08-21/Conversion_Batch-90E14060-1692568717","shortdated_batch":0,"incoming_rate":12.58,"allow_zero_valuation_rate":0,"item_tax_rate":"{}","actual_batch_qty":0,"actual_qty":193,"delivered_qty":0,"cost_center":"NaturalMeds - Nm","page_break":0,"doctype":"Sales Invoice Item"}],"backorder_items":[],"pricing_rules":[{"name":"e53873eeb9","creation":"2023-10-16 10:44:36.973358","modified":"2023-10-16 10:44:36.973358","modified_by":"Administrator","parent":"NM-0134215","parentfield":"pricing_rules","parenttype":"Sales Invoice","idx":1,"docstatus":0,"pricing_rule":"PRLE-0394","item_code":"90E14060","child_docname":"4a305fd6e2","rule_applied":1,"doctype":"Pricing Rule Detail"}],"packed_items":[],"timesheets":[],"taxes":[{"name":"7ce810821a","owner":"Administrator","creation":"2023-10-16 10:44:36.701108","modified":"2023-10-16 10:44:36.701108","modified_by":"Administrator","parent":"NM-0134215","parentfield":"taxes","parenttype":"Sales Invoice","idx":1,"docstatus":0,"charge_type":"On Net Total","account_head":"9640 - GST Accrued NZ - Nm","description":"GST @ 15.0","included_in_print_rate":0,"included_in_paid_amount":0,"cost_center":"NaturalMeds - Nm","rate":15,"account_currency":"NZD","tax_amount":306.65,"total":2351,"tax_amount_after_discount_amount":306.65,"base_tax_amount":306.65,"base_total":2351,"base_tax_amount_after_discount_amount":306.65,"item_wise_tax_detail":"{\\"90E14060\\":[15,306.65]}","dont_recompute_tax":0,"doctype":"Sales Taxes and Charges"}],"advances":[],"payment_schedule":[{"name":"c04603eef8","creation":"2023-10-16 10:44:36.988347","modified":"2023-10-16 10:44:36.988347","modified_by":"Administrator","parent":"NM-0134215","parentfield":"payment_schedule","parenttype":"Sales Invoice","idx":1,"docstatus":0,"payment_term":"Default Customer Payment Terms","due_date":"2023-11-20","invoice_portion":100,"discount_type":"Percentage","discount_date":"2023-10-16","discount":0,"payment_amount":237.48,"outstanding":237.48,"paid_amount":0,"discounted_amount":0,"base_payment_amount":237.48,"doctype":"Payment Schedule"}],"payments":[],"sales_team":[],"__onload":{"make_payment_via_journal_entry":0},"__last_sync_on":"2023-10-16T20:47:15.719Z","__unsaved":1,"accepts_backorders":1}'
+	item_code = '90E14060'
 	warehouse = 'Napier - Nm'
-	qty_required = '30'
+	qty_required = '198'
 	type_required = 'Shortdated First'
-	allocate_batches_table(doc, item_code, warehouse, type_required, qty_required)
+	total = 0
+	x = allocate_batches_table(doc, item_code, warehouse, type_required, qty_required)
+	print('###items###')
+	for i in x[0]:
+		print(i)
+		total += i['qty']
+	print('###qty_remaining###')
+	print(x[1])
+	total += x[1]
+	print('###backorders###')
+	for i in x[2]:
+		print(i)
+	print("###Total###")
+	print(total)
