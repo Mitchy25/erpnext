@@ -620,6 +620,8 @@ class GrossProfitGenerator(object):
 			conditions += " and posting_date >= %(from_date)s"
 		if self.filters.to_date:
 			conditions += " and posting_date <= %(to_date)s"
+		if self.filters.cost_center:
+			conditions += " and `tabSales Invoice`.cost_center = %(cost_center)s"
 
 		if self.filters.group_by == "Sales Person":
 			sales_person_cols = ", sales.sales_person, sales.allocated_amount, sales.incentives"
