@@ -535,7 +535,7 @@ def get_result_as_list(data, filters):
 			d["bill_no"] = inv_details.get(d.get("against_voucher"), "")['bill_no']
 			d["outstanding_amount"] = inv_details.get(d.get("against_voucher"), "")['outstanding_amount']
 			d["due_date"] = inv_details.get(d.get("against_voucher"), "")['due_date']
-		
+				
 		d["po_no"] = ""
 		if si_details.get(d.get("against_voucher")):
 			d["po_no"] = si_details.get(d.get("against_voucher"), "")["po_no"]
@@ -563,9 +563,7 @@ def get_supplier_invoice_details():
 		from 
 			`tabPurchase Invoice`
 		where 
-			docstatus = 1 and 
-			bill_no is not null and 
-			bill_no != '' """,
+			docstatus = 1""",
 		as_dict=1,
 	):
 		inv_details[d.name] = {"bill_no":d.bill_no,"outstanding_amount":d.outstanding_amount,"due_date":d.due_date}
@@ -583,9 +581,7 @@ def get_sales_invoice_details():
 		FROM 
 			`tabSales Invoice`
 		WHERE 
-			docstatus = 1 and 
-			po_no is not null and 
-			po_no != '' """,
+			docstatus = 1""",
 		as_dict=1,
 	):
 		inv_details[d.name] = {"po_no":d.po_no,"outstanding_amount":d.outstanding_amount,"due_date":d.due_date}
