@@ -75,6 +75,9 @@ class ShippingRule(Document):
 		elif self.calculate_based_on == "Fixed":
 			shipping_amount = self.shipping_amount
 
+		elif self.calculate_based_on == "Ignore":
+			return
+
 		# shipping amount by value, apply conditions
 		if by_value:
 			shipping_amount = self.get_shipping_amount_from_rules(value)
