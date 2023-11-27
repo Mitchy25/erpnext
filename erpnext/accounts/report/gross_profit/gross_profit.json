@@ -9,7 +9,7 @@
  "filters": [],
  "idx": 3,
  "is_standard": "Yes",
- "modified": "2022-02-11 10:18:36.956558",
+ "modified": "2023-11-15 11:02:18.144052",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Gross Profit",
@@ -21,9 +21,6 @@
  "roles": [
   {
    "role": "Accounts Manager"
-  },
-  {
-   "role": "Accounts User"
   }
  ]
 }

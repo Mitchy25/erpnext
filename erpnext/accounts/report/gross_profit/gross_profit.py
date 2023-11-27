@@ -54,6 +54,16 @@ def execute(filters=None):
 				"gross_profit",
 				"gross_profit_percent",
 			],
+			"cost_center": [
+				"cost_center",
+				"qty",
+				"base_rate",
+				"buying_rate",
+				"base_amount",
+				"buying_amount",
+				"gross_profit",
+				"gross_profit_percent",
+			],
 			"warehouse": [
 				"warehouse",
 				"qty",
@@ -138,9 +148,7 @@ def execute(filters=None):
 	return columns, data
 
 
-def get_data_when_grouped_by_invoice(
-	columns, gross_profit_data, filters, group_wise_columns, data
-):
+def get_data_when_grouped_by_invoice(columns, gross_profit_data, filters, group_wise_columns, data):
 	column_names = get_column_names()
 
 	# to display item as Item Code: Item Name
@@ -198,6 +206,13 @@ def get_columns(group_wise_columns, filters):
 				"label": _("Posting Time"),
 				"fieldname": "posting_time",
 				"fieldtype": "Data",
+				"width": 100,
+			},
+			"cost_center": {
+				"label": _("Cost Center"),
+				"fieldname": "cost_center",
+				"fieldtype": "Link",
+				"options": "Cost Center",
 				"width": 100,
 			},
 			"item_code": {
@@ -343,6 +358,7 @@ def get_column_names():
 			"customer": "customer",
 			"customer_group": "customer_group",
 			"posting_date": "posting_date",
+			"cost_center": "cost_center",
 			"item_code": "item_code",
 			"item_name": "item_name",
 			"item_group": "item_group",
@@ -503,7 +519,7 @@ class GrossProfitGenerator(object):
 		returned_invoices = frappe.db.sql(
 			"""
 			select
-				si.name, si_item.item_code, si_item.stock_qty as qty, si_item.base_net_amount as base_amount, si.return_against
+				si.name, si_item.cost_center, si_item.item_code, si_item.stock_qty as qty, si_item.base_net_amount as base_amount, si.return_against
 			from
 				`tabSales Invoice` si, `tabSales Invoice Item` si_item
 			where
@@ -621,7 +637,7 @@ class GrossProfitGenerator(object):
 		if self.filters.to_date:
 			conditions += " and posting_date <= %(to_date)s"
 		if self.filters.cost_center:
-			conditions += " and `tabSales Invoice`.cost_center = %(cost_center)s"
+			conditions += " and `tabSales Invoice Item`.cost_center = %(cost_center)s"
 
 		if self.filters.group_by == "Sales Person":
 			sales_person_cols = ", sales.sales_person, sales.allocated_amount, sales.incentives"
