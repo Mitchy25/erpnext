@@ -2038,7 +2038,6 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 					if(!("expense_account" in row_to_modify)) {
 						row_to_modify["expense_account"] = args["expense_account"]
 					}
-					debugger
 					if (!use_backorder && !removed) {
 						frappe.model.trigger('after_qty', undefined, locals[row_to_modify.doctype][row_to_modify.name], false)
 					}
