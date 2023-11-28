@@ -344,7 +344,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 		if (me.values.unallocated_backorder_check) {
 			frappe.require('assets/fxnmrnth/js/custom_doctype_assets/sales_invoice/backorder_detect.js').then(() => {
 				let item = new export_backorder_detect()
-				if (this.backorder_data.length > 0) {
+				if (this.backorder_data && this.backorder_data.length > 0) {
 					var org_item = JSON.parse(JSON.stringify(me.item));
 					this.backorder_data.forEach(bo_item => {
 						for (let key in bo_item) {
