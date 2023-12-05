@@ -6,10 +6,15 @@ erpnext.SerialNoBatchSelector = Class.extend({
 		// frm, item, warehouse_details, has_batch, oldest
 		let d = this.item;
 		this.has_batch = 0; this.has_serial_no = 0;
-
+		if (d.batch_no) {
+			d.has_batch_no = 1
+		}
 		if (d && d.has_batch_no && (!d.batch_no || this.show_dialog)) this.has_batch = 1;
 		// !(this.show_dialog == false) ensures that show_dialog is implictly true, even when undefined
 		if(d && d.has_serial_no && !(this.show_dialog == false)) this.has_serial_no = 1;
+		if (this.has_serial_no == 0) {
+			this.has_batch = 1
+		}
 
 		this.setup();
 	},
