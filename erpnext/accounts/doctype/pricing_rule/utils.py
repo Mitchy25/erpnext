@@ -28,7 +28,7 @@ class MultiplePricingRuleConflict(frappe.ValidationError):
 	pass
 
 
-apply_on_table = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands"}
+apply_on_table = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands", "Batch No": "apply_rule_on_batch"}
 
 
 def get_pricing_rules(args, doc=None, returnAll=False):
@@ -38,11 +38,10 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 	if not frappe.db.exists("Pricing Rule", {"disable": 0, args.transaction_type: 1}):
 		return
 
-	for apply_on in ["Item Code", "Item Group", "Brand"]:
+	for apply_on in ["Item Code", "Item Group", "Brand", "Batch No"]:
 		pricing_rules.extend(_get_pricing_rules(apply_on, args, values))
 		# if pricing_rules and not apply_multiple_pricing_rules(pricing_rules):
 		# 	break
-
 	rules = []
 	pricing_rules = filter_pricing_rule_based_on_condition(pricing_rules, doc, args)
 
@@ -127,7 +126,7 @@ def _get_pricing_rules(apply_on, args, values):
 
 	conditions = item_variant_condition = item_conditions = ""
 	values[apply_on_field] = args.get(apply_on_field)
-	if apply_on_field in ["item_code", "brand"]:
+	if apply_on_field in ["item_code", "brand", "batch_no"]:
 		item_conditions = "{child_doc}.{apply_on_field}= %({apply_on_field})s".format(
 			child_doc=child_doc, apply_on_field=apply_on_field
 		)
@@ -334,6 +333,10 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 		if filtered_rules:
 			pricing_rules = filtered_rules
 
+	# Filter out pricing rules only for shortdated
+	test = args
+	if pricing_rules and not args.shortdated_batch:
+		pricing_rules = [pricing_rule for pricing_rule in pricing_rules if pricing_rule.is_shortdated != 1]
 	# find pricing rule with highest priority
 	if pricing_rules:
 		max_priority = max(cint(p.priority) for p in pricing_rules)
