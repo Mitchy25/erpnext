@@ -2568,8 +2568,10 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
-		
-		if (doc.doctype == "Purchase Receipt" || (doc.doctype == "Purchase Invoice" && doc.update_stock)) {
+		if (!doc.update_stock) {
+			return
+		}
+		else if (doc.doctype == "Purchase Receipt" || (doc.doctype == "Purchase Invoice" && doc.update_stock)) {
 			return {
 				filters: {'item': item.item_code}
 			}
@@ -2791,7 +2793,7 @@ erpnext.show_serial_batch_selector = function (frm, d, callback, on_close, show_
 }
 
 erpnext.apply_putaway_rule = (frm, purpose=null) => {
-	if (!frm.doc.company) {
+	if (!frm.doc.company) { 
 		frappe.throw({message: __("Please select a Company first."), title: __("Mandatory")});
 	}
 	if (!frm.doc.items.length) return;
