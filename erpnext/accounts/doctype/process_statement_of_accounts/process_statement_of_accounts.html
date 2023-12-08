@@ -303,6 +303,7 @@
 	{% if outstandingDocs %}
 	{% set ns = namespace(outstandingBalance=0) %}
 	<h4 style="page-break-before:always;" class="text-center">Pending items before {{ frappe.format(filters.from_date, 'Date')}}</h4>
+	<h6 style="text-align:center;margin:auto; margin-bottom:10px;">This table lists all 'open' items before the start of this statement period.</h6>
 	<table class="overdueTable table">
 		<thead>
 			<tr>
