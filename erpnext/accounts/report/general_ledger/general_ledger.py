@@ -516,8 +516,8 @@ def get_account_type_map(company):
 
 def get_result_as_list(data, filters):
 	balance, balance_in_account_currency = 0, 0
-	inv_details = get_supplier_invoice_details()
-	si_details = get_sales_invoice_details()
+	inv_details = get_supplier_invoice_details(filters)
+	si_details = get_sales_invoice_details(filters)
 	if filters.get("company") == "RN Labs":
 		si_patient_details = get_sales_invoice_patient_details()
 
@@ -537,6 +537,7 @@ def get_result_as_list(data, filters):
 			d["due_date"] = inv_details.get(d.get("against_voucher"), "")['due_date']
 				
 		d["po_no"] = ""
+
 		if si_details.get(d.get("against_voucher")):
 			d["po_no"] = si_details.get(d.get("against_voucher"), "")["po_no"]
 			d["outstanding_amount"] = si_details.get(d.get("against_voucher"), "")['outstanding_amount']
@@ -551,8 +552,16 @@ def get_result_as_list(data, filters):
 	return data
 
 
-def get_supplier_invoice_details():
+def get_supplier_invoice_details(filters):
 	inv_details = {}
+	inv_filters = ""
+	if 'from_date' in filters and filters['from_date']:
+		inv_filters += " AND posting_date >= '" + str(filters['from_date']) + "'"
+	if 'to_date' in filters and filters['to_date']:
+		inv_filters += " AND posting_date <= '" + str(filters['to_date']) + "'"
+	if 'party' in filters and filters['party']:
+		inv_filters += " AND supplier IN ('" + "','".join(filters['party']) + "')"
+
 	for d in frappe.db.sql(
 		""" 
 		select 
@@ -563,15 +572,24 @@ def get_supplier_invoice_details():
 		from 
 			`tabPurchase Invoice`
 		where 
-			docstatus = 1""",
+			docstatus = 1 {inv_filters}""".format(
+			inv_filters=inv_filters),
 		as_dict=1,
 	):
 		inv_details[d.name] = {"bill_no":d.bill_no,"outstanding_amount":d.outstanding_amount,"due_date":d.due_date}
 
 	return inv_details
 
-def get_sales_invoice_details():
+def get_sales_invoice_details(filters):
 	inv_details = {}
+	inv_filters = ""
+	if 'from_date' in filters and filters['from_date']:
+		inv_filters += " AND posting_date >= '" + str(filters['from_date']) + "'"
+	if 'to_date' in filters and filters['to_date']:
+		inv_filters += " AND posting_date <= '" + str(filters['to_date']) + "'"
+	if 'party' in filters and filters['party']:
+		inv_filters += " AND customer IN ('" + "','".join(filters['party']) + "')"
+
 	for d in frappe.db.sql(
 		"""SELECT 
 			name,
@@ -581,8 +599,9 @@ def get_sales_invoice_details():
 		FROM 
 			`tabSales Invoice`
 		WHERE 
-			docstatus = 1""",
-		as_dict=1,
+			docstatus = 1 {inv_filters}""".format(
+			inv_filters=inv_filters),
+		as_dict=1
 	):
 		inv_details[d.name] = {"po_no":d.po_no,"outstanding_amount":d.outstanding_amount,"due_date":d.due_date}
 
