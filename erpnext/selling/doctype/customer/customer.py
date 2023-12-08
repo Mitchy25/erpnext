@@ -535,8 +535,6 @@ def get_customer_list(doctype, txt, searchfield, start, page_len, filters=None):
 
 	fields = get_fields("Customer", fields)
 
-	fields = get_fields("Customer", fields)
-
 	match_conditions = build_match_conditions("Customer")
 	match_conditions = "and {}".format(match_conditions) if match_conditions else ""
 
