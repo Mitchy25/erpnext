@@ -19,6 +19,10 @@ from erpnext.accounts.party import get_party_account_currency
 from erpnext.accounts.report.accounts_receivable_summary.accounts_receivable_summary import (
 	execute as get_ageing,
 )
+
+from erpnext.accounts.report.accounts_receivable.accounts_receivable import (
+	execute as get_outstanding,
+)
 from erpnext.accounts.report.general_ledger.general_ledger import execute as get_soa
 
 from fxnmrnth.fxnmrnth.doctype.statement_of_account.statement_of_account import create_statement
@@ -83,7 +87,28 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 
 			if ageing:
 				ageing[0]["ageing_based_on"] = doc.ageing_based_on
+	
+		outstanding_filters = frappe._dict({
+			'company': doc.company,
+			'report_date': doc.to_date,
+			'ageing_based_on': doc.ageing_based_on,
+			'range1': 30,
+			'range2': 60,
+			'range3': 90,
+			'range4': 90,
+			'customer': entry.customer
+		})
+		outstanding = get_outstanding(outstanding_filters)[1]
 
+		outstandingDocs = []
+		
+		for voucher in outstanding:
+			if not 'due_date' in voucher:
+				voucher['due_date'] = voucher['posting_date']
+			
+			if voucher['posting_date'] < doc.from_date:
+				outstandingDocs.append(voucher)
+		
 		tax_id = frappe.get_doc('Customer', entry.customer).tax_id
 		customer_name = frappe.get_doc('Customer', entry.customer).customer_name
 		presentation_currency = get_party_account_currency('Customer', entry.customer, doc.company) \
@@ -108,6 +133,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			'cost_center': [cc.cost_center_name for cc in doc.cost_center],
 			'project': [p.project_name for p in doc.project],
 			'show_opening_entries': 1,
+			'show_due_date': 1,
 			'include_default_book_entries': 0,
 			'tax_id': tax_id if tax_id else None
 		})
@@ -164,6 +190,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			{
 				"filters": filters,
 				"data": res,
+				"outstandingDocs": outstandingDocs,
 				"ageing": ageing[0] if (doc.include_ageing and ageing) else None,
 				"letter_head": letter_head if doc.letter_head else None,
 				"terms_and_conditions": frappe.db.get_value(
@@ -173,7 +200,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 				else None,
 			},
 		)
-
+		
 		html = frappe.render_template(
 			base_template_path,
 			{"body": html, "css": get_print_style(), "title": "Statement For " + entry.customer},
