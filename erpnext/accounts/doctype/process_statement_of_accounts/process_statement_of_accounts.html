@@ -345,8 +345,8 @@
 							<br>
 						{% endif %}
 						{% if row.voucher_type == "Sales Invoice" %}
-							{% if row.patient_name %}
-								{{ row.patient_name}} - {{ row.po_no }}
+							{% if row.order_type == "On Behalf" %}
+								{{ row.temporary_delivery_address_line_1}} - {{ row.po_no }}
 							{% else %}
 								{{ row.po_no }}
 							{% endif %}

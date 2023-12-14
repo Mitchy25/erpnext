@@ -369,7 +369,7 @@ class ReceivablePayableReport(object):
 		if self.party_type == "Customer":
 			si_list = frappe.db.sql(
 				"""
-				select name, due_date, po_no
+				select name, due_date, po_no, order_type, temporary_delivery_address_line_1
 				from `tabSales Invoice`
 				where posting_date <= %s
 			""",
