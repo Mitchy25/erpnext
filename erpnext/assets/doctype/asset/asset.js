@@ -518,13 +518,15 @@ frappe.ui.form.on('Depreciation Schedule', {
 	},
 
 	depreciation_amount: function(frm, cdt, cdn) {
+		if (!locals[cdt][cdn].finance_book_id) {
+			locals[cdt][cdn].finance_book_id = "1";
+		}
 		erpnext.asset.set_accumulated_depreciation(frm, locals[cdt][cdn].finance_book_id);
 	}
 
 });
 
 erpnext.asset.set_accumulated_depreciation = function(frm, finance_book_id) {
-	debugger
 	var depreciation_method = frm.doc.finance_books[Number(finance_book_id) - 1].depreciation_method;
 
 	if(depreciation_method != "Manual") return;
