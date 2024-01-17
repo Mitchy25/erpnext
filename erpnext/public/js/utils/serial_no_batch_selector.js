@@ -93,7 +93,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				fieldtype:'Check',
 				label: __('Add Unallocated To Backorder'),
 				hidden: me.frm.doc.doctype!="Sales Invoice" || me.frm.doc.accepts_backorders != 1,
-				default: 0,
+				default: me.frm.doc.accepts_backorders,
 			},
 			{
 				fieldname: 'messagebackorder',
