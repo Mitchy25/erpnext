@@ -117,7 +117,7 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 	if (args.has_batch_no and args.batch_no) or not args.has_batch_no or args.get("update_stock"):
 		data = get_pricing_rule_for_item(args, out.price_list_rate, doc, for_validate=for_validate)
 
-	out.update(data)
+		out.update(data)
 
 	update_stock(args, out)
 
