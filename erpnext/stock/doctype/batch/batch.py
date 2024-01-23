@@ -211,7 +211,8 @@ def get_batches_by_oldest(item_code, warehouse):
 	batches_dates = [
 		[batch, frappe.get_value("Batch", batch.batch_no, "expiry_date")] for batch in batches
 	]
-	batches_dates.sort(key=lambda tup: tup[1])
+	import datetime
+	batches_dates.sort(key=lambda tup: tup[1] or datetime.date(9999, 12, 31))
 	return batches_dates
 
 
