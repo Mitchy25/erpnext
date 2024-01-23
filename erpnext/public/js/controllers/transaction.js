@@ -1847,7 +1847,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			} else if(!d.pricing_rules) {
 				me.remove_pricing_rule(frappe.get_doc(d.doctype, d.name));
 			}
-			
+			me.apply_pricing_rule_on_item(item_row)
 			if (d.free_item_data) {
 				me.apply_product_discount(d);
 			}
