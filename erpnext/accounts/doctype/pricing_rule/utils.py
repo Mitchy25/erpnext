@@ -337,6 +337,11 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 	test = args
 	if pricing_rules and not args.shortdated_batch:
 		pricing_rules = [pricing_rule for pricing_rule in pricing_rules if pricing_rule.is_shortdated != 1]
+
+	if pricing_rules and args.shortdated_batch:
+		if args.shortdated_batch == 0:
+			pricing_rules = [pricing_rule for pricing_rule in pricing_rules if pricing_rule.is_shortdated != 1]
+
 	# find pricing rule with highest priority
 	if pricing_rules:
 		max_priority = max(cint(p.priority) for p in pricing_rules)
