@@ -2568,14 +2568,16 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
-		if (!doc.update_stock) {
-			return
-		}
-		else if (doc.doctype == "Purchase Receipt" || (doc.doctype == "Purchase Invoice" && doc.update_stock)) {
+
+		if (doc.doctype == "Purchase Receipt" || (doc.doctype == "Purchase Invoice" && doc.update_stock)) {
 			return {
 				filters: {'item': item.item_code}
 			}
-		} else if (!item.item_code) {
+		} 
+		else if (!doc.update_stock) {
+			return
+		}
+		else if (!item.item_code) {
 			frappe.throw(__("Please enter Item Code to get Batch Number"));
 		} else {
 			let filters = {
