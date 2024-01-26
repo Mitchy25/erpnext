@@ -90,19 +90,25 @@ def get_item_warehouse_batch_map(filters, float_precision):
 	to_date = getdate(filters["to_date"])
 
 	for d in sle:
+
+		expiry_date_unicode = frappe.db.get_value("Batch", d.batch_no, "expiry_date")
+
+
 		iwb_map.setdefault(d.item_code, {}).setdefault(d.warehouse, {}).setdefault(
 			d.batch_no, frappe._dict({"expires_on": None, "expiry_status": None})
 		)
 
 		qty_dict = iwb_map[d.item_code][d.warehouse][d.batch_no]
 
-		expiry_date_unicode = frappe.db.get_value("Batch", d.batch_no, "expiry_date")
+
 		qty_dict.expires_on = expiry_date_unicode
 
 		exp_date = frappe.utils.data.getdate(expiry_date_unicode)
 		qty_dict.expires_on = exp_date
 
 		expires_in_days = (exp_date - frappe.utils.datetime.date.today()).days
+		if expires_in_days <= 0:
+			del iwb_map[d.item_code][d.warehouse][d.batch_no]
 
 		if expires_in_days > 0:
 			qty_dict.expiry_status = expires_in_days
