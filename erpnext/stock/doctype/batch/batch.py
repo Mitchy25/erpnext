@@ -404,7 +404,7 @@ def get_expiry_content(batch_id, qty, expiry_date, item_code):
 	table_html += "</table>"
 	panels = f"""
 		<div class="panel panel-default" style="text-align: center;">
-			<div class="panel-heading" style="text-align:center"><h3 style="color: red;">ShortDated Batch selected for: { item_code }</h3></div>
+			<div class="panel-heading" style="text-align:center"><h3 style="color: red;">Short-dated batch selected for: { item_code }</h3></div>
 			<div class="panel-body">
 				<p>The batch {batch_id} is a short dated batch. <br> Please confirm that this is correct and if not please select a batch that is not short-dated .</p>
 		</div>
