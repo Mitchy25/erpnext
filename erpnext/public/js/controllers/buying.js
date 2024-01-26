@@ -189,7 +189,7 @@ erpnext.buying.BuyingController = erpnext.TransactionController.extend({
 	},
 
 	batch_no(doc, cdt, cdn) {
-		super.batch_no(doc, cdt, cdn);
+		this._super(doc, cdt, cdn);
 	},
 
 	validate_negative_quantity: function(cdt, cdn, item, fieldnames){
