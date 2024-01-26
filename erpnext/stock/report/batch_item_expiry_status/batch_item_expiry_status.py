@@ -27,6 +27,7 @@ def execute(filters=None):
 					[
 						item,
 						item_map[item]["item_name"],
+						item_map[item]["brand"],
 						item_map[item]["description"],
 						wh,
 						batch,
@@ -44,6 +45,7 @@ def get_columns(filters):
 	columns = (
 		[_("Item") + ":Link/Item:100"]
 		+ [_("Item Name") + "::150"]
+		+ [_("Brand") + "::150"]
 		+ [_("Description") + "::150"]
 		+ [_("Warehouse") + ":Link/Warehouse:100"]
 		+ [_("Batch") + ":Link/Batch:100"]
