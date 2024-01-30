@@ -375,7 +375,6 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			items.forEach(item => {
 				let row = ''
 				if (item.row_name != 'new' && !this.changed_rows.includes(item.row_name) && item.row_name) {
-					debugger
 					row = this.frm.doc.items.find(i => i.name === item.row_name);
 				} else {
 					row = this.frm.add_child("items", { ...this.item });
