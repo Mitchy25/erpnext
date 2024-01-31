@@ -1225,7 +1225,9 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 	batch_no: function(doc, cdt, cdn) {
 		let item = frappe.get_doc(cdt, cdn);
-		this.apply_price_list(item, true);
+		if(!item.is_free_item) {
+			this.apply_price_list(item, true);
+		}
 	},
 
 	toggle_conversion_factor: function(item) {
@@ -2038,8 +2040,13 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 					if(!("expense_account" in row_to_modify)) {
 						row_to_modify["expense_account"] = args["expense_account"]
 					}
+					if(!("warehouse" in row_to_modify)) {
+						row_to_modify["warehouse"] = me.frm.doc["set_warehouse"]
+					}
 					if (!use_backorder && !removed) {
 						frappe.model.trigger('after_qty', undefined, locals[row_to_modify.doctype][row_to_modify.name], false)
+						me.set_batch_number(row_to_modify.doctype, row_to_modify.name);
+						
 					}
 					break
 				}
