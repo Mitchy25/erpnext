@@ -439,6 +439,14 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 		
 		let me = this
 		let this_frm = doc
+		if (!me.batch_dialog_items) {
+			me.batch_dialog_items = {}
+		} else {
+			if (me.batch_dialog_items[doc.item_code]) {
+				return
+			}
+		}
+		me.batch_dialog_items[doc.item_code] = true
 		let d = new frappe.ui.Dialog({
 			fields: [
 				{
@@ -454,6 +462,9 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 			secondary_action_label: secondary_label,
 			secondary_action(values) {
 				d.hide()
+			},
+			on_hide: () => {
+				delete me.batch_dialog_items[doc.item_code]
 			}
 		});
 		d.fields_dict.html.$wrapper.append(content)
