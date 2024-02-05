@@ -144,7 +144,7 @@
 				<th style="width: 10%;">{{ _("Date") }}</th>
 				<th style="width: 10%;">{{ _("Due") }}</th>
 				<th style="width: 22%;">{{ _("Invoice/Payment") }}</th>
-				{% if filters.company == "RN Labs" %}
+				{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
 					<th style="width: 25%;">{{ _("Reference") }}</th>
 				{% endif %}
 				<th style="width: 13%; text-align:right;">{{ _("Debit") }}</th>
@@ -175,7 +175,7 @@
 							{{ row.voucher_no }}
 						{% endif %}
 					</td>
-					{% if filters.company == "RN Labs" %}
+					{% if filters.company == "RN Labs" or filters.company == "FxMed"  %}
 						<td>
 							{% if not (filters.party or filters.account)  %}
 								{{ row.party or row.account }}
@@ -229,7 +229,7 @@
 							No transactions during the period
 						{% endif %}
 					</td>
-					{% if filters.company == "RN Labs" %}
+					{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
 						<td>
 							{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)") %}
 								&nbsp;
@@ -310,11 +310,11 @@
 				<th style="width: 10%;">{{ _("Date") }}</th>
 				<th style="width: 10%;">{{ _("Due") }}</th>
 				<th style="width: 22%;">{{ _("Invoice/Payment") }}</th>
-				{% if filters.company == "RN Labs" %}
+				{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
 					<th style="width: 25%;">{{ _("Reference") }}</th>
 				{% endif %}
-				<th style="width: 13%; text-align:right;">{{ _("Debit") }}</th>
-				<th style="width: 13%; text-align:right;">{{ _("Credit") }}</th>
+				<th style="width: 10%; text-align:right;">{{ _("Debit") }}</th>
+				<th style="width: 10%; text-align:right;">{{ _("Credit") }}</th>
 				<th style="width: 15%; text-align:right;">{{ _("Balance") }}</th>
 			</tr>
 		</thead>
@@ -338,7 +338,7 @@
 						{{ row.voucher_no }}
 					{% endif %}
 				</td>
-				{% if filters.company == "RN Labs" %}
+				{% if filters.company == "RN Labs" ilters.company == "FxMed" %}
 					<td>
 						{% if not (filters.party or filters.account)  %}
 							{{ row.party or row.account }}
@@ -382,7 +382,7 @@
 				<td>&nbsp;</td>
 				<td>&nbsp;</td>
 				<td>&nbsp;</td>
-				{% if filters.company == "RN Labs" %}
+				{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
 					<td>&nbsp;</td>
 				{% endif %}
 				<td>&nbsp;</td>
