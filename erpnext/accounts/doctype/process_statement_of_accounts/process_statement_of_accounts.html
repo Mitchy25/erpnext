@@ -338,7 +338,7 @@
 						{{ row.voucher_no }}
 					{% endif %}
 				</td>
-				{% if filters.company == "RN Labs" ilters.company == "FxMed" %}
+				{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
 					<td>
 						{% if not (filters.party or filters.account)  %}
 							{{ row.party or row.account }}
