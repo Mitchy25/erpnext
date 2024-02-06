@@ -667,7 +667,8 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 			transaction_qty = args.get("qty") if args else doc.total_qty
 		if transaction_qty:
 			qty = math.floor((flt(transaction_qty) * qty)/pricing_rule.min_qty)
-
+	
+	free_item_doc = frappe.get_doc("Item", free_item)
 	free_item_data_args = {
 		"item_code": free_item,
 		"qty": qty,
@@ -675,6 +676,7 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 		"rate": pricing_rule.free_item_rate or 0,
 		"price_list_rate": pricing_rule.free_item_rate or 0,
 		"is_free_item": 1,
+		"has_batch_no": free_item_doc.has_batch_no
 	}
 	if free_item_data_args["rate"] == 0:
 		free_item_data_args["discount_percentage"] = 100
