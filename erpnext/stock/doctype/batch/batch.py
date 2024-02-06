@@ -264,7 +264,7 @@ def set_batch_nos(doc, warehouse_field, throw=False, child_table="items"):
 
 
 @frappe.whitelist()
-def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_batch_no=None):
+def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_batch_no=None, return_error=True):
 	"""
 	Get batch number using First Expiring First Out method.
 	:param item_code: `item_code` of Item Document
@@ -305,45 +305,46 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 				found = True
 
 	if not batch_no:
-		only_zero = True
-		for batch in batches:
-			if batch.qty != 0:
-				only_zero = False
-				break
-		if only_zero:
-			return
-		table_html = ""
-		if batches:
-			table_html = """<table class="table table-striped table-bordered">
-			<tr>
-				<th>Batch ID</th>
-				<th>Qty In Stock</th>
-				<th>Expiry Date</th>
-			</tr>"""
+		if return_error:
+			only_zero = True
 			for batch in batches:
-				if batch.expiry_date and (alert_date > getdate(batch.expiry_date)):
-					expiry = f"""<td  style="color: red;">{batch.expiry_date}</td>"""
-				elif batch.expiry_date:
-					expiry = f"""<td>{batch.expiry_date}</td>"""
-				else:
-					expiry = f"""<td  style="color: red;">None</td>"""
-				table_html += f"""<tr>
-					<td>{batch.batch_id}</td>
-					<td>{batch.qty}</td>
-					{expiry}
+				if batch.qty != 0:
+					only_zero = False
+					break
+			if only_zero:
+				return
+			table_html = ""
+			if batches:
+				table_html = """<table class="table table-striped table-bordered">
+				<tr>
+					<th>Batch ID</th>
+					<th>Qty In Stock</th>
+					<th>Expiry Date</th>
 				</tr>"""
-			table_html += "</table>"
-		panels = f"""
-			<div class="panel panel-default">
-				<div class="panel-heading" style="text-align:center"><h3>Batch Selection for: { item_code }</h3></div>
-				<div class="panel-body">
-					<p>The entered qty is {frappe.bold(qty)}. Please manually select a Batch for Item { frappe.bold(item_code) }. Or you might want to split this item to more rows with different batch!</p>
-			</div>
-		"""
-		final_html = panels + table_html
-		# frappe.msgprint(final_html)
-		frappe.response.content = final_html
-		frappe.response.dialog_type = "multi"
+				for batch in batches:
+					if batch.expiry_date and (alert_date > getdate(batch.expiry_date)):
+						expiry = f"""<td  style="color: red;">{batch.expiry_date}</td>"""
+					elif batch.expiry_date:
+						expiry = f"""<td>{batch.expiry_date}</td>"""
+					else:
+						expiry = f"""<td  style="color: red;">None</td>"""
+					table_html += f"""<tr>
+						<td>{batch.batch_id}</td>
+						<td>{batch.qty}</td>
+						{expiry}
+					</tr>"""
+				table_html += "</table>"
+			panels = f"""
+				<div class="panel panel-default">
+					<div class="panel-heading" style="text-align:center"><h3>Batch Selection for: { item_code }</h3></div>
+					<div class="panel-body">
+						<p>The entered qty is {frappe.bold(qty)}. Please manually select a Batch for Item { frappe.bold(item_code) }. Or you might want to split this item to more rows with different batch!</p>
+				</div>
+			"""
+			final_html = panels + table_html
+			# frappe.msgprint(final_html)
+			frappe.response.content = final_html
+			frappe.response.dialog_type = "multi"
 		if throw:
 			#TODO: Issue raised here
 			raise UnableToSelectBatchError
