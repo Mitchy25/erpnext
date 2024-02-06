@@ -1250,21 +1250,12 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		// this.conversion_factor(doc, cdt, cdn, true);
 		// this.calculate_stock_uom_rate(doc, cdt, cdn);
 		// this.apply_pricing_rule(item, true);
-		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
-		var update_stock = 0, show_batch_dialog = 0;
 		this.set_items = [item.name];
 		item.weight_per_unit = 0;
 		item.weight_uom = '';
 		// item.conversion_factor = 0;
-		if(['Sales Invoice'].includes(this.frm.doc.doctype)) {
-			update_stock = cint(me.frm.doc.update_stock);
-			show_batch_dialog = update_stock;
 
-		} else if((this.frm.doc.doctype === 'Purchase Receipt' && me.frm.doc.is_return) ||
-			this.frm.doc.doctype === 'Delivery Note') {
-			show_batch_dialog = 1;
-		}
 		// clear barcode if setting item (else barcode will take priority)
 		if (this.frm.from_barcode == 0) {
 			item.barcode = null;
@@ -1277,7 +1268,19 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 	get_and_set_item_details: function(doc, cdt, cdn) {
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
-		var update_stock = 0, show_batch_dialog = 0;
+
+		var update_stock = 0
+		var show_batch_dialog = 0
+
+		if(['Sales Invoice'].includes(this.frm.doc.doctype)) {
+			update_stock = cint(me.frm.doc.update_stock);
+			// show_batch_dialog = update_stock;
+
+		} else if((this.frm.doc.doctype === 'Purchase Receipt' && me.frm.doc.is_return) ||
+			this.frm.doc.doctype === 'Delivery Note') {
+			show_batch_dialog = 1;
+		}
+		
 		if(item.item_code || item.barcode || item.serial_no) {
 			if(!this.validate_company_and_party()) {
 				this.frm.fields_dict["items"].grid.grid_rows[item.idx - 1].remove();
