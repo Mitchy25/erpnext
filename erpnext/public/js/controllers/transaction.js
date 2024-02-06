@@ -1855,6 +1855,8 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			me.apply_pricing_rule_on_item(item_row)
 			if (d.free_item_data) {
 				me.apply_product_discount(d);
+			} else {
+				me.remove_missing_products(d);
 			}
 
 			if (d.apply_rule_on_other_items) {
