@@ -788,7 +788,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 			'name':result['name'], 
 			'batch_no':result['batch_no'],
 			'available_qty': batch_dict[result['batch_no']][0]['org_qty'],
-			'shortdated': batch_dict[result['batch_no']][0]['shortdated']
+			'shortdated_batch': batch_dict[result['batch_no']][0]['shortdated']
 		}
 		if 'rate' in result:
 			value['rate'] = result['rate']
