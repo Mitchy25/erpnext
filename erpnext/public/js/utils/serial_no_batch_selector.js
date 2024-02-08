@@ -191,9 +191,10 @@ erpnext.SerialNoBatchSelector = Class.extend({
 									"is_free_item": item.is_free_item,
 									"pricing_rules": item.pricing_rules,
 									"discount_percentage": item.discount_percentage,
-									"rate":item.rate
+									"rate":item.rate,
+									"shortdated_batch": item.shortdated_batch
 								});
-								if (item.shortdated) {
+								if (item.shortdated_batch) {
 									fetch_html += `${item.batch_no} is Shortdated.<br>`
 								}
 							}
@@ -273,6 +274,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 						data.forEach(row => {
 							if (!row.is_free_item) {
 								frappe.model.trigger('qty', undefined, row, false)
+								frappe.model.trigger('shortdated_batch', undefined, row, false)
 							}
 						});
 					},
@@ -373,6 +375,20 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			const items = this.values.batches
 			console.log(items)
 			items.forEach(item => {
+				if (item.shortdated_batch == undefined) {
+					frappe.call({
+						method: 'fxnmrnth.utils.batch.check_if_batch_shortdated',
+						args: {
+							"batch_no" : item.batch_no
+						},
+						async: false,
+						callback: (r) => {
+							item.shortdated_batch = r.message
+						}
+					});
+				}
+				
+
 				let row = ''
 				if (item.row_name != 'new' && !this.changed_rows.some(value => value.name === item.row_name) && item.row_name) {
 					row = this.frm.doc.items.find(i => i.name === item.row_name);
@@ -503,6 +519,11 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			}
 			if (values.discount_percentage != undefined) {
 				row.discount_percentage = values.discount_percentage
+			}
+			if (values.shortdated_batch != undefined) {
+				row.shortdated_batch = values.shortdated_batch
+			} else {
+				row.shortdated_batch = 0
 			}
 			if (values.pricing_rules) {
 				row.pricing_rules = values.pricing_rules
