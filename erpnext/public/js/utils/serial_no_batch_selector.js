@@ -374,7 +374,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			console.log(items)
 			items.forEach(item => {
 				let row = ''
-				if (item.row_name != 'new' && !this.changed_rows.includes(item.row_name) && item.row_name) {
+				if (item.row_name != 'new' && !this.changed_rows.some(value => value.name === item.row_name) && item.row_name) {
 					row = this.frm.doc.items.find(i => i.name === item.row_name);
 				} else {
 					row = this.frm.add_child("items", { ...this.item });
@@ -382,7 +382,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				}
 				this.map_row_values(row, item, 'batch_no',
 				'selected_qty', this.values.warehouse);
-				this.changed_rows.push(row.name)
+				this.changed_rows.push(row)
 			});
 			this.remove_unchanged_items(this.changed_rows)
 			// const batch_list = this.values.batches.map((batch) => batch.batch_no)
@@ -418,13 +418,14 @@ erpnext.SerialNoBatchSelector = Class.extend({
 		}
 	},
 	remove_unchanged_items(changed_rows) {
+
 		var index = this.frm.doc.items.length
 		while (index--) {
 			if (index < 0) {
 				break
 			}
 			const element = this.frm.doc.items[index];
-			if (element.item_code === this.item_code && !changed_rows.includes(element.name)) {
+			if (element.item_code === this.item_code && !changed_rows.some(value => value.name === element.name)) {
 				this.frm.doc.items.splice(index, 1);
 			}
 		}
