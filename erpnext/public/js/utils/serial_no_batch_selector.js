@@ -401,36 +401,6 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				this.changed_rows.push(row)
 			});
 			this.remove_unchanged_items(this.changed_rows)
-			// const batch_list = this.values.batches.map((batch) => batch.batch_no)
-			// this.values.batches.map((batch, i) => {
-			// 	console.log(batch_list)
-			// 	let batch_no = batch.batch_no;
-			// 	let row = '';
-			// 	if (i !== 0 && !this.batch_exists(batch_no)) {
-			// 		let item_with_no_batch = this.frm.doc.items.filter((item) => item.item_code == this.item_code && !item.batch_no)
-			// 		if (item_with_no_batch.length) {
-			// 			row = item_with_no_batch[0]
-			// 		} else {
-			// 			row = this.frm.add_child("items", { ...this.item });
-			// 		}
-			// 	} else {
-			// 		row = this.frm.doc.items.find(i => i.batch_no === batch_no);
-			// 	}
-			// 	if (!row) {
-			// 		row = this.frm.doc.items.find(i => i.item_code === this.item_code && batch_list.includes(i.batch_no));
-			// 	}
-
-			// 	if (!row) {
-			// 		row = this.item;
-			// 	}
-			// 	// this ensures that qty & batch no is set
-			// 	this.map_row_values(row, batch, 'batch_no',
-			// 		'selected_qty', this.values.warehouse);
-			// 	frappe.model.trigger('qty', undefined, row, false)
-			// 	changed_rows.push(row)
-
-			// });
-			// this.remove_unchanged_items(changed_rows)
 		}
 	},
 	remove_unchanged_items(changed_rows) {
