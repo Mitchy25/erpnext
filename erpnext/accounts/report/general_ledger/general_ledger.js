@@ -77,7 +77,7 @@ frappe.query_reports["General Ledger"] = {
 				let filters = {}
 				if (party_type == "Customer") {
 					let check = frappe.query_report.get_filter_value('hide_inactive_customers');
-					filters = (check ? {'customer_status': ["!=","Disabled"]} : {})
+					filters = (check ? {'customer_status': ["!=","Disabled"]} : {'disabled': [">=","0"]})
 				};
 				return frappe.db.get_link_options(party_type, txt, filters);
 			},
