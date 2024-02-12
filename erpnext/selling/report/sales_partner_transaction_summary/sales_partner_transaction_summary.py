@@ -180,10 +180,10 @@ def get_entries(filters):
 			if(s.preference = "Refund to Account", a.branch_code, 'N/A') as branch_code,
 			if(s.preference = "Refund to Account", a.bank_account_no, 'N/A') as account_number,
 			dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, 
-			s.preference as bank_details,
+			s.preference as bank_details, dt.selling_price_list as price_list,
 			dt_item.item_code, dt_item.item_name, dt.customer_name,
-			dt_item.base_net_rate as rate, dt_item.qty, dt_item.base_net_amount as amount,
-			ROUND(((dt_item.base_net_amount * dt.commission_rate) / 100), 2) as commission,
+			dt_item.net_rate as rate, dt_item.qty, dt_item.net_amount as amount,
+			ROUND(((dt_item.net_rate * dt.commission_rate) / 100), 2) as commission,
 			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code
 		FROM
 			`tab{doctype}` dt
@@ -205,7 +205,7 @@ def get_entries(filters):
 		as_dict=1,
 	)
 	if filters["doctype"] == "Sales Invoice":
-		entries = calculate_ws_commission(entries)
+		entries = calculate_ws_commission(entries, filters)
 	return entries
 
 
@@ -249,36 +249,38 @@ def get_conditions(filters, date_field):
 
 
 
-def calculate_ws_commission(entries):
+def calculate_ws_commission(entries, filters):
 	from frappe.utils import flt
-	invoices = [i['name'] for i in entries]
-	if not invoices:
-		return
-	wholesale_prices = get_wholesales_prices(invoices)
+	item_prices = frappe.db.get_all("Item Price", 
+	filters=[['selling', "=", "1"]],
+	or_filters=[
+    ['valid_upto', ">=", filters.get('from_date')],
+    ["valid_upto", 'is', 'not set']
+	],
+	fields=['item_code', 'price_list', 'valid_from', 'valid_upto', "price_list_rate"],
+	order_by='valid_from')
 	item_dict = {}
-	for item in wholesale_prices:
-		if item["name"] not in item_dict:
-			item_dict[item["name"]] = {}
-		current_item = item_dict[item["name"]]
-		if item["item_code"] not in current_item:
-			current_item[item["item_code"]] = item["price_list_rate"] * item['qty']
-	for item in entries:
-		if not item["name"] in item_dict or item["item_code"] not in item_dict[item["name"]]:
-			item["commission_wholesale"] = 0
+	for item in item_prices:
+		if item['item_code'] not in item_dict:
+			item_dict[item['item_code']] = {}
+		current_item_dict = item_dict[item['item_code']]
+		if item['price_list'] not in current_item_dict: 
+			current_item_dict[item['price_list']] = []
+		current_item_dict[item['price_list']].append(item)
+	for entry in entries:
+		current_price = None
+		entry_price_list = entry['price_list']
+		entry_price_list = entry_price_list.split()[0]
+		entry_price_list += " Wholesale"
+		if entry_price_list in item_dict[entry['item_code']]:
+			for item in item_dict[entry['item_code']][entry_price_list]:
+				if (item['valid_upto'] and (entry['posting_date'] > item['valid_upto'])) or entry['posting_date'] <= item['valid_from']:
+					continue
+				else:
+					current_price = item
+			entry["commission_wholesale"] = flt(entry["amount"] - (current_price["price_list_rate"]*entry["qty"]), 2)
 		else:
-			if item_dict[item["name"]][item["item_code"]]== 0:
-				msgprint("No wholesale price for <a href='" + get_url() + "/app/item/" + item["item_code"] + "' target='_blank'>" + item["item_code"] + "</a>. Please set a wholesale price and then re-run report")
-				entries = []
-			else:
-				item["commission_wholesale"] = flt(item["amount"] - item_dict[item["name"]][item["item_code"]], 2)
+			msgprint("No wholesale price for <a href='" + get_url() + "/app/item/" + entry["item_code"] + "' target='_blank'>" + entry["item_code"] + "</a>. Please set a wholesale price and then re-run report")
+			return []
+		
 	return entries
-
-
-def get_wholesales_prices(sales_invoices):
-	sql = """select s.name, si.item_code, si.qty, p.price_list_rate, p.price_list, s.posting_date, p.valid_from from `tabSales Invoice` s
-		join `tabSales Invoice Item` si on si.parent = s.name
-		join `tabItem Price` p on p.item_code = si.item_code and p.price_list = CONCAT(SUBSTRING_INDEX(s.selling_price_list, ' ', 1), " ", "Wholesale")
-		AND p.valid_from <= s.posting_date AND (p.valid_upto >= s.posting_date OR p.valid_upto IS Null)
-		WHERE s.name IN %s
-	"""
-	return frappe.db.sql(sql, set(sales_invoices), as_dict=True)
