@@ -155,14 +155,14 @@ def get_columns(filters):
 			"fieldname": "commission_wholesale",
 			"fieldtype": "Currency",
 			"width": 120
+		},
+		{
+			"label": _("Currency"),
+			"fieldname": "currency",
+			"fieldtype": "Link",
+			"options": "Currency",
+			"width": 120
 		}
-		# {
-		# 	"label": _("Currency"),
-		# 	"fieldname": "currency",
-		# 	"fieldtype": "Link",
-		# 	"options": "Currency",
-		# 	"width": 120
-		# }
 	]
 
 	return columns
