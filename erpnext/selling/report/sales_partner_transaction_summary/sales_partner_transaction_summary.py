@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 
-import frappe
+import frappe, erpnext
 from frappe import _, msgprint
 from frappe.utils import get_url
 
@@ -155,15 +155,18 @@ def get_columns(filters):
 			"fieldname": "commission_wholesale",
 			"fieldtype": "Currency",
 			"width": 120
-		},
-		{
+		}
+		
+	]
+
+	if erpnext.get_default_company() != "RN Labs":
+		columns.append({
 			"label": _("Currency"),
 			"fieldname": "currency",
 			"fieldtype": "Link",
 			"options": "Currency",
 			"width": 120
-		}
-	]
+		})
 
 	return columns
 
