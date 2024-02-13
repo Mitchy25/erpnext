@@ -2084,7 +2084,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			
 			for (let normal_index = 0; normal_index < normal_items.length; normal_index++) {
 				const normal_item = normal_items[normal_index];
-				let normal_item_rule
+				let normal_item_rule = []
 				try {
 					normal_item_rule = JSON.parse(normal_item['pricing_rules']);
 				} catch (e) {
