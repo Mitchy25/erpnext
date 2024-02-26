@@ -115,7 +115,7 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		if args.get(key) is None:
 			args[key] = value
 
-	if frappe.get_cached_value("Item", args.get("item_code"), "has_batch_no"):
+	if frappe.get_cached_value("Item", args.get("item_code"), "has_batch_no") and not args.batch_no:
 		args.batch_no = get_batch_no(args.get("item_code"), args.get("warehouse"), args.get("qty"), cur_batch_no=args.get(args.batch_no), return_error=False)
 
 	if args.get("update_stock"):
