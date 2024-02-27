@@ -412,6 +412,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 			}
 			const element = this.frm.doc.items[index];
 			if (element.item_code === this.item_code && !changed_rows.some(value => value.name === element.name)) {
+				$(`.grid-row[data-name=${element.name}] .row-index  .hidden-xs`).css({ "border": "", "border-radius": "", "padding": "" });
 				this.frm.doc.items.splice(index, 1);
 			}
 		}
