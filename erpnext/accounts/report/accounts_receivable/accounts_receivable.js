@@ -161,6 +161,13 @@ frappe.query_reports["Accounts Receivable"] = {
 			"label": __("Show Remarks"),
 			"fieldtype": "Check",
 		},
+		,
+		{
+			"fieldname": "show_chart",
+			"label": __("Show Chart"),
+			"fieldtype": "Check",
+			"default": 0
+		},
 		{
 			"fieldname": "tax_id",
 			"label": __("Tax Id"),
