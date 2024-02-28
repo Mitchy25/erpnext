@@ -1039,6 +1039,10 @@ class ReceivablePayableReport(object):
 			self.ageing_column_labels.append(label)
 
 	def get_chart_data(self):
+		if not self.filters.get('show_chart'):
+			self.chart = None
+			return
+
 		rows = []
 		for row in self.data:
 			row = frappe._dict(row)
