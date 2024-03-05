@@ -71,6 +71,8 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 	else:
 		if rules:
 			return [rules[0]]
+		else:
+			return []
 
 
 def sorted_by_priority(pricing_rules, args, doc=None, apply_multiple = False):
