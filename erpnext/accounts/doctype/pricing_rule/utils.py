@@ -89,7 +89,7 @@ def sorted_by_priority(pricing_rules, args, doc=None, apply_multiple = False):
 			if pricing_rule.get("apply_multiple_pricing_rules") == apply_multiple:
 				pricing_rule_dict.setdefault(cint(pricing_rule.get("priority")), []).append(pricing_rule)
 
-	for key in sorted(pricing_rule_dict):
+	for key in sorted(pricing_rule_dict, reverse=True):
 		pricing_rules_list.extend(pricing_rule_dict.get(key))
 	return pricing_rules_list
 
@@ -475,8 +475,17 @@ def get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args):
 
 	if items and doc.get("items"):
 		for row in doc.get("items"):
-			if (row.get(apply_on)) not in items or row.is_free_item or (row.pricing_rules and pr_doc.name not in row.pricing_rules):
+			if (row.get(apply_on)) not in items or row.is_free_item:
 				continue
+			if (row.pricing_rules and pr_doc.name not in row.pricing_rules):
+				row_rules = json.loads(row.pricing_rules)
+				max_priority = -9999
+				for i in row_rules:
+					max_priority = max(max_priority, float(frappe.get_value("Pricing Rule", i, 'priority')))
+				if float(pr_doc.priority) < max_priority:
+					continue
+
+			print(pr_doc.mixed_conditions)
 			if pr_doc.mixed_conditions:
 				amt = args.get("qty") * args.get("price_list_rate", 0)
 				if args.get("item_code") != row.get("item_code"):
