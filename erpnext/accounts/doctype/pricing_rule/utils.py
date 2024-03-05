@@ -89,7 +89,7 @@ def sorted_by_priority(pricing_rules, args, doc=None, apply_multiple = False):
 			if pricing_rule.get("apply_multiple_pricing_rules") == apply_multiple:
 				pricing_rule_dict.setdefault(cint(pricing_rule.get("priority")), []).append(pricing_rule)
 
-	for key in sorted(pricing_rule_dict):
+	for key in sorted(pricing_rule_dict, reverse=True):
 		pricing_rules_list.extend(pricing_rule_dict.get(key))
 	return pricing_rules_list
 
