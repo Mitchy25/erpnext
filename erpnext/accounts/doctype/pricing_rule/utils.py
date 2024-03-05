@@ -36,7 +36,7 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 	values = {}
 
 	if not frappe.db.exists("Pricing Rule", {"disable": 0, args.transaction_type: 1}):
-		return
+		return []
 
 	for apply_on in ["Item Code", "Item Group", "Brand", "Batch No"]:
 		pricing_rules.extend(_get_pricing_rules(apply_on, args, values))
