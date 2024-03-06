@@ -543,6 +543,8 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 
 		item = get_item_defaults(target.item_code, source_parent.company)
 		item_group = get_item_group_defaults(target.item_code, source_parent.company)
+
+		target.has_batch_no = item.has_batchy_no
 		target.cost_center = (
 			obj.cost_center
 			or frappe.db.get_value("Project", obj.project, "cost_center")
