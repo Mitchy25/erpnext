@@ -79,7 +79,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 				'range1': 30,
 				'range2': 60,
 				'range3': 90,
-				'range4': 90,
+				'range4': 120,
 				'customer': entry.customer,
 				'show_not_yet_due': 1
 			})
@@ -95,7 +95,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			'range1': 30,
 			'range2': 60,
 			'range3': 90,
-			'range4': 90,
+			'range4': 120,
 			'customer': entry.customer
 		})
 		outstanding = get_outstanding(outstanding_filters)[1]
@@ -255,7 +255,8 @@ def get_customers_based_on_custom_logic(custom_logic):
 		FROM 
 			`tabCustomer`
 		WHERE
-			disabled = 0""",
+			disabled = 0 AND
+			customer_group != 'Patient'""",
 		as_dict=1,
 	)
 
