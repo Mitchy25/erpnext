@@ -26,7 +26,7 @@ frappe.ui.form.on('Bank Account', {
 				frappe.msgprint("Bank Account Number is too long, please provide one that is 9 numbers long.")
 				frappe.validated = false
 			}
-		} else if (frm.doc.company == "NaturalMeds" || frm.doc.company == "FxMed") { //NZD
+		} else if (frm.doc.company == "NaturalMeds") { //NZD
 			let account_no = frm.doc.bank_account_no.replace(/-|\s/g,"");
 			if (!account_no.match(/^[0-9-]+$/)) {
 				frappe.msgprint("Bank Account Numbers should only contain numbers and hypens")

@@ -35,20 +35,20 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 				width: 100,
 			},
 
-			{
-				name: "Party Type",
-				editable: false,
-				width: 95,
-			},
-			{
-				name: "Party",
-				editable: false,
-				width: 100,
-			},
+			// {
+			// 	name: "Party Type",
+			// 	editable: false,
+			// 	width: 40,
+			// },
+			// {
+			// 	name: "Party",
+			// 	editable: false,
+			// 	width: 40,
+			// },
 			{
 				name: "Description",
 				editable: false,
-				width: 350,
+				width: 400,
 			},
 			{
 				name: "Deposit",
@@ -80,7 +80,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			{
 				name: "Reference Number",
 				editable: false,
-				width: 140,
+				width: 400,
 			},
 			{
 				name: "Actions",
@@ -88,7 +88,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 				sortable: false,
 				focusable: false,
 				dropdown: false,
-				width: 80,
+				width: 100,
 			},
 		];
 	}
@@ -109,8 +109,8 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 	format_row(row) {
 		return [
 			row["date"],
-			row["party_type"],
-			row["party"],
+			// row["party_type"],
+			// row["party"],
 			row["description"],
 			row["deposit"],
 			row["withdrawal"],

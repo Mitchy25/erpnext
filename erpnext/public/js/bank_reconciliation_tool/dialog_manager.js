@@ -28,7 +28,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					"party_type",
 					"party",
 					"unallocated_amount",
-					"allocated_amount",
+					"allocated_amount"
 				],
 			},
 			callback: (r) => {
@@ -36,13 +36,14 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					this.bank_transaction = r.message;
 					r.message.payment_entry = 1;
 					this.dialog.set_values(r.message);
+					this.dialog.fields_dict.reference_no.value = r.message.reference_number
 					this.dialog.fields_dict.posting_date.value = r.message.date
 					this.dialog.fields_dict.reference_date.value = r.message.date
 					if (r.message.deposit > 1) {
 						this.dialog.fields_dict.party_type.set_value("Customer")
 					}
 					this.dialog.show();
-
+					this.dialog.refresh();
 				}
 			},
 		});
@@ -485,6 +486,12 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				fieldname: "unallocated_amount",
 				fieldtype: "Currency",
 				label: "Unallocated Amount",
+				read_only: 1,
+			},
+			{
+				fieldname: "reference_no",
+				fieldtype: "Small Text",
+				label: "Reference",
 				read_only: 1,
 			},
 		];
