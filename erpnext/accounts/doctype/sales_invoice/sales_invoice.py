@@ -1852,7 +1852,9 @@ def is_overdue(doc, total):
 		if getdate(payment.due_date) < today
 	)
 
-	return (total - outstanding_amount) < payable_amount
+	write_off_total = flt((total + (doc.write_off_amount * -1)), doc.precision("outstanding_amount"))
+	
+	return (total - outstanding_amount) < payable_amount and (write_off_total - outstanding_amount) < payable_amount
 
 
 def get_discounting_status(sales_invoice):
