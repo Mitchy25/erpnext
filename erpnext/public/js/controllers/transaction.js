@@ -1362,10 +1362,16 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 												function() {
 													//If Yes
 													run_batch_functions()
+													if (me.frm.doc.doctype == 'Purchase Invoice' || me.frm.doc.doctype == 'Purchase Receipt') {
+														frappe.model.set_value(cdt, cdn, 'allow_zero_valuation_rate', 1);
+													}
 												},
 												function(){
 													let item_row = me.frm.doc.items.indexOf(d)
 													me.frm.doc.items.splice(item_row, 1);
+													if (me.frm.doc.doctype == 'Purchase Invoice' || me.frm.doc.doctype == 'Purchase Receipt') {
+														frappe.model.set_value(cdt, cdn, 'allow_zero_valuation_rate', 0);
+													}
 													me.frm.refresh_fields()
 												}
 											);
