@@ -549,7 +549,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 	doc['items'] = [i for i in doc['items'] if i.get('item_code')]
 
 	if doc['doctype'] in ["Sales Invoice", "Purchase Invoice"]:
-		pricing_rules = convert_to_set([i['pricing_rules'] for i in doc['items'] if i['item_code'] == item_code and not i.get('ignore_pricing_rules') and i['pricing_rules']])
+		pricing_rules = convert_to_set([i.get('pricing_rules') for i in doc['items'] if i['item_code'] == item_code and not i.get('ignore_pricing_rules') and i.get('pricing_rules')])
 
 		pricing_rules = list(pricing_rules)
 		pricing_rule_dict = {}
@@ -587,7 +587,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 					'discount_percentage': i['discount_percentage'],
 				})
 				if not item['ignore_pricing_rules']: 
-					item['pricing_rules'] = i['pricing_rules'] 
+					item['pricing_rules'] = i.get("pricing_rules") 
 
 				if i['is_free_item'] == 0:
 					add_to_list = False
@@ -598,9 +598,9 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 					if 'ignore_pricing_rules' in i:
 						item['ignore_pricing_rules'] = i['ignore_pricing_rules']
 						add_to_list = True
-					elif (i['pricing_rules']):
+					elif (i.get("pricing_rules") ):
 						add_to_list = True
-						for rule in json.loads(i['pricing_rules']):
+						for rule in json.loads(i.get("pricing_rules") ):
 							if pricing_rule_dict[rule]['max_qty'] > 0:
 								if 'max_qty' not in item:
 									item['max_qty'] = pricing_rule_dict[rule]['max_qty']
@@ -711,7 +711,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 				pricing_rules = pricing_rule['pricing_rules']
 				if pricing_rule['free_item_data'][0]['item_code'] == item_code:
 					for i in free_items:
-						if json.loads(pricing_rules) == json.loads(i['pricing_rules']):
+						if json.loads(pricing_rules) == json.loads(i.get("pricing_rules") ):
 							i.update({
 								'rate': pricing_rule['free_item_data'][0]['rate'],
 								'is_free_item': 'True',
@@ -776,7 +776,7 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 					'qty': i['qty'],
 					'rate':i['rate'],
 					'is_free_item': True,
-					'pricing_rules': i['pricing_rules']
+					'pricing_rules': i.get("pricing_rules") 
 				})
 	"""End of Pricing Rule calculation section"""
 	actual_results = []
