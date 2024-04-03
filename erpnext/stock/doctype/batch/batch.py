@@ -264,7 +264,7 @@ def set_batch_nos(doc, warehouse_field, throw=False, child_table="items"):
 
 
 @frappe.whitelist()
-def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_batch_no=None, return_error=True):
+def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_batch_no=None, return_error=True, return_shortdated = False):
 	"""
 	Get batch number using First Expiring First Out method.
 	:param item_code: `item_code` of Item Document
@@ -351,13 +351,17 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 	else:
 		if selected_expiry and (alert_date > getdate(selected_expiry)):
 			# frappe.msgprint("Warning: Batch {0} for Item {1} will expire in less than 6 months. Expiry date: <strong>{2}</strong>".format(batch.batch_id, item_code, batch.expiry_date))
+			shortdated = True
 			frappe.response.content = get_expiry_content(batch_no, batch_qty, selected_expiry, item_code)
 			frappe.response.shortdated = 1
 			frappe.response.dialog_type = "shortdated"
 		else:
+			shortdated = False
 			if shortdated_available:
 				frappe.response.content = get_longdated_content(batches, batch_no, item_code, alert_date, getdate)
 				frappe.response.dialog_type = "longdated"
+		if return_shortdated:
+			return batch_no, shortdated
 	return batch_no
 
 
