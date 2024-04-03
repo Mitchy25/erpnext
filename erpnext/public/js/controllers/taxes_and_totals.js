@@ -6,10 +6,10 @@ erpnext.taxes_and_totals = erpnext.payments.extend({
 		this.fetch_round_off_accounts();
 	},
 
-	apply_pricing_rule_on_item: function(item) {
+	apply_pricing_rule_on_item(item) {
 		let effective_item_rate = item.price_list_rate;
 		let item_rate = item.rate;
-		if (in_list(["Sales Order", "Quotation"], item.parenttype) && item.blanket_order_rate) {
+		if (["Sales Order", "Quotation"].includes(item.parenttype) && item.blanket_order_rate) {
 			effective_item_rate = item.blanket_order_rate;
 		}
 		if (item.margin_type == "Percentage") {
@@ -22,16 +22,13 @@ erpnext.taxes_and_totals = erpnext.payments.extend({
 
 		item_rate = flt(item.rate_with_margin , precision("rate", item));
 
-		if (item.discount_percentage) {
+		if (item.discount_percentage && !item.discount_amount) {
 			item.discount_amount = flt(item.rate_with_margin) * flt(item.discount_percentage) / 100;
 		}
 
-		if (item.discount_amount) {
+		if (item.discount_amount > 0) {
 			item_rate = flt((item.rate_with_margin) - (item.discount_amount), precision('rate', item));
-			var discount_percentage = 100 * flt(item.discount_amount) / flt(item.rate_with_margin);
-			if (Math.abs(item.discount_percentage - discount_percentage) > 0.06){
-				item.discount_percentage = discount_percentage
-			}
+			item.discount_percentage = 100 * flt(item.discount_amount) / flt(item.rate_with_margin);
 		}
 
 		frappe.model.set_value(item.doctype, item.name, "rate", item_rate);
