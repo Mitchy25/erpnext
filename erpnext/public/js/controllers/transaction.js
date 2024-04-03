@@ -1329,7 +1329,8 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 							cost_center: item.cost_center,
 							tax_category: me.frm.doc.tax_category,
 							item_tax_template: item.item_tax_template,
-							child_docname: item.name
+							child_docname: item.name,
+							shortdated_batch: item.name
 						}
 					},
 
@@ -1822,7 +1823,8 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 					"serial_no": d.serial_no,
 					"batch_no": d.batch_no,
 					"price_list_rate": d.price_list_rate,
-					"conversion_factor": d.conversion_factor || 1.0
+					"conversion_factor": d.conversion_factor || 1.0,
+					"shortdated_batch": d.shortdated_batch
 				});
 
 				// if doctype is Quotation Item / Sales Order Iten then add Margin Type and rate in item_list
