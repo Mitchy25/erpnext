@@ -409,13 +409,14 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 			method: 'erpnext.stock.doctype.batch.batch.get_batch_no',
 			args: args,
 			callback: function(r) {
-				// debugger
-				frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
 				if (r.shortdated) {
 					frappe.model.set_value(doc.doctype, doc.name, 'shortdated_batch', 1);
+					doc.shortdated_batch = 1
 				} else {
+					doc.shortdated_batch = 0
 					frappe.model.set_value(doc.doctype, doc.name, 'shortdated_batch', 0);
 				}
+				frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
 				if (r.content) {
 					me.batch_selection(doc, r.content, r.lock_dialog, r.dialog_type);
 				}
@@ -424,6 +425,23 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 		});
 	},
 	batch_selection: function(doc, content, lock, dialog_type) {
+		let me = this
+		if (!me.__data) {
+			me.__data = {}
+		}
+		if (!me.__data['batch_data']) {
+			me.__data['batch_data'] = {}
+		} else {
+			if (me.__data['batch_data'][doc.name] && 
+			me.__data['batch_data'][doc.name]['item_code'] == doc.item_code &&
+			me.__data['batch_data'][doc.name]['qty'] == doc.qty &&
+			me.__data['batch_data'][doc.name]['shortdated_batch'] == doc.shortdated_batch) {
+				return
+			}
+		}
+
+		let this_frm = doc
+
 		let secondary_label = ""
 		switch (dialog_type) {
 			case "multi":
@@ -436,9 +454,7 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 				secondary_label = "Keep as Shortdated" 
 				break;
 		}
-		
-		let me = this
-		let this_frm = doc
+
 		if (!me.batch_dialog_items) {
 			me.batch_dialog_items = {}
 		} else {
@@ -462,6 +478,11 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 			secondary_action_label: secondary_label,
 			secondary_action(values) {
 				d.hide()
+				me.__data['batch_data'][doc.name] = {
+					"item_code": doc.item_code,
+					"qty": doc.qty,
+					"shortdated_batch": doc.shortdated_batch,
+				}
 			},
 			on_hide: () => {
 				delete me.batch_dialog_items[doc.item_code]
