@@ -460,7 +460,8 @@ class AccountsController(TransactionBase):
 					args["ignore_pricing_rule"] = (
 						self.ignore_pricing_rule if hasattr(self, "ignore_pricing_rule") else 0
 					)
-
+					args["shortdated_batch"] = item.get("shortdated_batch")
+					
 					if not args.get("transaction_date"):
 						args["transaction_date"] = args.get("posting_date")
 
