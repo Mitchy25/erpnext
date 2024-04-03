@@ -446,6 +446,44 @@ frappe.ui.form.on("Journal Entry Account", {
 				}
 			});
 		}
+
+		let child  = locals[cdt][cdn];
+		let cust_currency;
+		let account_currency;
+		frappe.call({
+			method: "frappe.client.get_value",
+			async: false,
+			args: {
+				doctype: "Customer",
+				filters: {"name": child.party},
+				fieldname: "default_currency"
+			},
+			callback: function(r){
+				if (r.message) {
+					cust_currency = r.message.default_currency;
+				}
+			}
+		});
+
+		frappe.call({
+			method: "frappe.client.get_value",
+			async: false,
+			args: {
+				doctype: "Account",
+				filters: {'name': child.account},
+				fieldname: "account_currency"
+			},
+			callback: function (r) {
+				if (r.message) {
+					account_currency = r.message.account_currency;
+				}
+			}
+		})
+
+		if (cust_currency != account_currency) {
+			frappe.msgprint(`This customer has a default currency of ${cust_currency}, which does not allow Journal Entry to be raised against ${child.account} which, has currency ${account_currency}. Please select another account.`);
+			child.party = null;
+		}
 	},
 	cost_center: function(frm, dt, dn) {
 		erpnext.journal_entry.set_account_balance(frm, dt, dn);

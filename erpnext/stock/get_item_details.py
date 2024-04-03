@@ -116,10 +116,13 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 			args[key] = value
 
 	if frappe.get_cached_value("Item", args.get("item_code"), "has_batch_no") and not args.batch_no:
-		args.batch_no = get_batch_no(args.get("item_code"), args.get("warehouse"), args.get("qty"), cur_batch_no=args.get(args.batch_no), return_error=False)
+		batch_results = get_batch_no(args.get("item_code"), args.get("warehouse"), args.get("qty"), cur_batch_no=args.get(args.batch_no), return_error=False, return_shortdated=True)
+		if batch_results:
+			args.batch_no, args.shortdated_batch = batch_results
 
 	if args.get("update_stock"):
 		data = get_pricing_rule_for_item(args, out.price_list_rate, doc, for_validate=for_validate)
+		
 		out.update(data)
 
 	update_stock(args, out)
@@ -1256,6 +1259,7 @@ def apply_price_list(args, as_doc=False, doc=None):
 	        }
 	"""
 	args = process_args(args)
+
 
 	parent = get_price_list_currency_and_exchange_rate(args)
 	args.update(parent)
