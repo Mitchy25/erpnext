@@ -593,13 +593,10 @@ erpnext.utils.update_child_items = function(opts) {
 				if(element.name in temp_items){
 					temp_items[element.name]["found"] = true
 					
-					console.log(temp_items[element.name])
 					if (element.qty != temp_items[element.name].qty) {
-						console.log(trans_items)
 						to_change.push([element.item_code, element["schedule_date"]])
 					}
 				} else{ 
-					console.log(2)
 					to_change.push([element.item_code, element["schedule_date"]])
 				}
 			});
