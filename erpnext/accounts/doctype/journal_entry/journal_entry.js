@@ -450,6 +450,7 @@ frappe.ui.form.on("Journal Entry Account", {
 		let child  = locals[cdt][cdn];
 		let cust_currency;
 		let account_currency;
+		if (child.party_type == "Customer") {
 		frappe.call({
 			method: "frappe.client.get_value",
 			async: false,
@@ -483,6 +484,7 @@ frappe.ui.form.on("Journal Entry Account", {
 		if (cust_currency != account_currency) {
 			frappe.msgprint(`This customer has a default currency of ${cust_currency}, which does not allow Journal Entry to be raised against ${child.account} which, has currency ${account_currency}. Please select another account.`);
 			child.party = null;
+			}
 		}
 	},
 	cost_center: function(frm, dt, dn) {
