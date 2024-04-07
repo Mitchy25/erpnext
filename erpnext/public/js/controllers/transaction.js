@@ -1330,7 +1330,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 							tax_category: me.frm.doc.tax_category,
 							item_tax_template: item.item_tax_template,
 							child_docname: item.name,
-							shortdated_batch: item.name
+							shortdated_batch: item.shortdated_batch
 						}
 					},
 
