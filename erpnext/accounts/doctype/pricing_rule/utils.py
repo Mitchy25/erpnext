@@ -285,8 +285,7 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 
 		if pricing_rules[0].apply_rule_on_other:
 			field = frappe.scrub(pricing_rules[0].apply_rule_on_other)
-
-			if field and pricing_rules[0].get("other_" + field) != args.get(field):
+			if field and pricing_rules[0].get("other_" + field) and pricing_rules[0].get("other_" + field) != args.get(field):
 				return
 
 		pr_doc = frappe.get_cached_doc("Pricing Rule", pricing_rules[0].name)
