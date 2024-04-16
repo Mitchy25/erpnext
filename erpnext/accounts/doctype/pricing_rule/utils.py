@@ -688,6 +688,12 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 	}
 	if free_item_data_args["rate"] == 0:
 		free_item_data_args["discount_percentage"] = 100
+	basic_args = frappe._dict({
+		'item_code': free_item, 
+		"company": args.company,
+		"doctype": args.doctype
+	})
+	free_item_data_args = get_basic_details(basic_args, None).update(free_item_data_args)
 
 	item_data = frappe.get_cached_value(
 		"Item", free_item, ["item_name", "description", "stock_uom"], as_dict=1
