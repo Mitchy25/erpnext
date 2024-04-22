@@ -1782,6 +1782,9 @@ class SalesInvoice(SellingController):
 		outstanding_amount = flt(self.outstanding_amount, self.precision("outstanding_amount"))
 		total = get_total_in_party_account_currency(self)
 
+		# Adding leeway to account for write-off amounts
+		leeway = 0.02
+
 		if not status:
 			if self.docstatus == 2:
 				status = "Cancelled"
@@ -1790,7 +1793,7 @@ class SalesInvoice(SellingController):
 					self.status = "Internal Transfer"
 				elif is_overdue(self, total):
 					self.status = "Overdue"
-				elif 0 < outstanding_amount < total:
+				elif 0 < outstanding_amount < total and abs(total - outstanding_amount) > leeway:
 					self.status = "Partly Paid"
 				elif outstanding_amount > 0 and getdate(self.due_date) >= getdate():
 					self.status = "Unpaid"

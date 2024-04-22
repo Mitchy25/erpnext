@@ -121,6 +121,7 @@ class ShippingRule(Document):
 			"charge_type": "Actual",
 			"account_head": self.account,
 			"cost_center": self.cost_center,
+			"from_shipping_rule": 1
 		}
 		if self.shipping_rule_type == "Selling":
 			# check if not applied on purchase
@@ -149,7 +150,8 @@ class ShippingRule(Document):
 		gst_for_shipping_charge = {
 			"charge_type": "On Previous Row Amount",
 			"account_head": self.tax_account,
-			"cost_center": self.cost_center
+			"cost_center": self.cost_center,
+			"from_shipping_rule": 1
 		}
 		if self.shipping_rule_type == "Selling":
 			# check if not applied on purchase
