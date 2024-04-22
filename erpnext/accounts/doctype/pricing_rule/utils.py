@@ -13,7 +13,7 @@ from frappe.utils import cint, flt, fmt_money, get_link_to_form, getdate, today
 
 from erpnext.setup.doctype.item_group.item_group import get_child_item_groups
 from erpnext.stock.doctype.warehouse.warehouse import get_child_warehouses
-from erpnext.stock.get_item_details import get_conversion_factor, get_default_income_account
+from erpnext.stock.get_item_details import get_conversion_factor, get_default_income_account, get_basic_details
 from erpnext.stock.doctype.item.item import get_item_defaults
 from erpnext.setup.doctype.item_group.item_group import get_item_group_defaults
 from erpnext.setup.doctype.brand.brand import get_brand_defaults
