@@ -313,6 +313,15 @@ class calculate_taxes_and_totals(object):
 			return
 
 		if hasattr(self.doc, "shipping_rule") and self.doc.shipping_rule:
+			apply_rule = 1
+			for item in self.doc.taxes:
+				if item.from_shipping_rule == 1:
+					apply_rule = 0
+					break
+			
+			if not apply_rule:
+				return
+				
 			shipping_rule = frappe.get_doc("Shipping Rule", self.doc.shipping_rule)
 			shipping_rule.apply(self.doc)
 

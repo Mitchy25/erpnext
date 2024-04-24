@@ -727,6 +727,15 @@ class AccountsController(TransactionBase):
 	@frappe.whitelist()
 	def apply_shipping_rule(self):
 		if self.shipping_rule:
+			apply_rule = 1
+			for item in self.taxes:
+				if item.from_shipping_rule == 1:
+					apply_rule = 0
+					break
+			
+			if not apply_rule:
+				return
+
 			shipping_rule = frappe.get_doc("Shipping Rule", self.shipping_rule)
 			shipping_rule.apply(self)
 			self.calculate_taxes_and_totals()

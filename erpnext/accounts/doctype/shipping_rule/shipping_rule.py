@@ -90,7 +90,7 @@ class ShippingRule(Document):
 		self.add_shipping_rule_to_tax_table(doc, shipping_amount)
 
 		# add gst for shipping charges
-		if self.apply_gst:
+		if hasattr(self, "apply_gst") and self.apply_gst:
 			self.add_gst_for_shipping_charges(doc)
 		
 
