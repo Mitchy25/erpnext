@@ -270,6 +270,7 @@ def calculate_ws_commission(entries, filters):
 		if item['price_list'] not in current_item_dict: 
 			current_item_dict[item['price_list']] = []
 		current_item_dict[item['price_list']].append(item)
+
 	for entry in entries:
 		current_price = None
 		entry_price_list = entry['price_list']
@@ -282,6 +283,8 @@ def calculate_ws_commission(entries, filters):
 				else:
 					current_price = item
 			entry["commission_wholesale"] = flt(entry["amount"] - (current_price["price_list_rate"]*entry["qty"]), 2)
+			if entry["commission_wholesale"] < 0:
+				entry["commission_wholesale"] = 0
 		else:
 			msgprint("No wholesale price for <a href='" + get_url() + "/app/item/" + entry["item_code"] + "' target='_blank'>" + entry["item_code"] + "</a>. Please set a wholesale price and then re-run report")
 			return []
