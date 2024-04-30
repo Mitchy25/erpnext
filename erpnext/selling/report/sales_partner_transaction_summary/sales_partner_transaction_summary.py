@@ -185,7 +185,7 @@ def get_entries(filters):
 			dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, 
 			s.preference as bank_details, dt.selling_price_list as price_list,
 			dt_item.item_code, dt_item.item_name, dt.customer_name,
-			dt_item.net_rate as rate, dt_item.qty, dt_item.net_amount as amount,
+			SUM(dt_item.net_rate) as rate, SUM(dt_item.qty) as qty, SUM(dt_item.net_amount) as amount,
 			ROUND(((dt_item.net_rate * dt.commission_rate) / 100), 2) as commission,
 			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code
 		FROM
@@ -194,13 +194,16 @@ def get_entries(filters):
 		join `tabSales Partner` s on s.name = dt.sales_partner
 		LEFT join `tabCustomer` dts on dts.name = s.customer
 		LEFT join `tabBank Account` a on s.bank_account = a.name
+		
 		WHERE
 			{cond} and dt.name = dt_item.parent 
 			and dt.docstatus = 1
 			and dt_item.item_code NOT IN ("HAND-FEE", "SHIP1", "SHIP2", "SHIP3", "CREDIT ADJ")
 			and dt.sales_partner is not null 
 			and dt.sales_partner != ''
-			order by dt.name desc, dt.sales_partner
+		GROUP BY dt.name, dt_item.item_code
+		order by dt.name desc, dt.sales_partner
+		
 		""".format(
 			date_field=date_field, doctype=filters.get("doctype"), cond=conditions
 		),
