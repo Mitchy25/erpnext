@@ -399,7 +399,7 @@ erpnext.SerialNoBatchSelector = Class.extend({
 				this.map_row_values(row, item, 'batch_no',
 				'selected_qty', this.values.warehouse);
 				if (!cur_frm.cscript.__data) {
-					me.__data = {}
+					this.__data = {}
 				}
 				if (!cur_frm.cscript.__data['batch_data']) {
 					cur_frm.cscript.__data['batch_data'] = {}

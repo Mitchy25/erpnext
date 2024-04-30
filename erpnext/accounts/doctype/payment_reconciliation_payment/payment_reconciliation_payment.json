@@ -14,7 +14,7 @@
   "amount",
   "difference_amount",
   "sec_break1",
-  "remark",
+  "remarks",
   "currency"
  ],
  "fields": [
@@ -73,12 +73,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "remark",
-   "fieldtype": "Small Text",
-   "label": "Remark",
-   "read_only": 1
-  },
-  {
    "fieldname": "currency",
    "fieldtype": "Link",
    "hidden": 1,
@@ -91,11 +85,17 @@
    "label": "Difference Amount",
    "options": "currency",
    "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remark",
+   "read_only": 1
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2021-08-30 10:51:48.140062",
+ "modified": "2024-04-26 12:45:54.940393",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Reconciliation Payment",
