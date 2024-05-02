@@ -1313,7 +1313,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 							is_return: cint(me.frm.doc.is_return),
 							is_subcontracted: me.frm.doc.is_subcontracted,
 							transaction_date: me.frm.doc.transaction_date || me.frm.doc.posting_date,
-							ignore_pricing_rule: me.frm.doc.ignore_pricing_rule,
+							ignore_pricing_rule: me.frm.doc.ignore_pricing_rule || item.ignore_pricing_rules,
 							doctype: me.frm.doc.doctype,
 							name: me.frm.doc.name,
 							project: item.project || me.frm.doc.project,
@@ -1790,7 +1790,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			"transaction_date": me.frm.doc.transaction_date || me.frm.doc.posting_date,
 			"campaign": me.frm.doc.campaign,
 			"sales_partner": me.frm.doc.sales_partner,
-			"ignore_pricing_rule": me.frm.doc.ignore_pricing_rule,
+			"ignore_pricing_rule": me.frm.doc.ignore_pricing_rule || item.ignore_pricing_rules,
 			"doctype": me.frm.doc.doctype,
 			"name": me.frm.doc.name,
 			"is_return": cint(me.frm.doc.is_return),
@@ -2147,7 +2147,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 		var me = this;
 		var args = this._get_args(item);
-		if (!((args.items && args.items.length) || args.price_list)) {
+				if (!((args.items && args.items.length) || args.price_list)) {
 			return;
 		}
 
