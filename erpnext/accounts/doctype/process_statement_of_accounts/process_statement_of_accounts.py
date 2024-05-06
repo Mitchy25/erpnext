@@ -484,6 +484,9 @@ def send_emails(document_name, from_scheduler=False):
 			attachments = [{"fname": doc.company + " - Statement of Account - " + customer + ".pdf", "fcontent": report_pdf}]
 
 			recipients, cc = get_recipients_and_cc(customer, doc)
+
+			logger.info("PID[" + str(pid) + "] " + recipients)
+
 			context = get_context(customer, doc)
 			subject = frappe.render_template(doc.subject, context)
 			message = frappe.render_template(doc.body, context)
