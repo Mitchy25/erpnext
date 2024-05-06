@@ -70,45 +70,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 		else:
 			#Bulk Run
 			logger.info("PID[" + str(pid) + "] Processing: " + str(i) + " of " + str(numberOfCustomers))
-			
-		if doc.include_ageing:
-			ageing_filters = frappe._dict({
-				'company': doc.company,
-				'report_date': doc.to_date,
-				'ageing_based_on': doc.ageing_based_on,
-				'range1': 30,
-				'range2': 60,
-				'range3': 90,
-				'range4': 120,
-				'customer': entry.customer,
-				'show_not_yet_due': 1
-			})
-			col1, ageing = get_ageing(ageing_filters)
-
-			if ageing:
-				ageing[0]["ageing_based_on"] = doc.ageing_based_on
-	
-		outstanding_filters = frappe._dict({
-			'company': doc.company,
-			'report_date': doc.to_date,
-			'ageing_based_on': doc.ageing_based_on,
-			'range1': 30,
-			'range2': 60,
-			'range3': 90,
-			'range4': 120,
-			'customer': entry.customer
-		})
-		outstanding = get_outstanding(outstanding_filters)[1]
-
-		outstandingDocs = []
-		
-		for voucher in outstanding:
-			if not 'due_date' in voucher:
-				voucher['due_date'] = voucher['posting_date']
-			
-			if voucher['posting_date'] < doc.from_date:
-				outstandingDocs.append(voucher)
-		
+					
 		tax_id = frappe.get_doc('Customer', entry.customer).tax_id
 		customer_name = frappe.get_doc('Customer', entry.customer).customer_name
 		presentation_currency = get_party_account_currency('Customer', entry.customer, doc.company) \
@@ -184,6 +146,44 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 		if doc.exclude_balances_below:
 			if res[-1]["balance"] < float(doc.exclude_balances_below):
 				continue
+		
+		if doc.include_ageing:
+			ageing_filters = frappe._dict({
+				'company': doc.company,
+				'report_date': doc.to_date,
+				'ageing_based_on': doc.ageing_based_on,
+				'range1': 30,
+				'range2': 60,
+				'range3': 90,
+				'range4': 120,
+				'customer': entry.customer,
+				'show_not_yet_due': 1
+			})
+			col1, ageing = get_ageing(ageing_filters)
+
+			if ageing:
+				ageing[0]["ageing_based_on"] = doc.ageing_based_on
+	
+		outstanding_filters = frappe._dict({
+			'company': doc.company,
+			'report_date': doc.to_date,
+			'ageing_based_on': doc.ageing_based_on,
+			'range1': 30,
+			'range2': 60,
+			'range3': 90,
+			'range4': 120,
+			'customer': entry.customer
+		})
+		outstanding = get_outstanding(outstanding_filters)[1]
+
+		outstandingDocs = []
+		
+		for voucher in outstanding:
+			if not 'due_date' in voucher:
+				voucher['due_date'] = voucher['posting_date']
+			
+			if voucher['posting_date'] < doc.from_date:
+				outstandingDocs.append(voucher)
 
 		html = frappe.render_template(
 			template_path,
