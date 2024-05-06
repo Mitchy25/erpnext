@@ -485,7 +485,7 @@ def send_emails(document_name, from_scheduler=False):
 
 			recipients, cc = get_recipients_and_cc(customer, doc)
 
-			logger.info("PID[" + str(pid) + "] " + recipients)
+			logger.info(recipients)
 
 			context = get_context(customer, doc)
 			subject = frappe.render_template(doc.subject, context)
