@@ -674,7 +674,10 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 		else:
 			transaction_qty = args.get("qty") if args else doc.total_qty
 		if transaction_qty:
-			qty = math.floor((flt(transaction_qty) * qty)/pricing_rule.min_qty)
+			if pricing_rule.item_ratio_based_on_min_qty_sets:
+				qty = math.floor((flt(transaction_qty) /pricing_rule.min_qty)) * qty
+			else:
+				qty = math.floor((flt(transaction_qty) * qty)/pricing_rule.min_qty)
 	
 	free_item_doc = frappe.get_doc("Item", free_item)
 	free_item_data_args = {
