@@ -1773,6 +1773,11 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 	_get_args: function(item) {
 		var me = this;
+		if (item) {
+			var ignore_pricing_rule = me.frm.doc.ignore_pricing_rule || item.ignore_pricing_rules
+		} else {
+			var ignore_pricing_rule = me.frm.doc.ignore_pricing_rule
+		}
 		return {
 			"items": this._get_item_list(item),
 			"customer": me.frm.doc.customer || me.frm.doc.party_name,
@@ -1790,7 +1795,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			"transaction_date": me.frm.doc.transaction_date || me.frm.doc.posting_date,
 			"campaign": me.frm.doc.campaign,
 			"sales_partner": me.frm.doc.sales_partner,
-			"ignore_pricing_rule": me.frm.doc.ignore_pricing_rule || item.ignore_pricing_rules,
+			"ignore_pricing_rule": ignore_pricing_rule,
 			"doctype": me.frm.doc.doctype,
 			"name": me.frm.doc.name,
 			"is_return": cint(me.frm.doc.is_return),
