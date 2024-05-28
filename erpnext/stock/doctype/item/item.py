@@ -236,7 +236,7 @@ class Item(Document):
 
 	def clear_retain_sample(self):
 		if not self.has_batch_no:
-			self.retain_sample = None
+			self.retain_sample = 0
 
 		if not self.retain_sample:
 			self.sample_quantity = None

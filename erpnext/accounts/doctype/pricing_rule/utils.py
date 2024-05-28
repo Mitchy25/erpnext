@@ -469,7 +469,7 @@ def apply_internal_priority(pricing_rules, field_set, args):
 
 def get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args):
 	sum_qty, sum_amt = [0, 0]
-	items = get_pricing_rule_items(pr_doc) or []
+	items = get_pricing_rule_items(pr_doc)['items'] or []
 	apply_on = frappe.scrub(pr_doc.get("apply_on"))
 
 	if items and doc.get("items"):
@@ -504,16 +504,18 @@ def get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args):
 
 def get_qty_and_rate_for_other_item(doc, pr_doc, pricing_rules):
 	items = get_pricing_rule_items(pr_doc)
-
+	apply_on_other = False
+	original_pricing_rules = pricing_rules
+	pricing_rules = []
 	for row in doc.items:
-		if row.get(frappe.scrub(pr_doc.apply_rule_on_other)) in items:
+		if row.item_code in items['items']:
 			pricing_rules = filter_pricing_rules_for_qty_amount(
-				row.get("stock_qty"), row.get("amount"), pricing_rules, row
+				row.get("stock_qty"), row.get("amount"), original_pricing_rules, row
 			)
-
 			if pricing_rules and pricing_rules[0]:
-				pricing_rules[0].apply_rule_on_other_items = items
-				return pricing_rules
+				break
+	
+	return pricing_rules
 
 
 def get_qty_amount_data_for_cumulative(pr_doc, doc, items=None):
@@ -755,22 +757,24 @@ def apply_pricing_rule_for_free_items(doc, pricing_rule_args, set_missing_values
 
 
 def get_pricing_rule_items(pr_doc):
-	apply_on_data = []
+	apply_on_data = {}
+	apply_on_data['items'] = []
+	apply_on_data['apply_on_items'] = []
 	apply_on = frappe.scrub(pr_doc.get("apply_on"))
 
 	pricing_rule_apply_on = apply_on_table.get(pr_doc.get("apply_on"))
 
 	for d in pr_doc.get(pricing_rule_apply_on):
 		if apply_on == "item_group":
-			apply_on_data.extend(get_child_item_groups(d.get(apply_on)))
+			apply_on_data['items'].extend(get_child_item_groups(d.get(apply_on)))
 		else:
-			apply_on_data.append(d.get(apply_on))
+			apply_on_data['items'].append(d.get(apply_on))
 
 	if pr_doc.apply_rule_on_other:
 		apply_on = frappe.scrub(pr_doc.apply_rule_on_other)
-		apply_on_data.append(pr_doc.get("other_" + apply_on))
-
-	return list(set(apply_on_data))
+		apply_on_data['apply_on_items'].append(pr_doc.get("other_" + apply_on))
+	apply_on_data['items'] = list(set(apply_on_data['items']))
+	return apply_on_data
 
 
 def validate_coupon_code(coupon_name):
