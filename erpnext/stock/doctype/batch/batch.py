@@ -706,9 +706,9 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 				'customer': doc['customer'],
 				'transaction_date': doc['posting_date'],
 				'territory': doc['territory'],
-				'ignore_pricing_rules': False if data['ignore_pricing_rules'] == '0' else True
+				'ignore_pricing_rules': False if data['ignore_pricing_rules'] == '0' else True,
+				'doctype': doc['doctype']
 			})
-
 			pricing_rule = get_pricing_rule_for_item(frappe._dict(data), price_list_rate, frappe._dict(doc))
 			if pricing_rule.get('price_or_product_discount') == 'Product':
 				found = False
