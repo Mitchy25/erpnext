@@ -180,6 +180,9 @@ def _get_pricing_rules(apply_on, args, values):
 		)
 		or []
 	)
+	for rule in pricing_rules:
+		if rule[apply_on_field] != args[apply_on_field]:
+			rule['apply_on_rule'] = True
 
 	return pricing_rules
 
@@ -273,6 +276,7 @@ def get_other_conditions(conditions, values, args):
 
 
 def filter_pricing_rules(args, pricing_rules, doc=None):
+	#Changed to filter one rule at a time.
 	if not isinstance(pricing_rules, list):
 		pricing_rules = [pricing_rules]
 
@@ -698,6 +702,9 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 		"company": args.company,
 		"doctype": args.doctype
 	})
+	if "Item" in basic_args.doctype:
+		basic_args.doctype = " ".join(basic_args.doctype.split(" ")[:-1])
+
 	free_item_data_args = get_basic_details(basic_args, None).update(free_item_data_args)
 
 	item_data = frappe.get_cached_value(
