@@ -163,7 +163,7 @@ def get_columns(filters):
 		# 	"width": 120
 		# },
 		{
-			"label": _('Rebate (SalePrice - WS)'),
+			"label": _("Rebate (SalePrice - WS)"),
 			"fieldname": "commission_wholesale",
 			"fieldtype": "Currency",
 			"width": 120
@@ -244,7 +244,7 @@ def get_conditions(filters, date_field):
 		conditions += " and dt_item.qty > 0.0"
 	
 	if filters.get("get_products") or filters.get("get_tests"):
-		in_group = ['"Test Kits"','"Tests"'] if filters.get("get_tests") == 1 else []
+		in_group = ["'Test Kits'","'Tests'"] if filters.get("get_tests") == 1 else []
 		if filters.get("get_products") == 1:
 			in_group.append("'Products'")
 		conditions += f" and dt_item.item_group in ({','.join(in_group)})"
