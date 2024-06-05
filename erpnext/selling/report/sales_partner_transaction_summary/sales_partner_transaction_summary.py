@@ -5,7 +5,7 @@
 import frappe, erpnext
 from frappe import _, msgprint
 from frappe.utils import get_url
-
+from erpnext.stock.get_item_details import get_price_list_rate_for
 def execute(filters=None):
 	if not filters:
 		filters = {}
