@@ -187,7 +187,7 @@ def get_entries(filters):
 			dt_item.item_code, dt_item.item_name, dt.customer_name,
 			SUM(dt_item.net_rate) as rate, SUM(dt_item.qty) as qty, SUM(dt_item.net_amount) as amount,
 			ROUND(((dt_item.net_rate * dt.commission_rate) / 100), 2) as commission,
-			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code
+			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code, dt_item.uom
 		FROM
 			`tab{doctype}` dt
 		join `tab{doctype} Item` dt_item on dt_item.parent = dt.name
@@ -258,38 +258,49 @@ def get_conditions(filters, date_field):
 def calculate_ws_commission(entries, filters):
 	from frappe.utils import flt
 	item_prices = frappe.db.get_all("Item Price", 
-	filters=[['selling', "=", "1"]],
+	filters=[["selling", "=", "1"]],
 	or_filters=[
-    ['valid_upto', ">=", filters.get('from_date')],
-    ["valid_upto", 'is', 'not set']
+    ["valid_upto", ">=", filters.get("from_date")],
+    ["valid_upto", "is", "not set"]
 	],
-	fields=['item_code', 'price_list', 'valid_from', 'valid_upto', "price_list_rate"],
-	order_by='valid_from')
+	fields=["item_code", "price_list", "valid_from", "valid_upto", "price_list_rate"],
+	order_by="valid_from")
 	item_dict = {}
 	for item in item_prices:
-		if item['item_code'] not in item_dict:
-			item_dict[item['item_code']] = {}
-		current_item_dict = item_dict[item['item_code']]
-		if item['price_list'] not in current_item_dict: 
-			current_item_dict[item['price_list']] = []
-		current_item_dict[item['price_list']].append(item)
+		if item["item_code"] not in item_dict:
+			item_dict[item["item_code"]] = {}
+		current_item_dict = item_dict[item["item_code"]]
+		if item["price_list"] not in current_item_dict:
+			current_item_dict[item["price_list"]] = []
+		current_item_dict[item["price_list"]].append(item)
 
 	for entry in entries:
 		current_price = None
-		entry_price_list = entry['price_list']
+		entry_price_list = entry["price_list"]
 		entry_price_list = entry_price_list.split()[0]
 		entry_price_list += " Wholesale"
-		if entry_price_list in item_dict[entry['item_code']]:
-			for item in item_dict[entry['item_code']][entry_price_list]:
-				if (item['valid_upto'] and (entry['posting_date'] > item['valid_upto'])) or entry['posting_date'] <= item['valid_from']:
-					continue
-				else:
-					current_price = item
-			entry["commission_wholesale"] = flt(entry["amount"] - (current_price["price_list_rate"]*entry["qty"]), 2)
+
+		entry['wholesale_price'], entry['wholesale_amount'] = get_wholesale_price(entry)
+		if entry['wholesale_price']:
+			entry["commission_wholesale"] = flt(entry["amount"] - (entry['wholesale_price']*entry["qty"]), 2)
 			if entry["commission_wholesale"] < 0:
 				entry["commission_wholesale"] = 0
 		else:
+
 			msgprint("No wholesale price for <a href='" + get_url() + "/app/item/" + entry["item_code"] + "' target='_blank'>" + entry["item_code"] + "</a>. Please set a wholesale price and then re-run report")
 			return []
 		
 	return entries
+
+def get_wholesale_price(entry):
+	get_price_list_rate_args = {
+		"customer": entry.customer,
+		"item_code": entry.item_code,
+		"transaction_date": entry.posting_date,
+		"posting_date": entry.posting_date,
+		"uom": entry.uom
+	}
+	price_list = entry.price_list.split(" ")[0] + " Wholesale"
+	get_price_list_rate_args['price_list'] = price_list
+	price_list_rate = get_price_list_rate_for(get_price_list_rate_args, entry.item_code)
+	return price_list_rate, price_list_rate*entry.qty
