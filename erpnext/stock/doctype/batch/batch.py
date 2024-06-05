@@ -286,9 +286,10 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 	found = False
 	shortdated_available = False
 	for batch in batches:
+		if batch.expiry_date < alert_date:
+			continue
 		if batch.expiry_date and (alert_date > getdate(batch.expiry_date)) and not cur_batch_no:
 			shortdated_available = True
-		
 		if found == True:
 			continue
 		if cint(qty) <= cint(batch.qty):
