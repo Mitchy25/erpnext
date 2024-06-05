@@ -131,8 +131,20 @@ def get_columns(filters):
 		# 	"fieldtype": "Currency",
 		# 	"width": 80
 		# },
+		# {
+		# 	"label": _("Wholesale Price"),
+		# 	"field_name": "wholesale_price",
+		# 	"fieldtype": "Currency",
+		# 	"width": 150
+		# },
 		{
-			"label": _("Amount"),
+			"label": _("Wholesale Amount"),
+			"field_name": "wholesale_amount",
+			"fieldtype": "Currency",
+			"width": 150
+		},
+		{
+			"label": _("Sale Amount"),
 			"fieldname": "amount",
 			"fieldtype": "Currency",
 			"width": 120
