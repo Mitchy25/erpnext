@@ -180,6 +180,9 @@ def _get_pricing_rules(apply_on, args, values):
 		)
 		or []
 	)
+	for rule in pricing_rules:
+		if rule[apply_on_field] != args[apply_on_field]:
+			rule['apply_on_rule'] = True
 
 	return pricing_rules
 
@@ -273,6 +276,7 @@ def get_other_conditions(conditions, values, args):
 
 
 def filter_pricing_rules(args, pricing_rules, doc=None):
+	#Changed to filter one rule at a time.
 	if not isinstance(pricing_rules, list):
 		pricing_rules = [pricing_rules]
 
@@ -471,34 +475,33 @@ def get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args):
 	sum_qty, sum_amt = [0, 0]
 	items = get_pricing_rule_items(pr_doc)['items'] or []
 	apply_on = frappe.scrub(pr_doc.get("apply_on"))
-
-	if items and doc.get("items"):
-		for row in doc.get("items"):
-			if (row.get(apply_on)) not in items or row.is_free_item:
-				continue
-			if (row.pricing_rules and pr_doc.name not in row.pricing_rules):
-				row_rules = json.loads(row.pricing_rules)
-				max_priority = -9999
-				for i in row_rules:
-					max_priority = max(max_priority, float(frappe.get_value("Pricing Rule", i, 'priority')))
-				if float(pr_doc.priority) < max_priority:
+	
+	for field in ["items", "backorder_items"]:
+		if items and doc.get(field):
+			for row in doc.get(field):
+				if (row.get(apply_on)) not in items or row.is_free_item:
 					continue
+				if (row.pricing_rules and pr_doc.name not in row.pricing_rules):
+					row_rules = json.loads(row.pricing_rules)
+					max_priority = -9999
+					for i in row_rules:
+						max_priority = max(max_priority, float(frappe.get_value("Pricing Rule", i, 'priority')))
+					if float(pr_doc.priority) < max_priority:
+						continue
+				if pr_doc.mixed_conditions:
+					amt = args.get("qty") * args.get("price_list_rate", 0)
+					if args.get("item_code") != row.get("item_code"):
+						amt = flt(row.get("qty")) * flt(row.get("price_list_rate", 0) or args.get("rate", 0))
 
-			print(pr_doc.mixed_conditions)
-			if pr_doc.mixed_conditions:
-				amt = args.get("qty") * args.get("price_list_rate", 0)
-				if args.get("item_code") != row.get("item_code"):
-					amt = flt(row.get("qty")) * flt(row.get("price_list_rate", 0) or args.get("rate", 0))
+					sum_qty += flt(row.get("stock_qty")) or flt(args.get("stock_qty")) or flt(args.get("qty"))
+					sum_amt += amt
 
-				sum_qty += flt(row.get("stock_qty")) or flt(args.get("stock_qty")) or flt(args.get("qty"))
-				sum_amt += amt
+			if pr_doc.is_cumulative:
+				data = get_qty_amount_data_for_cumulative(pr_doc, doc, items)
 
-		if pr_doc.is_cumulative:
-			data = get_qty_amount_data_for_cumulative(pr_doc, doc, items)
-
-			if data and data[0]:
-				sum_qty += data[0]
-				sum_amt += data[1]
+				if data and data[0]:
+					sum_qty += data[0]
+					sum_amt += data[1]
 	return sum_qty, sum_amt, items
 
 
@@ -698,6 +701,9 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 		"company": args.company,
 		"doctype": args.doctype
 	})
+	if "Item" in basic_args.doctype:
+		basic_args.doctype = " ".join(basic_args.doctype.split(" ")[:-1])
+
 	free_item_data_args = get_basic_details(basic_args, None).update(free_item_data_args)
 
 	item_data = frappe.get_cached_value(

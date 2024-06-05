@@ -286,9 +286,10 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_b
 	found = False
 	shortdated_available = False
 	for batch in batches:
+		if batch.expiry_date < alert_date:
+			continue
 		if batch.expiry_date and (alert_date > getdate(batch.expiry_date)) and not cur_batch_no:
 			shortdated_available = True
-		
 		if found == True:
 			continue
 		if cint(qty) <= cint(batch.qty):
@@ -443,7 +444,7 @@ def get_batches(item_code, warehouse, qty=1, throw=False, serial_no=None):
 				on (`tabBatch`.batch_id = `tabStock Ledger Entry`.batch_no )
 		where `tabStock Ledger Entry`.item_code = %s and `tabStock Ledger Entry`.warehouse = %s
 			and `tabStock Ledger Entry`.is_cancelled = 0 
-			and (`tabBatch`.expiry_date >= CURDATE() or `tabBatch`.expiry_date IS NULL) {0}
+			and (`tabBatch`.expiry_date >= CURDATE() or `tabBatch`.expiry_date IS NULL) AND disabled = 0 {0}
 		group by batch_id
 		order by `tabBatch`.expiry_date ASC, `tabBatch`.creation ASC
 	""".format(
