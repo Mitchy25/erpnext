@@ -172,7 +172,7 @@ def get_columns(filters):
 
 
 def get_entries(filters):
-	date_field = "transaction_date" if filters.get("doctype") == "Sales Order" else "posting_date"
+	date_field = "transaction_date" if filters.get("doctype") in ["Sales Order", "Sales Invoice"] else "posting_date"
 
 	conditions = get_conditions(filters, date_field)
 	entries = frappe.db.sql(
