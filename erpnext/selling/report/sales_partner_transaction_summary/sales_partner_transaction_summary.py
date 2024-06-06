@@ -223,7 +223,7 @@ def get_entries(filters):
 			and dt.sales_partner is not null 
 			and dt.sales_partner != ''
 		GROUP BY {group_by}
-		order by dt.name desc, dt.sales_partner
+		order by dt.customer_name
 		
 		""".format(
 			date_field=date_field, doctype=filters.get("doctype"), cond=conditions, group_by=group_by
