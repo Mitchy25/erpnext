@@ -62,6 +62,14 @@ frappe.query_reports["Sales Partner Transaction Summary"] = {
 			options: "Territory",
 		},
 		{
+			fieldname:"group_by",
+			label: __("Group By"),
+			fieldtype: "Select",
+			options:["Default (Document type)", "Customer Name"],
+			default: "Default (Document type)",
+			reqd: 1
+		},
+		{
 			fieldname:"show_return_entries",
 			label: __("Show Return Entries"),
 			fieldtype: "Check",
