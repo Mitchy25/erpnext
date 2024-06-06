@@ -99,26 +99,31 @@ def get_columns(filters):
 		# 	"options": "Item",
 		# 	"width": 120
 		# },
-		{
-			"label": _("Item Name"),
-			"fieldname": "item_name",
-			"fieldtype": "Data",
-			"width": 140
-		},
-		# {
-		# 	"label": _("Item Group"),
-		# 	"fieldname": "item_group",
-		# 	"fieldtype": "Link",
-		# 	"options": "Item Group",
-		# 	"width": 100
-		# },
-		# {
-		# 	"label": _("Brand"),
-		# 	"fieldname": "brand",
-		# 	"fieldtype": "Link",
-		# 	"options": "Brand",
-		# 	"width": 100
-		# },
+	]
+	if filters.get("group_by") != "Customer Name":
+		columns += [
+			{
+				"label": _("Item Name"),
+				"fieldname": "item_name",
+				"fieldtype": "Data",
+				"width": 140
+			},
+			# {
+			# 	"label": _("Item Group"),
+			# 	"fieldname": "item_group",
+			# 	"fieldtype": "Link",
+			# 	"options": "Item Group",
+			# 	"width": 100
+			# },
+			# {
+			# 	"label": _("Brand"),
+			# 	"fieldname": "brand",
+			# 	"fieldtype": "Link",
+			# 	"options": "Brand",
+			# 	"width": 100
+			# },
+		]
+	columns += [ 
 		{
 			"label": _("Quantity"),
 			"fieldname": "qty",
@@ -187,6 +192,10 @@ def get_entries(filters):
 	date_field = "transaction_date" if filters.get("doctype") in ["Sales Order", "Sales Invoice"] else "posting_date"
 
 	conditions = get_conditions(filters, date_field)
+	if filters.get("group_by") == "Default (Document type)":
+		group_by = "dt.name, dt_item.item_code"
+	elif filters.get("group_by") == "Customer Name":
+		group_by = "dt.customer_name"
 	entries = frappe.db.sql(
 		"""
 		SELECT
@@ -213,11 +222,11 @@ def get_entries(filters):
 			and dt_item.item_code NOT IN ("HAND-FEE", "SHIP1", "SHIP2", "SHIP3", "CREDIT ADJ")
 			and dt.sales_partner is not null 
 			and dt.sales_partner != ''
-		GROUP BY dt.name, dt_item.item_code
-		order by dt.name desc, dt.sales_partner
+		GROUP BY {group_by}
+		order by dt.customer_name
 		
 		""".format(
-			date_field=date_field, doctype=filters.get("doctype"), cond=conditions
+			date_field=date_field, doctype=filters.get("doctype"), cond=conditions, group_by=group_by
 		),
 		filters,
 		as_dict=1
@@ -295,8 +304,8 @@ def calculate_ws_commission(entries, filters):
 		entry['wholesale_price'], entry['wholesale_amount'] = get_wholesale_price(entry)
 		if entry['wholesale_price']:
 			entry["commission_wholesale"] = flt(entry["amount"] - (entry['wholesale_price']*entry["qty"]), 2)
-			if entry["commission_wholesale"] < 0:
-				entry["commission_wholesale"] = 0
+			# if entry["commission_wholesale"] < 0:
+			# 	entry["commission_wholesale"] = 0
 		else:
 
 			msgprint("No wholesale price for <a href='" + get_url() + "/app/item/" + entry["item_code"] + "' target='_blank'>" + entry["item_code"] + "</a>. Please set a wholesale price and then re-run report")
