@@ -324,4 +324,7 @@ def get_wholesale_price(entry):
 	price_list = entry.price_list.split(" ")[0] + " Wholesale"
 	get_price_list_rate_args['price_list'] = price_list
 	price_list_rate = get_price_list_rate_for(get_price_list_rate_args, entry.item_code)
-	return price_list_rate, price_list_rate*entry.qty
+	if price_list_rate:
+		return price_list_rate, price_list_rate*entry.qty
+	else:
+		return None, None
