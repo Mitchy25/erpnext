@@ -437,8 +437,11 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 					"manufacturer_part_no": data.default_manufacturer_part_no,
 				}
 			)
-
-	child_doctype = args.doctype + " Item"
+	if "Item" in args.doctype:
+		raise
+		child_doctype = args.doctype
+	else:
+		child_doctype = args.doctype + " Item"
 	meta = frappe.get_meta(child_doctype)
 	if meta.get_field("barcode"):
 		update_barcode_value(out)
