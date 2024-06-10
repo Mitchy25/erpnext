@@ -208,7 +208,7 @@ def get_entries(filters):
 			dt_item.item_code, dt_item.item_name, dt.customer_name,
 			SUM(dt_item.net_rate) as rate, SUM(dt_item.qty) as qty, SUM(dt_item.net_amount) as amount,
 			ROUND(((dt_item.net_rate * dt.commission_rate) / 100), 2) as commission,
-			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code, dt_item.uom
+			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code, dt_item.stock_uom
 		FROM
 			`tab{doctype}` dt
 		join `tab{doctype} Item` dt_item on dt_item.parent = dt.name
@@ -319,7 +319,7 @@ def get_wholesale_price(entry):
 		"item_code": entry.item_code,
 		"transaction_date": entry.posting_date,
 		"posting_date": entry.posting_date,
-		"uom": entry.uom
+		"uom": entry.stock_uom
 	}
 	price_list = entry.price_list.split(" ")[0] + " Wholesale"
 	get_price_list_rate_args['price_list'] = price_list
