@@ -196,6 +196,10 @@ def get_entries(filters):
 		group_by = "dt.name, dt_item.item_code"
 	elif filters.get("group_by") == "Customer Name":
 		group_by = "dt.customer_name"
+	if filters.get('doctype') == "Sales Invoice":
+		fields = "dt.is_return, "
+	else:
+		fields = ""
 	entries = frappe.db.sql(
 		"""
 		SELECT
@@ -205,7 +209,7 @@ def get_entries(filters):
 			if(s.preference = "Refund to Account", a.bank_account_no, 'N/A') as account_number,
 			dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, 
 			s.preference as bank_details, dt.selling_price_list as price_list,
-			dt_item.item_code, dt_item.item_name, dt.customer_name,
+			dt_item.item_code, dt_item.item_name, dt.customer_name, {fields}
 			SUM(dt_item.net_rate) as rate, SUM(dt_item.qty) as qty, SUM(dt_item.net_amount) as amount,
 			ROUND(((dt_item.net_rate * dt.commission_rate) / 100), 2) as commission,
 			dt_item.brand, dt.sales_partner,dts.customer_primary_email_address, dt.commission_rate, dt_item.item_group, dt_item.item_code, dt_item.stock_uom
@@ -226,7 +230,7 @@ def get_entries(filters):
 		order by dt.customer_name
 		
 		""".format(
-			date_field=date_field, doctype=filters.get("doctype"), cond=conditions, group_by=group_by
+			date_field=date_field, doctype=filters.get("doctype"), cond=conditions, group_by=group_by, fields=fields
 		),
 		filters,
 		as_dict=1
@@ -303,9 +307,9 @@ def calculate_ws_commission(entries, filters):
 
 		entry['wholesale_price'], entry['wholesale_amount'] = get_wholesale_price(entry)
 		if entry['wholesale_price']:
-			entry["commission_wholesale"] = flt(entry["amount"] - (entry['wholesale_price']*entry["qty"]), 2)
-			# if entry["commission_wholesale"] < 0:
-			# 	entry["commission_wholesale"] = 0
+			entry["commission_wholesale"] = flt(abs(entry["amount"]) - (entry['wholesale_price']*abs(entry["qty"])), 2)
+			if entry["commission_wholesale"] < 0 and not entry['is_return']:
+				entry["commission_wholesale"] = 0
 		else:
 
 			msgprint("No wholesale price for <a href='" + get_url() + "/app/item/" + entry["item_code"] + "' target='_blank'>" + entry["item_code"] + "</a>. Please set a wholesale price and then re-run report")
@@ -325,6 +329,6 @@ def get_wholesale_price(entry):
 	get_price_list_rate_args['price_list'] = price_list
 	price_list_rate = get_price_list_rate_for(get_price_list_rate_args, entry.item_code)
 	if price_list_rate:
-		return price_list_rate, price_list_rate*entry.qty
+		return abs(price_list_rate), abs(price_list_rate)*abs(entry.qty)
 	else:
 		return None, None
