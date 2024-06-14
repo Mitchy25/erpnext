@@ -70,6 +70,13 @@ frappe.query_reports["Sales Partner Transaction Summary"] = {
 			reqd: 1
 		},
 		{
+			fieldname:"currency",
+			label: __("Currency"),
+			fieldtype: "Select",
+			options:["", "NZD", "AUD"],
+			default: ""
+		},
+		{
 			fieldname:"show_return_entries",
 			label: __("Show Return Entries"),
 			fieldtype: "Check",

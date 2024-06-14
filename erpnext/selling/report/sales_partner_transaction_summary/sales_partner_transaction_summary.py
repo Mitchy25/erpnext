@@ -125,6 +125,12 @@ def get_columns(filters):
 		]
 	columns += [ 
 		{
+			"label": _("Currency"),
+			"field_name": "currency",
+			"fieldtype": "Data",
+			"width": 150
+		},
+		{
 			"label": _("Quantity"),
 			"fieldname": "qty",
 			"fieldtype": "Float",
@@ -252,6 +258,9 @@ def get_conditions(filters, date_field):
 
 	if filters.get("to_date"):
 		conditions += " and dt.{0} <= %(to_date)s".format(date_field)
+
+	if filters.get("currency"):
+		conditions += " and dt.currency = %(currency)s"
 
 	if not filters.get("show_return_entries"):
 		conditions += " and dt_item.qty > 0.0"
