@@ -58,8 +58,7 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 			else:
 				rules.append(pricing_rule)
 		return rules
-
-	pricing_rules = sorted_by_priority(pricing_rules, args, doc, apply_multiple_pricing_rules(pricing_rules))
+	pricing_rules = sorted_by_priority(pricing_rules, args, doc)
 	for pricing_rule in pricing_rules:
 		if isinstance(pricing_rule, list):
 			rules.extend(pricing_rule)
