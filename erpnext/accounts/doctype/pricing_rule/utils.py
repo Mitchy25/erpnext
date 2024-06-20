@@ -75,20 +75,25 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 			return []
 
 
-def sorted_by_priority(pricing_rules, args, doc=None, apply_multiple = False):
+def sorted_by_priority(pricing_rules, args, doc=None):
 	# If more than one pricing rules, then sort by priority
 	pricing_rules_list = []
 	pricing_rule_dict = {}
+
+	filtered_pricing_rules = []
 
 	for pricing_rule in pricing_rules:
 		pricing_rule = filter_pricing_rules(args, pricing_rule, doc)
 		if pricing_rule:
 			if not pricing_rule.get("priority"):
-				pricing_rule["priority"] = 1
-
-			if pricing_rule.get("apply_multiple_pricing_rules") == apply_multiple:
-				pricing_rule_dict.setdefault(cint(pricing_rule.get("priority")), []).append(pricing_rule)
-
+				pricing_rule["priority"] = 0
+			filtered_pricing_rules.append(pricing_rule)
+	
+	filtered_pricing_rules = sorted(filtered_pricing_rules, key=lambda d: d['priority'], reverse=True)
+	apply_multiple = apply_multiple_pricing_rules([filtered_pricing_rules[0]])
+	for pricing_rule in filtered_pricing_rules:
+		if pricing_rule.get("apply_multiple_pricing_rules") == apply_multiple:
+			pricing_rule_dict.setdefault(cint(pricing_rule.get("priority")), []).append(pricing_rule)
 	for key in sorted(pricing_rule_dict, reverse=True):
 		pricing_rules_list.extend(pricing_rule_dict.get(key))
 	return pricing_rules_list
