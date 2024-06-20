@@ -27,6 +27,7 @@ from erpnext.accounts.report.general_ledger.general_ledger import execute as get
 
 from fxnmrnth.fxnmrnth.doctype.statement_of_account.statement_of_account import create_statement
 import pdb
+from erpnext import get_default_company
 
 logger = frappe.logger(module="CustomerStatements", allow_site=True, with_more_info=False, file_count=2)
 
@@ -464,18 +465,32 @@ def send_emails(document_name, from_scheduler=False):
 
 	#Send email to admin
 	frappe.publish_realtime(event='msgprint', message="Customer statements running.<br><br><b style='color:red;'>Dont reboot the server</b>",user = "Administrator")
-	frappe.enqueue(
-		queue="short",
-		method=frappe.sendmail,
-		recipients="IT@Fxmed.co.nz",
-		# sender=frappe.session.user, #Send as default outgoing
-		subject= doc.company + ": Customer Statements Sending Started",
-		message="Hi IT,<br><br><b>Company</b>: " + str(doc.company) + "<br><b>From</b>: " + str(doc.from_date) + "<br><b>To</b>: " + str(doc.to_date) + "<br><br><b>DO NOT RESTART UNTIL COMPLETE</b><br><br>Kind Regards, ERPNext",
-		# now=True,
-		is_async=True,
-		reference_doctype="Process Statement Of Accounts",
-		reference_name=document_name
-	)
+	company = get_default_company()
+	
+	enqueue_args = {
+		"queue": "short",
+		"method": frappe.sendmail,
+		"recipients": "IT@Fxmed.co.nz",
+		"subject": doc.company + ": Customer Statements Sending Started",
+		"message": (
+			"Hi IT,<br><br><b>Company</b>: " + str(doc.company) +
+			"<br><b>From</b>: " + str(doc.from_date) +
+			"<br><b>To</b>: " + str(doc.to_date) +
+			"<br><br><b>DO NOT RESTART UNTIL COMPLETE</b><br><br>Kind Regards, ERPNext"
+		),
+		"is_async": True,
+		"reference_doctype": "Process Statement Of Accounts",
+		"reference_name": document_name
+	}
+
+	if company == "FxMed":
+		sender = "ar@fxmed.co.nz"
+		enqueue_args["sender"] = sender
+	else:
+		company = None
+		sender = None
+
+	frappe.enqueue(**enqueue_args)
 
 	report = get_report_pdf(doc, consolidated=False)
 
@@ -485,26 +500,31 @@ def send_emails(document_name, from_scheduler=False):
 
 			recipients, cc = get_recipients_and_cc(customer, doc)
 
-			logger.info(recipients)
+			# logger.info(recipients)
 
 			context = get_context(customer, doc)
 			subject = frappe.render_template(doc.subject, context)
 			message = frappe.render_template(doc.body, context)
 
-			frappe.enqueue(
-				queue="short",
-				method=frappe.sendmail,
-				recipients=recipients,
+			enqueue_args = {
+				"queue":"short",
+				"method":frappe.sendmail,
+				"recipients":recipients,
 				# sender=frappe.session.user, #Send as default outgoing
-				cc=cc,
-				subject=subject,
-				message=message,
+				"cc":cc,
+				"subject":subject,
+				"message":message,
 				# now=True,
-				is_async=True,
-				reference_doctype="Process Statement Of Accounts",
-				reference_name=document_name,
-				attachments=attachments,
-			)
+				"is_async":True,
+				"reference_doctype":"Process Statement Of Accounts",
+				"reference_name":document_name,
+				"attachments":attachments,
+			}
+
+			if company == "FxMed":
+				enqueue_args["sender"] = sender
+
+			frappe.enqueue(**enqueue_args)
 
 			customerDoc = frappe.get_doc('Customer', customer)
 			customerDoc.add_comment("Comment",'Customer has been sent a Statement of Accounts Email from us.')
@@ -538,19 +558,44 @@ def send_emails(document_name, from_scheduler=False):
 			doc.db_set("from_date", new_from_date, commit=True)
 			doc.db_set("to_date", new_to_date, commit=True)
 
-		#Send email to admin
-		frappe.enqueue(
-			queue="short",
-			method=frappe.sendmail,
-			recipients="IT@Fxmed.co.nz",
+			enqueue_args = {
+				"queue":"short",
+				"method":frappe.sendmail,
+				"recipients":"IT@Fxmed.co.nz",
+				# sender=frappe.session.user, #Send as default outgoing
+				"subject": doc.company + ": Customer Statements Sending Complete",
+				"message":"Hi IT,<br><br><b>Company</b>: " + str(doc.company) + "<br><b>From</b>: " + str(doc.from_date) + "<br><b>To</b>: " + str(doc.to_date) + "<br><b>Customers Analysed</b>: " + str(len(doc.customers)) + "<br><b>Customers Sent</b>: " + str(len(report)) + "<br><br>Kind Regards, ERPNext",
+				# now=True,
+				"is_async":True,
+				"reference_doctype":"Process Statement Of Accounts",
+				"reference_name":document_name
+			}
+
+			if company == "FxMed":
+				enqueue_args["sender"] = sender
+
+			frappe.enqueue(**enqueue_args)
+		
+
+		enqueue_args = {
+			"queue":"short",
+			"method":frappe.sendmail,
+			"recipients":"IT@Fxmed.co.nz",
 			# sender=frappe.session.user, #Send as default outgoing
-			subject= doc.company + ": Customer Statements Sending Complete",
-			message="Hi IT,<br><br><b>Company</b>: " + str(doc.company) + "<br><b>From</b>: " + str(doc.from_date) + "<br><b>To</b>: " + str(doc.to_date) + "<br><b>Customers Analysed</b>: " + str(len(doc.customers)) + "<br><b>Customers Sent</b>: " + str(len(report)) + "<br><br>Kind Regards, ERPNext",
+			"subject": doc.company + ": Customer Statements Sending Complete",
+			"message":"Hi IT,<br><br><b>Company</b>: " + str(doc.company) + "<br><b>From</b>: " + str(doc.from_date) + "<br><b>To</b>: " + str(doc.to_date) + "<br><b>Customers Analysed</b>: " + str(len(doc.customers)) + "<br><b>Customers Sent</b>: " + str(len(report)) + "<br><br>Kind Regards, ERPNext",
 			# now=True,
-			is_async=True,
-			reference_doctype="Process Statement Of Accounts",
-			reference_name=document_name
-		)
+			"is_async":True,
+			"reference_doctype":"Process Statement Of Accounts",
+			"reference_name":document_name
+		}
+
+		if company == "FxMed":
+			enqueue_args["sender"] = sender
+			
+		#Send email to admin
+		frappe.enqueue(**enqueue_args)
+
 		frappe.publish_realtime(event='msgprint', message="Customer statements finished",user = "Administrator")
 		return True
 	else:
