@@ -89,7 +89,10 @@ def sorted_by_priority(pricing_rules, args, doc=None):
 			filtered_pricing_rules.append(pricing_rule)
 	
 	filtered_pricing_rules = sorted(filtered_pricing_rules, key=lambda d: d['priority'], reverse=True)
-	apply_multiple = apply_multiple_pricing_rules([filtered_pricing_rules[0]])
+	if filtered_pricing_rules:
+		apply_multiple = apply_multiple_pricing_rules([filtered_pricing_rules[0]])
+	else:
+		apply_multiple = False
 	for pricing_rule in filtered_pricing_rules:
 		if pricing_rule.get("apply_multiple_pricing_rules") == apply_multiple:
 			pricing_rule_dict.setdefault(cint(pricing_rule.get("priority")), []).append(pricing_rule)
