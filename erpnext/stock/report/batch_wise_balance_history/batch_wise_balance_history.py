@@ -91,7 +91,7 @@ def get_stock_ledger_entries(filters):
 		select s.item_code, s.batch_no, b.expiry_date as batch_expiry, s.warehouse, s.posting_date, sum(s.actual_qty) as actual_qty
 		from `tabStock Ledger Entry` s
 		join `tabBatch` b on b.name = s.batch_no
-		where s.is_cancelled = 0 and s.docstatus < 2 and ifnull(s.batch_no, '') != '' %s
+		where s.is_cancelled = 0 and s.docstatus < 2 and b.disabled = 0 and ifnull(s.batch_no, '') != '' %s
 		group by s.voucher_no, s.batch_no, s.item_code, s.warehouse
 		order by s.item_code, s.warehouse"""
 		% conditions,

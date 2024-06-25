@@ -694,7 +694,7 @@ def get_itemwise_batch(warehouse, posting_date, company, item_code=None):
 				{
 					"item_code": row[0],
 					"warehouse": warehouse,
-					"qty": row[8],
+					"qty": row[9],
 					"item_name": row[1],
 					"batch_no": row[4],
 				}

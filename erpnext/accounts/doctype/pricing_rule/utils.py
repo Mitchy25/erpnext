@@ -86,6 +86,8 @@ def sorted_by_priority(pricing_rules, args, doc=None):
 		if pricing_rule:
 			if not pricing_rule.get("priority"):
 				pricing_rule["priority"] = 0
+			else:
+				pricing_rule["priority"] = float(pricing_rule["priority"])
 			filtered_pricing_rules.append(pricing_rule)
 	
 	filtered_pricing_rules = sorted(filtered_pricing_rules, key=lambda d: d['priority'], reverse=True)
