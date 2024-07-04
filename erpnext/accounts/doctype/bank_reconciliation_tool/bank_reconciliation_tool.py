@@ -123,6 +123,7 @@ def create_journal_entry_bts(
 	mode_of_payment=None,
 	party_type=None,
 	party=None,
+	cost_center = None,
 	allow_edit=None,
 	multi_currency=None
 ):
@@ -153,6 +154,7 @@ def create_journal_entry_bts(
 			else 0,
 			"party_type": party_type,
 			"party": party,
+			"cost_center": cost_center
 		}
 	)
 

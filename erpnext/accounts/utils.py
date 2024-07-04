@@ -830,7 +830,7 @@ def get_outstanding_invoices(party_type, party, account, condition=None, filters
 	invoice_list = frappe.db.sql(
 		"""
 		select
-			voucher_no, voucher_type, posting_date, due_date,
+			voucher_no, voucher_type, posting_date, due_date, remarks,
 			ifnull(sum({dr_or_cr}), 0) as invoice_amount,
 			account_currency as currency
 		from
@@ -901,6 +901,7 @@ def get_outstanding_invoices(party_type, party, account, condition=None, filters
 							"invoice_amount": flt(d.invoice_amount),
 							"payment_amount": payment_amount,
 							"outstanding_amount": outstanding_amount,
+							"remarks": d.remarks,
 							"due_date": d.due_date,
 							"currency": d.currency,
 						}
