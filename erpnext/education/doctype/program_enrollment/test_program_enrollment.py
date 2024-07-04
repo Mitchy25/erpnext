@@ -1,20 +1,23 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe and Contributors
 # See license.txt
-from __future__ import unicode_literals
 
-import frappe
 import unittest
 
-from erpnext.education.doctype.student.test_student import create_student
-from erpnext.education.doctype.student.test_student import get_student
+import frappe
+
 from erpnext.education.doctype.program.test_program import make_program_and_linked_courses
-from erpnext.education.doctype.course_activity.test_course_activity import make_course_activity
+from erpnext.education.doctype.student.test_student import create_student, get_student
+
 
 class TestProgramEnrollment(unittest.TestCase):
-
 	def setUp(self):
-		create_student({"first_name": "_Test Name", "last_name": "_Test Last Name", "email": "_test_student@example.com"})
+		create_student(
+			{
+				"first_name": "_Test Name",
+				"last_name": "_Test Last Name",
+				"email": "_test_student@example.com",
+			}
+		)
 		make_program_and_linked_courses("_Test Program 1", ["_Test Course 1", "_Test Course 2"])
 
 	def test_create_course_enrollments(self):
@@ -24,3 +27,12 @@ class TestProgramEnrollment(unittest.TestCase):
 		self.assertTrue("_Test Course 1" in course_enrollments.keys())
 		self.assertTrue("_Test Course 2" in course_enrollments.keys())
 		frappe.db.rollback()
+
+	def tearDown(self):
+		for entry in frappe.db.get_all("Course Enrollment"):
+			frappe.delete_doc("Course Enrollment", entry.name)
+
+		for entry in frappe.db.get_all("Program Enrollment"):
+			doc = frappe.get_doc("Program Enrollment", entry.name)
+			doc.cancel()
+			doc.delete()

@@ -9,6 +9,7 @@
   "leave_type",
   "transaction_type",
   "transaction_name",
+  "company",
   "leaves",
   "column_break_7",
   "from_date",
@@ -26,7 +27,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Employee",
-   "options": "Employee"
+   "options": "Employee",
+   "search_index": 1
   },
   {
    "fetch_from": "employee.employee_name",
@@ -54,14 +56,17 @@
   {
    "fieldname": "transaction_type",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Transaction Type",
-   "options": "DocType"
+   "options": "DocType",
+   "search_index": 1
   },
   {
    "fieldname": "transaction_name",
    "fieldtype": "Dynamic Link",
    "label": "Transaction Name",
-   "options": "transaction_type"
+   "options": "transaction_type",
+   "search_index": 1
   },
   {
    "fieldname": "leaves",
@@ -106,12 +111,22 @@
    "fieldtype": "Link",
    "label": "Holiday List",
    "options": "Holiday List"
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "reqd": 1
   }
  ],
  "in_create": 1,
+ "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2020-02-27 14:40:10.502605",
+ "modified": "2023-11-17 12:36:36.963697",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Leave Ledger Entry",

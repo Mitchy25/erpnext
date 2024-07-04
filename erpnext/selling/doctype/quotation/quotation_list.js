@@ -17,12 +17,14 @@ frappe.listview_settings['Quotation'] = {
 	get_indicator: function(doc) {
 		if(doc.status==="Open") {
 			return [__("Open"), "orange", "status,=,Open"];
+		} else if (doc.status==="Partially Ordered") {
+			return [__("Partially Ordered"), "yellow", "status,=,Partially Ordered"];
 		} else if(doc.status==="Ordered") {
 			return [__("Ordered"), "green", "status,=,Ordered"];
 		} else if(doc.status==="Lost") {
-			return [__("Lost"), "darkgrey", "status,=,Lost"];
+			return [__("Lost"), "gray", "status,=,Lost"];
 		} else if(doc.status==="Expired") {
-			return [__("Expired"), "darkgrey", "status,=,Expired"];
+			return [__("Expired"), "gray", "status,=,Expired"];
 		}
 	}
 };

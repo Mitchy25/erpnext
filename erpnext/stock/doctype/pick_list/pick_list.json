@@ -10,6 +10,7 @@
   "company",
   "purpose",
   "customer",
+  "customer_name",
   "work_order",
   "material_request",
   "for_qty",
@@ -18,7 +19,9 @@
   "get_item_locations",
   "section_break_6",
   "locations",
-  "amended_from"
+  "amended_from",
+  "print_settings_section",
+  "group_same_items"
  ],
  "fields": [
   {
@@ -110,14 +113,37 @@
    "options": "STO-PICK-.YYYY.-",
    "reqd": 1,
    "set_only_once": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "print_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Print Settings"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "group_same_items",
+   "fieldtype": "Check",
+   "label": "Group Same Items",
+   "print_hide": 1
+  },
+  {
+   "depends_on": "eval:doc.purpose==='Delivery' && doc.customer",
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2020-03-17 11:38:41.932875",
+ "modified": "2022-07-19 11:03:04.442174",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Pick List",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -183,5 +209,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

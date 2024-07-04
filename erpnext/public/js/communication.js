@@ -13,7 +13,7 @@ frappe.ui.form.on("Communication", {
 				frappe.confirm(__(confirm_msg, [__("Issue")]), () => {
 					frm.trigger('make_issue_from_communication');
 				})
-			}, "Create");
+			}, __("Create"));
 		}
 
 		if(!in_list(["Lead", "Opportunity"], frm.doc.reference_doctype)) {
@@ -84,7 +84,7 @@ frappe.ui.form.on("Communication", {
 						frm.reload_doc();
 						frappe.show_alert({
 							message: __("Opportunity {0} created",
-								['<a href="#Form/Opportunity/'+r.message+'">' + r.message + '</a>']),
+								['<a href="/app/opportunity/'+r.message+'">' + r.message + '</a>']),
 							indicator: 'green'
 						});
 					}

@@ -7,34 +7,50 @@ frappe.ui.form.on('Blanket Order', {
 	},
 
 	setup: function(frm) {
+		frm.custom_make_buttons = {
+			'Purchase Order': 'Purchase Order',
+			'Sales Order': 'Sales Order',
+			'Quotation': 'Quotation',
+		};
+
 		frm.add_fetch("customer", "customer_name", "customer_name");
 		frm.add_fetch("supplier", "supplier_name", "supplier_name");
 	},
 
 	refresh: function(frm) {
 		erpnext.hide_company();
-		if (frm.doc.customer && frm.doc.docstatus === 1) {
-			frm.add_custom_button(__('View Orders'), function() {
-				frappe.set_route('List', 'Sales Order', {blanket_order: frm.doc.name});
-			});
-			frm.add_custom_button(__("Create Sales Order"), function(){
+		if (frm.doc.customer && frm.doc.docstatus === 1 && frm.doc.to_date > frappe.datetime.get_today()) {
+			frm.add_custom_button(__("Sales Order"), function() {
 				frappe.model.open_mapped_doc({
-					method: "erpnext.manufacturing.doctype.blanket_order.blanket_order.make_sales_order",
-					frm: frm
+					method: "erpnext.manufacturing.doctype.blanket_order.blanket_order.make_order",
+					frm: frm,
+					args: {
+						doctype: 'Sales Order'
+					}
 				});
-			}).addClass("btn-primary");
+			}, __('Create'));
+
+			frm.add_custom_button(__("Quotation"), function() {
+				frappe.model.open_mapped_doc({
+					method: "erpnext.manufacturing.doctype.blanket_order.blanket_order.make_order",
+					frm: frm,
+					args: {
+						doctype: 'Quotation'
+					}
+				});
+			}, __('Create'));
 		}
 
 		if (frm.doc.supplier && frm.doc.docstatus === 1) {
-			frm.add_custom_button(__('View Orders'), function() {
-				frappe.set_route('List', 'Purchase Order', {blanket_order: frm.doc.name});
-			});
-			frm.add_custom_button(__("Create Purchase Order"), function(){
+			frm.add_custom_button(__("Purchase Order"), function(){
 				frappe.model.open_mapped_doc({
-					method: "erpnext.manufacturing.doctype.blanket_order.blanket_order.make_purchase_order",
-					frm: frm
+					method: "erpnext.manufacturing.doctype.blanket_order.blanket_order.make_order",
+					frm: frm,
+					args: {
+						doctype: 'Purchase Order'
+					}
 				});
-			}).addClass("btn-primary");
+			}, __('Create'));
 		}
 	},
 
@@ -75,5 +91,3 @@ frappe.ui.form.on('Blanket Order', {
 		frm.trigger('set_tc_name_filter');
 	}
 });
-
-

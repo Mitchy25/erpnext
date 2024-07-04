@@ -1,12 +1,14 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
-from __future__ import unicode_literals
-import frappe, unittest
-from frappe.utils import flt
-from erpnext.setup.utils import get_exchange_rate
-from frappe.utils import cint
 
-test_records = frappe.get_test_records('Currency Exchange')
+import unittest
+
+import frappe
+from frappe.utils import cint, flt
+
+from erpnext.setup.utils import get_exchange_rate
+
+test_records = frappe.get_test_records("Currency Exchange")
 
 
 def save_new_records(test_records):
@@ -14,13 +16,19 @@ def save_new_records(test_records):
 		# If both selling and buying enabled
 		purpose = "Selling-Buying"
 
-		if cint(record.get("for_buying"))==0 and cint(record.get("for_selling"))==1:
+		if cint(record.get("for_buying")) == 0 and cint(record.get("for_selling")) == 1:
 			purpose = "Selling"
-		if cint(record.get("for_buying"))==1 and cint(record.get("for_selling"))==0:
+		if cint(record.get("for_buying")) == 1 and cint(record.get("for_selling")) == 0:
 			purpose = "Buying"
 		kwargs = dict(
 			doctype=record.get("doctype"),
-			docname=record.get("date") + '-' + record.get("from_currency") + '-' + record.get("to_currency") + '-' + purpose,
+			docname=record.get("date")
+			+ "-"
+			+ record.get("from_currency")
+			+ "-"
+			+ record.get("to_currency")
+			+ "-"
+			+ purpose,
 			fieldname="exchange_rate",
 			value=record.get("exchange_rate"),
 		)
@@ -62,8 +70,8 @@ class TestCurrencyExchange(unittest.TestCase):
 
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-30", "for_selling")
 		self.assertEqual(exchange_rate, 62.9)
-		
-		# Exchange rate as on 15th Dec, 2015, should be fetched from fixer.io
+
+		# Exchange rate as on 15th Dec, 2015
 		self.clear_cache()
 		exchange_rate = get_exchange_rate("USD", "INR", "2015-12-15", "for_selling")
 		self.assertFalse(exchange_rate == 60)
@@ -77,7 +85,6 @@ class TestCurrencyExchange(unittest.TestCase):
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-01", "for_buying")
 		self.assertEqual(exchange_rate, 60.0)
 
-		# Will fetch from fixer.io
 		self.clear_cache()
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-15", "for_buying")
 		self.assertEqual(flt(exchange_rate, 3), 67.79)
@@ -85,20 +92,10 @@ class TestCurrencyExchange(unittest.TestCase):
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-30", "for_selling")
 		self.assertEqual(exchange_rate, 62.9)
 
-		# Exchange rate as on 15th Dec, 2015, should be fetched from fixer.io
+		# Exchange rate as on 15th Dec, 2015
 		self.clear_cache()
 		exchange_rate = get_exchange_rate("USD", "INR", "2015-12-15", "for_buying")
 		self.assertEqual(flt(exchange_rate, 3), 66.894)
-
-		exchange_rate = get_exchange_rate("INR", "NGN", "2016-01-10", "for_selling")
-		self.assertEqual(exchange_rate, 65.1)
-
-		# NGN is not available on fixer.io so these should return 0
-		exchange_rate = get_exchange_rate("INR", "NGN", "2016-01-09", "for_selling")
-		self.assertEqual(exchange_rate, 0)
-
-		exchange_rate = get_exchange_rate("INR", "NGN", "2016-01-11", "for_selling")
-		self.assertEqual(exchange_rate, 0)
 
 	def test_exchange_rate_strict_switched(self):
 		# Start with allow_stale is True

@@ -5,18 +5,11 @@
 frappe.query_reports['Employee Leave Balance Summary'] = {
 	filters: [
 		{
-			fieldname:'from_date',
-			label: __('From Date'),
+			fieldname:'date',
+			label: __('Date'),
 			fieldtype: 'Date',
 			reqd: 1,
-			default: frappe.defaults.get_default('year_start_date')
-		},
-		{
-			fieldname:'to_date',
-			label: __('To Date'),
-			fieldtype: 'Date',
-			reqd: 1,
-			default: frappe.defaults.get_default('year_end_date')
+			default: frappe.datetime.now_date()
 		},
 		{
 			fieldname:'company',
@@ -37,6 +30,19 @@ frappe.query_reports['Employee Leave Balance Summary'] = {
 			label: __('Department'),
 			fieldtype: 'Link',
 			options: 'Department',
+		},
+		{
+			fieldname: "employee_status",
+			label: __("Employee Status"),
+			fieldtype: "Select",
+			options: [
+				"",
+				{ "value": "Active", "label": __("Active") },
+				{ "value": "Inactive", "label": __("Inactive") },
+				{ "value": "Suspended", "label": __("Suspended") },
+				{ "value": "Left", "label": __("Left") },
+			],
+			default: "Active",
 		}
 	]
 };
