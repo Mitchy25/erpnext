@@ -739,7 +739,6 @@ class TestMaterialRequest(FrappeTestCase):
 		self.assertEqual(mr.per_ordered, 100)
 		self.assertEqual(existing_requested_qty, current_requested_qty)
 
-
 def make_material_request(**args):
 	args = frappe._dict(args)
 	mr = frappe.new_doc("Material Request")

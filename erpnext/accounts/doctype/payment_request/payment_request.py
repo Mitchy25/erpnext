@@ -252,13 +252,16 @@ class PaymentRequest(Document):
 			bank_amount=bank_amount,
 		)
 
-		payment_entry.update({
-			"bank_account": self.payment_account,
-			"reference_no": self.name,
-			"reference_date": nowdate(),
-			"remarks": "Payment Entry against {0} {1} via Payment Request {2}".format(self.reference_doctype,
-				self.reference_name, self.name)
-		})
+		payment_entry.update(
+			{
+				"mode_of_payment": self.mode_of_payment,
+				"reference_no": self.name,
+				"reference_date": nowdate(),
+				"remarks": "Payment Entry against {0} {1} via Payment Request {2}".format(
+					self.reference_doctype, self.reference_name, self.name
+				),
+			}
+		)
 
 		if payment_entry.difference_amount:
 			company_details = get_company_defaults(ref_doc.company)
@@ -401,25 +404,22 @@ def make_payment_request(**args):
 		else ""
 	)
 
-	existing_payment_request = None
-	if args.order_type == "Shopping Cart":
-		existing_payment_request = frappe.db.get_value(
-			"Payment Request",
-			{"reference_doctype": args.dt, "reference_name": args.dn, "docstatus": ("!=", 2)},
-		)
+	draft_payment_request = frappe.db.get_value(
+		"Payment Request",
+		{"reference_doctype": args.dt, "reference_name": args.dn, "docstatus": 0},
+	)
 
-	if existing_payment_request:
+	existing_payment_request_amount = get_existing_payment_request_amount(args.dt, args.dn)
+
+	if existing_payment_request_amount:
+		grand_total -= existing_payment_request_amount
+
+	if draft_payment_request:
 		frappe.db.set_value(
-			"Payment Request", existing_payment_request, "grand_total", grand_total, update_modified=False
+			"Payment Request", draft_payment_request, "grand_total", grand_total, update_modified=False
 		)
-		pr = frappe.get_doc("Payment Request", existing_payment_request)
+		pr = frappe.get_doc("Payment Request", draft_payment_request)
 	else:
-		if args.order_type != "Shopping Cart":
-			existing_payment_request_amount = get_existing_payment_request_amount(args.dt, args.dn)
-
-			if existing_payment_request_amount:
-				grand_total -= existing_payment_request_amount
-
 		pr = frappe.new_doc("Payment Request")
 		pr.update(
 			{
@@ -556,7 +556,6 @@ def resend_payment_email(docname):
 def make_payment_entry(docname):
 	doc = frappe.get_doc("Payment Request", docname)
 	return doc.create_payment_entry(submit=False).as_dict()
-
 
 def update_payment_req_status(doc, method):
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_reference_details

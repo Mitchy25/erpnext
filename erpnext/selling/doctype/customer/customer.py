@@ -100,7 +100,8 @@ class Customer(TransactionBase):
 	@frappe.whitelist()
 	def get_customer_group_details(self):
 		doc = frappe.get_doc("Customer Group", self.customer_group)
-		self.accounts = self.credit_limits = []
+		self.accounts = []
+		self.credit_limits = []
 		self.payment_terms = self.default_price_list = ""
 
 		tables = [["accounts", "account"], ["credit_limits", "credit_limit"]]
@@ -140,6 +141,9 @@ class Customer(TransactionBase):
 				)
 
 	def validate_internal_customer(self):
+		if not self.is_internal_customer:
+			self.represents_company = ""
+
 		internal_customer = frappe.db.get_value(
 			"Customer",
 			{
@@ -279,18 +283,9 @@ class Customer(TransactionBase):
 
 	def on_trash(self):
 		if self.customer_primary_contact:
-			frappe.db.sql(
-				"""
-				UPDATE `tabCustomer`
-				SET
-					customer_primary_contact=null,
-					customer_primary_address=null,
-					mobile_no=null,
-					email_id=null,
-					primary_address=null
-				WHERE name=%(name)s""",
-				{"name": self.name},
-			)
+			self.db_set("customer_primary_contact", None)
+		if self.customer_primary_address:
+			self.db_set("customer_primary_address", None)
 
 		delete_contact_and_address("Customer", self.name)
 		if self.lead_name:
@@ -610,6 +605,7 @@ def check_credit_limit(customer, company, ignore_outstanding_sales_order=False, 
 				primary_action={
 					"label": "Send Email",
 					"server_action": "erpnext.selling.doctype.customer.customer.send_emails",
+					"hide_on_success": True,
 					"args": {
 						"customer": customer,
 						"customer_outstanding": customer_outstanding,
@@ -734,11 +730,15 @@ def get_credit_limit(customer, company):
 
 		if not credit_limit:
 			customer_group = frappe.get_cached_value("Customer", customer, "customer_group")
-			credit_limit = frappe.db.get_value(
+
+			result = frappe.db.get_values(
 				"Customer Credit Limit",
 				{"parent": customer_group, "parenttype": "Customer Group", "company": company},
-				"credit_limit",
+				fieldname=["credit_limit", "bypass_credit_limit_check"],
+				as_dict=True,
 			)
+			if result and not result[0].bypass_credit_limit_check:
+				credit_limit = result[0].credit_limit
 
 	if not credit_limit:
 		credit_limit = frappe.get_cached_value("Company", company, "credit_limit")
@@ -792,7 +792,6 @@ def make_address(args, is_primary_address=1):
 	).insert()
 
 	return address
-
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs

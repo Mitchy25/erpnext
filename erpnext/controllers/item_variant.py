@@ -82,7 +82,6 @@ def validate_item_variant_attributes(item, args=None):
 			attributes_list = attribute_values.get(attribute.lower(), [])
 			validate_item_attribute_value(attributes_list, attribute, value, item.name, from_variant=True)
 
-
 def validate_is_incremental(numeric_attribute, attribute, value, item):
 	from_range = numeric_attribute.from_range
 	to_range = numeric_attribute.to_range

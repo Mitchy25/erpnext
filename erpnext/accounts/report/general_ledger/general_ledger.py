@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-
 from collections import OrderedDict
 
 import frappe
@@ -283,20 +282,30 @@ def get_conditions(filters):
 		or filters.get("party")
 		or filters.get("group_by") in ["Group by Account", "Group by Party"]
 	):
-		conditions.append("posting_date >=%(from_date)s")
+		conditions.append("(posting_date >=%(from_date)s or is_opening = 'Yes')")
 
 	conditions.append("(posting_date <=%(to_date)s or is_opening = 'Yes')")
 
 	if filters.get("project"):
 		conditions.append("project in %(project)s")
 
-	if filters.get("finance_book"):
-		if filters.get("include_default_book_entries"):
-			conditions.append(
-				"(finance_book in (%(finance_book)s, %(company_fb)s, '') OR finance_book IS NULL)"
-			)
+	if filters.get("include_default_book_entries"):
+		if filters.get("finance_book"):
+			if filters.get("company_fb") and cstr(filters.get("finance_book")) != cstr(
+				filters.get("company_fb")
+			):
+				frappe.throw(
+					_("To use a different finance book, please uncheck 'Include Default Book Entries'")
+				)
+			else:
+				conditions.append("(finance_book in (%(finance_book)s, '') OR finance_book IS NULL)")
 		else:
-			conditions.append("finance_book in (%(finance_book)s)")
+			conditions.append("(finance_book in (%(company_fb)s, '') OR finance_book IS NULL)")
+	else:
+		if filters.get("finance_book"):
+			conditions.append("(finance_book in (%(finance_book)s, '') OR finance_book IS NULL)")
+		else:
+			conditions.append("(finance_book in ('') OR finance_book IS NULL)")
 
 	if not filters.get("show_cancelled_entries"):
 		conditions.append("is_cancelled = 0")
@@ -321,7 +330,7 @@ def get_conditions(filters):
 							)
 							conditions.append("{0} in %({0})s".format(dimension.fieldname))
 						else:
-							conditions.append("{0} in (%({0})s)".format(dimension.fieldname))
+							conditions.append("{0} in %({0})s".format(dimension.fieldname))
 
 	return "and {}".format(" and ".join(conditions)) if conditions else ""
 
@@ -474,7 +483,7 @@ def get_accountwise_gle(filters, accounting_dimensions, gl_entries, gle_map):
 			update_value_in_dict(totals, "opening", gle)
 			update_value_in_dict(totals, "closing", gle)
 
-		elif gle.posting_date <= to_date:
+		elif gle.posting_date <= to_date or (cstr(gle.is_opening) == "Yes" and show_opening_entries):
 			if not group_by_voucher_consolidated:
 				update_value_in_dict(gle_map[group_by_value].totals, "total", gle)
 				update_value_in_dict(gle_map[group_by_value].totals, "closing", gle)
@@ -484,7 +493,13 @@ def get_accountwise_gle(filters, accounting_dimensions, gl_entries, gle_map):
 				gle_map[group_by_value].entries.append(gle)
 
 			elif group_by_voucher_consolidated:
-				keylist = [gle.get("voucher_type"), gle.get("voucher_no"), gle.get("account")]
+				keylist = [
+					gle.get("voucher_type"),
+					gle.get("voucher_no"),
+					gle.get("account"),
+					gle.get("party_type"),
+					gle.get("party"),
+				]
 				if filters.get("include_dimensions"):
 					for dim in accounting_dimensions:
 						keylist.append(gle.get(dim))

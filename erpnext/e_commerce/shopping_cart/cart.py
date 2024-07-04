@@ -686,7 +686,6 @@ def apply_coupon_code(applied_code, applied_referral_sales_partner):
 	coupon_name = coupon_list[0].name
 
 	from erpnext.accounts.doctype.pricing_rule.utils import validate_coupon_code
-
 	validate_coupon_code(coupon_name)
 	quotation = _get_cart_quotation()
 	quotation.coupon_code = coupon_name

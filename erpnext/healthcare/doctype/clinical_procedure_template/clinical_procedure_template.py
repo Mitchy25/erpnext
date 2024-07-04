@@ -14,12 +14,8 @@ class ClinicalProcedureTemplate(Document):
 	def validate(self):
 		self.enable_disable_item()
 
-	def enable_disable_item(self):
-		if self.is_billable:
-			if self.disabled:
-				frappe.db.set_value('Item', self.item, 'disabled', 1)
-			else:
-				frappe.db.set_value('Item', self.item, 'disabled', 0)
+	def after_insert(self):
+		create_item_from_template(self)
 
 	def on_update(self):
 		if self.change_in_item:

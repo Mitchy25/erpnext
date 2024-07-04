@@ -43,7 +43,7 @@ class GLEntry(Document):
 		self.validate_and_set_fiscal_year()
 		self.pl_must_have_cost_center()
 
-		if not self.flags.from_repost:
+		if not self.flags.from_repost and self.voucher_type != "Period Closing Voucher":
 			self.check_mandatory()
 			self.validate_cost_center()
 			self.check_pl_account()
@@ -52,7 +52,7 @@ class GLEntry(Document):
 
 	def on_update(self):
 		adv_adj = self.flags.adv_adj
-		if not self.flags.from_repost:
+		if not self.flags.from_repost and self.voucher_type != "Period Closing Voucher":
 			self.validate_account_details(adv_adj)
 			self.validate_dimensions_for_pl_and_bs()
 			self.validate_allowed_dimensions()
@@ -245,6 +245,10 @@ class GLEntry(Document):
 				).format(self.voucher_type, self.voucher_no, frappe.bold(self.cost_center))
 			)
 
+		if not self.flags.from_repost and self.cost_center and _check_is_group():
+			frappe.throw(_("""{0} {1}: Cost Center {2} is a group cost center and group cost centers cannot
+				be used in transactions""").format(self.voucher_type, self.voucher_no, frappe.bold(self.cost_center)))
+
 	def validate_party(self):
 		# Allow staff to create payment entry for frozen customer
 		if self.voucher_type == "Payment Entry" or self.voucher_type == "Journal Entry":
@@ -362,7 +366,8 @@ def update_outstanding_amt(
 	if against_voucher_type in ["Sales Invoice", "Purchase Invoice", "Fees"]:
 		ref_doc = frappe.get_doc(against_voucher_type, against_voucher)
 
-		# Didn't use db_set for optimisation purpose
+		bal = flt(bal, frappe.get_precision(against_voucher_type, "outstanding_amount"))
+		# Didn't use db_set for optimization purpose
 		ref_doc.outstanding_amount = bal
 		frappe.db.set_value(against_voucher_type, against_voucher, "outstanding_amount", bal)
 

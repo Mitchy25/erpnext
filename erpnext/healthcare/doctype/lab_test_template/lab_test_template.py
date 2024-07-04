@@ -134,7 +134,6 @@ def create_item_from_template(doc):
 
 	doc.reload()
 
-
 def make_item_price(item, price_list_name, item_price):
 	frappe.get_doc(
 		{
