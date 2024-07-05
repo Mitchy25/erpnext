@@ -2050,12 +2050,11 @@
    "link_fieldname": "consolidated_invoice"
   }
  ],
- "modified": "2023-01-28 19:45:47.538163",
+ "modified": "2024-04-10 10:33:49.918110",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
  "name_case": "Title Case",
- "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -2102,7 +2101,6 @@
  "show_preview_popup": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
  "timeline_field": "customer",
  "title_field": "title",
  "track_changes": 1,
