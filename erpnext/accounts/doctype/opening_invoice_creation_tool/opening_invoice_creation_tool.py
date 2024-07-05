@@ -114,10 +114,13 @@ class OpeningInvoiceCreationTool(Document):
 				)
 				or {}
 			)
+
+			default_currency = frappe.db.get_value(row.party_type, row.party, "default_currency")
+
 			if company_details:
 				invoice.update(
 					{
-						"currency": company_details.get("default_currency"),
+						"currency": default_currency or company_details.get("default_currency"),
 						"letter_head": company_details.get("default_letter_head"),
 					}
 				)
@@ -268,10 +271,10 @@ def publish(index, total, doctype):
 		dict(
 			title=_("Opening Invoice Creation In Progress"),
 			message=_("Creating {} out of {} {}").format(index + 1, total, doctype),
-			user=frappe.session.user,
 			count=index + 1,
 			total=total,
 		),
+		user=frappe.session.user,
 	)
 
 

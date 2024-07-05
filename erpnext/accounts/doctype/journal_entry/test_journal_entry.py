@@ -333,7 +333,6 @@ class TestJournalEntry(unittest.TestCase):
 
 	def test_jv_with_cost_centre(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
-
 		cost_center = "_Test Cost Center for BS Account - _TC"
 		create_cost_center(cost_center_name="_Test Cost Center for BS Account", company="_Test Company")
 		jv = make_journal_entry(
@@ -410,7 +409,6 @@ class TestJournalEntry(unittest.TestCase):
 	def test_jv_account_and_party_balance_with_cost_centre(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
 		from erpnext.accounts.utils import get_balance_on
-
 		cost_center = "_Test Cost Center for BS Account - _TC"
 		create_cost_center(cost_center_name="_Test Cost Center for BS Account", company="_Test Company")
 		jv = make_journal_entry(

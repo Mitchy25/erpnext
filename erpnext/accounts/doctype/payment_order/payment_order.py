@@ -32,7 +32,6 @@ class PaymentOrder(Document):
 		for d in self.references:
 			frappe.db.set_value(self.payment_order_type, d.get(ref_doc_field), ref_field, status)
 
-
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_mop_query(doctype, txt, searchfield, start, page_len, filters):
@@ -42,7 +41,6 @@ def get_mop_query(doctype, txt, searchfield, start, page_len, filters):
 		limit %(start)s, %(page_len)s""",
 		{"parent": filters.get("parent"), "start": start, "page_len": page_len, "txt": "%%%s%%" % txt},
 	)
-
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs

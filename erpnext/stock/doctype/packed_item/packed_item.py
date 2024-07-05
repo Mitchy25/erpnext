@@ -32,7 +32,7 @@ def make_packing_list(doc):
 	reset = reset_packing_list(doc)
 
 	for item_row in doc.get("items"):
-		if frappe.db.exists("Product Bundle", {"new_item_code": item_row.item_code}):
+		if is_product_bundle(item_row.item_code):
 			for bundle_item in get_product_bundle_items(item_row.item_code):
 				pi_row = add_packed_item_row(
 					doc=doc,
@@ -52,6 +52,10 @@ def make_packing_list(doc):
 
 	if parent_items_price:
 		set_product_bundle_rate_amount(doc, parent_items_price)  # set price in bundle item
+
+
+def is_product_bundle(item_code: str) -> bool:
+	return bool(frappe.db.exists("Product Bundle", {"new_item_code": item_code}))
 
 
 def get_indexed_packed_items_table(doc):
@@ -79,8 +83,8 @@ def reset_packing_list(doc):
 		# 1. items were deleted
 		# 2. if bundle item replaced by another item (same no. of items but different items)
 		# we maintain list to track recurring item rows as well
-		items_before_save = [item.item_code for item in doc_before_save.get("items")]
-		items_after_save = [item.item_code for item in doc.get("items")]
+		items_before_save = [(item.name, item.item_code) for item in doc_before_save.get("items")]
+		items_after_save = [(item.name, item.item_code) for item in doc.get("items")]
 		reset_table = items_before_save != items_after_save
 	else:
 		# reset: if via Update Items OR

@@ -8,6 +8,7 @@ import frappe
 import os
 import re
 from frappe import _
+from frappe.desk.reportview import get_match_cond
 from frappe.model.document import Document
 from frappe.utils import add_days, nowdate, add_months, format_date, getdate, today
 from frappe.utils.jinja import validate_template
@@ -34,7 +35,7 @@ logger = frappe.logger(module="CustomerStatements", allow_site=True, with_more_i
 class ProcessStatementOfAccounts(Document):
 	def validate(self):
 		if not self.subject:
-			self.subject = "Statement Of Accounts for {{ customer.name }}"
+			self.subject = "Statement Of Accounts for {{ customer.customer_name }}"
 		if not self.body:
 			self.body = "Hello {{ customer.name }},<br>PFA your Statement Of Accounts from {{ doc.from_date }} to {{ doc.to_date }}."
 
@@ -45,8 +46,9 @@ class ProcessStatementOfAccounts(Document):
 			frappe.throw(_("Customers not selected."))
 
 		if self.enable_auto_email:
-			self.to_date = self.start_date
-			self.from_date = add_months(self.to_date, -1 * self.filter_duration)
+			if self.start_date and getdate(self.start_date) >= getdate(today()):
+				self.to_date = self.start_date
+				self.from_date = add_months(self.to_date, -1 * self.filter_duration)
 
 
 def get_report_pdf(doc, consolidated=True, customer=None):
@@ -211,7 +213,8 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 	if not bool(statement_dict):
 		return False
 	elif consolidated:
-		result = "".join(list(statement_dict.values()))
+		delimiter = '<div style="page-break-before: always;"></div>' if doc.include_break else ""
+		result = delimiter.join(list(statement_dict.values()))
 		return get_pdf(result, {"orientation": doc.orientation})
 	else:
 		i=0
@@ -240,7 +243,7 @@ def get_customers_based_on_territory_or_customer_group(customer_collection, coll
 	]
 	return frappe.get_list(
 		"Customer",
-		fields=["name", "email_id"],
+		fields=["name", "customer_name", "email_id"],
 		filters=[[fields_dict[customer_collection], "IN", selected]],
 	)
 
@@ -306,7 +309,7 @@ def get_customers_based_on_sales_person(sales_person):
 	if sales_person_records.get("Customer"):
 		return frappe.get_list(
 			"Customer",
-			fields=["name", "email_id"],
+			fields=["name", "customer_name", "email_id"],
 			filters=[["name", "in", list(sales_person_records["Customer"])]],
 		)
 	else:
@@ -361,7 +364,7 @@ def fetch_customers(customer_collection, collection_name, primary_mandatory, cus
 		if customer_collection == "Sales Partner":
 			customers = frappe.get_list(
 				"Customer",
-				fields=["name", "email_id"],
+				fields=["name", "customer_name", "email_id"],
 				filters=[["default_sales_partner", "=", collection_name]],
 			)
 		else:
@@ -376,11 +379,14 @@ def fetch_customers(customer_collection, collection_name, primary_mandatory, cus
 		if int(primary_mandatory):
 			if primary_email == "":
 				continue
-		elif (billing_email == "") and (primary_email == ""):
-			continue
 
 		customer_list.append(
-			{"name": customer.name, "primary_email": primary_email, "billing_email": billing_email}
+			{
+				"name": customer.name,
+				"customer_name": customer.customer_name,
+				"primary_email": primary_email,
+				"billing_email": billing_email,
+			}
 		)
 	return customer_list
 
@@ -499,9 +505,8 @@ def send_emails(document_name, from_scheduler=False):
 			attachments = [{"fname": doc.company + " - Statement of Account - " + customer + ".pdf", "fcontent": report_pdf}]
 
 			recipients, cc = get_recipients_and_cc(customer, doc)
-
-			# logger.info(recipients)
-
+			if not recipients:
+				continue
 			context = get_context(customer, doc)
 			subject = frappe.render_template(doc.subject, context)
 			message = frappe.render_template(doc.body, context)

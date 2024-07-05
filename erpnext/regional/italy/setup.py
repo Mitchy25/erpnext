@@ -21,7 +21,6 @@ def setup(company=None, patch=True):
 	setup_report()
 	add_permissions()
 
-
 def make_custom_fields(update=True):
 	invoice_item_fields = [
 		dict(

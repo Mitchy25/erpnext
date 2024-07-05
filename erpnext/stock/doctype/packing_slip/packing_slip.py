@@ -192,7 +192,6 @@ class PackingSlip(Document):
 
 		self.update_item_details()
 
-
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def item_details(doctype, txt, searchfield, start, page_len, filters):

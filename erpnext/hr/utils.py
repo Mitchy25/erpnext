@@ -13,6 +13,7 @@ from frappe.utils import (
 	formatdate,
 	get_datetime,
 	get_link_to_form,
+	get_number_format_info,
 	getdate,
 	nowdate,
 	today,
@@ -187,13 +188,11 @@ def update_employee_work_history(employee, details, date=None, cancel=False):
 		field = frappe.get_meta("Employee").get_field(item.fieldname)
 		if not field:
 			continue
-		fieldtype = field.fieldtype
-		new_data = item.new if not cancel else item.current
-		if fieldtype == "Date" and new_data:
-			new_data = getdate(new_data)
-		elif fieldtype == "Datetime" and new_data:
-			new_data = get_datetime(new_data)
-		setattr(employee, item.fieldname, new_data)
+
+		new_value = item.new if not cancel else item.current
+		new_value = get_formatted_value(new_value, field.fieldtype)
+		setattr(employee, item.fieldname, new_value)
+
 		if item.fieldname in ["department", "designation", "branch"]:
 			internal_work_history[item.fieldname] = item.new
 
@@ -205,6 +204,34 @@ def update_employee_work_history(employee, details, date=None, cancel=False):
 		delete_employee_work_history(details, employee, date)
 
 	return employee
+
+
+def get_formatted_value(value, fieldtype):
+	"""
+	Since the fields in Internal Work History table are `Data` fields
+	format them as per relevant field types
+	"""
+	if not value:
+		return
+
+	if fieldtype == "Date":
+		value = getdate(value)
+	elif fieldtype == "Datetime":
+		value = get_datetime(value)
+	elif fieldtype in ["Currency", "Float"]:
+		# in case of currency/float, the value might be in user's prefered number format
+		# instead of machine readable format. Convert it into a machine readable format
+		number_format = frappe.db.get_default("number_format") or "#,###.##"
+		decimal_str, comma_str, _number_format_precision = get_number_format_info(number_format)
+
+		if comma_str == "." and decimal_str == ",":
+			value = value.replace(",", "#$")
+			value = value.replace(".", ",")
+			value = value.replace("#$", ".")
+
+		value = flt(value)
+
+	return value
 
 
 def delete_employee_work_history(details, employee, date):
@@ -224,6 +251,7 @@ def delete_employee_work_history(details, employee, date):
 				filters["from_date"] = date
 	if filters:
 		frappe.db.delete("Employee Internal Work History", filters)
+		employee.save()
 
 
 @frappe.whitelist()
@@ -441,10 +469,10 @@ def generate_leave_encashment():
 		create_leave_encashment(leave_allocation=leave_allocation)
 
 
-def allocate_earned_leaves(ignore_duplicates=False):
+def allocate_earned_leaves():
 	"""Allocate earned leaves to Employees"""
 	e_leave_types = get_earned_leaves()
-	today = getdate()
+	today = frappe.flags.current_date or getdate()
 
 	for e_leave_type in e_leave_types:
 
@@ -477,30 +505,46 @@ def allocate_earned_leaves(ignore_duplicates=False):
 			if check_effective_date(
 				from_date, today, e_leave_type.earned_leave_frequency, e_leave_type.based_on_date_of_joining
 			):
-				update_previous_leave_allocation(
-					allocation, annual_allocation, e_leave_type, ignore_duplicates
-				)
+				update_previous_leave_allocation(allocation, annual_allocation, e_leave_type)
 
 
-def update_previous_leave_allocation(
-	allocation, annual_allocation, e_leave_type, ignore_duplicates=False
-):
+def update_previous_leave_allocation(allocation, annual_allocation, e_leave_type):
+	allocation = frappe.get_doc("Leave Allocation", allocation.name)
+	annual_allocation = flt(annual_allocation, allocation.precision("total_leaves_allocated"))
+
 	earned_leaves = get_monthly_earned_leave(
 		annual_allocation, e_leave_type.earned_leave_frequency, e_leave_type.rounding
 	)
 
-	allocation = frappe.get_doc("Leave Allocation", allocation.name)
 	new_allocation = flt(allocation.total_leaves_allocated) + flt(earned_leaves)
+	new_allocation_without_cf = flt(
+		flt(allocation.get_existing_leave_count()) + flt(earned_leaves),
+		allocation.precision("total_leaves_allocated"),
+	)
 
 	if new_allocation > e_leave_type.max_leaves_allowed and e_leave_type.max_leaves_allowed > 0:
 		new_allocation = e_leave_type.max_leaves_allowed
 
-	if new_allocation != allocation.total_leaves_allocated:
-		today_date = today()
+	if (
+		new_allocation != allocation.total_leaves_allocated
+		# annual allocation as per policy should not be exceeded
+		and new_allocation_without_cf <= annual_allocation
+	):
+		today_date = frappe.flags.current_date or getdate()
 
-		if ignore_duplicates or not is_earned_leave_already_allocated(allocation, annual_allocation):
-			allocation.db_set("total_leaves_allocated", new_allocation, update_modified=False)
-			create_additional_leave_ledger_entry(allocation, earned_leaves, today_date)
+		allocation.db_set("total_leaves_allocated", new_allocation, update_modified=False)
+		create_additional_leave_ledger_entry(allocation, earned_leaves, today_date)
+
+		if e_leave_type.based_on_date_of_joining:
+			text = _("allocated {0} leave(s) via scheduler on {1} based on the date of joining").format(
+				frappe.bold(earned_leaves), frappe.bold(formatdate(today_date))
+			)
+		else:
+			text = _("allocated {0} leave(s) via scheduler on {1}").format(
+				frappe.bold(earned_leaves), frappe.bold(formatdate(today_date))
+			)
+
+		allocation.add_comment(comment_type="Info", text=text)
 
 
 def get_monthly_earned_leave(annual_leaves, frequency, rounding):
@@ -605,20 +649,18 @@ def check_effective_date(from_date, to_date, frequency, based_on_date_of_joining
 	return False
 
 
-def get_salary_assignment(employee, date):
-	assignment = frappe.db.sql(
-		"""
-		select * from `tabSalary Structure Assignment`
-		where employee=%(employee)s
-		and docstatus = 1
-		and %(on_date)s >= from_date order by from_date desc limit 1""",
-		{
-			"employee": employee,
-			"on_date": date,
-		},
-		as_dict=1,
+def get_salary_assignments(employee, payroll_period):
+	start_date, end_date = frappe.db.get_value(
+		"Payroll Period", payroll_period, ["start_date", "end_date"]
 	)
-	return assignment[0] if assignment else None
+	assignments = frappe.db.get_all(
+		"Salary Structure Assignment",
+		filters={"employee": employee, "docstatus": 1, "from_date": ["between", (start_date, end_date)]},
+		fields=["*"],
+		order_by="from_date",
+	)
+
+	return assignments
 
 
 def get_sal_slip_total_benefit_given(employee, payroll_period, component=False):

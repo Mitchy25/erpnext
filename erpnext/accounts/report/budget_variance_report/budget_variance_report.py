@@ -313,7 +313,6 @@ def get_actual_details(name, filters):
 
 	return cc_actual_details
 
-
 def get_dimension_account_month_map(filters):
 	dimension_target_details = get_dimension_target_details(filters)
 	tdd = get_target_distribution_details(filters)
