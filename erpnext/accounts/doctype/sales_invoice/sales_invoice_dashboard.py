@@ -30,6 +30,7 @@ def get_data():
 					"Journal Entry",
 					"Invoice Discounting",
 					"Dunning",
+					"Invoice Rebate"
 				],
 			},
 			# {
