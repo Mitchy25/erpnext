@@ -84,7 +84,7 @@ class ShiftAssignment(Document):
 
 @frappe.whitelist()
 def get_events(start, end, filters=None):
-	events = []
+	from frappe.desk.calendar import get_event_conditions
 
 	employee = frappe.db.get_value(
 		"Employee", {"user_id": frappe.session.user}, ["name", "company"], as_dict=True
@@ -95,20 +95,22 @@ def get_events(start, end, filters=None):
 		employee = ""
 		company = frappe.db.get_value("Global Defaults", None, "default_company")
 
-	from frappe.desk.reportview import get_filters_cond
-
-	conditions = get_filters_cond("Shift Assignment", filters, [])
-	add_assignments(events, start, end, conditions=conditions)
+	conditions = get_event_conditions("Shift Assignment", filters)
+	events = add_assignments(start, end, conditions=conditions)
 	return events
 
 
-def add_assignments(events, start, end, conditions=None):
+def add_assignments(start, end, conditions=None):
+	events = []
+
 	query = """select name, start_date, end_date, employee_name,
 		employee, docstatus, shift_type
 		from `tabShift Assignment` where
-		start_date >= %(start_date)s
-		or end_date <=  %(end_date)s
-		or (%(start_date)s between start_date and end_date and %(end_date)s between start_date and end_date)
+		(
+			start_date >= %(start_date)s
+			or end_date <=  %(end_date)s
+			or (%(start_date)s between start_date and end_date and %(end_date)s between start_date and end_date)
+		)
 		and docstatus = 1"""
 	if conditions:
 		query += conditions
@@ -167,7 +169,7 @@ def get_employee_shift(
 	"""
 	if for_date is None:
 		for_date = nowdate()
-	default_shift = frappe.db.get_value("Employee", employee, "default_shift")
+	default_shift = frappe.get_cached_value("Employee", employee, "default_shift")
 	shift_type_name = None
 	shift_assignment_details = frappe.db.get_value(
 		"Shift Assignment",
@@ -185,7 +187,7 @@ def get_employee_shift(
 	if not shift_type_name and consider_default_shift:
 		shift_type_name = default_shift
 	if shift_type_name:
-		holiday_list_name = frappe.db.get_value("Shift Type", shift_type_name, "holiday_list")
+		holiday_list_name = frappe.get_cached_value("Shift Type", shift_type_name, "holiday_list")
 		if not holiday_list_name:
 			holiday_list_name = get_holiday_list_for_employee(employee, False)
 		if holiday_list_name and is_holiday(holiday_list_name, for_date):
@@ -292,7 +294,18 @@ def get_shift_details(shift_type_name, for_date=None):
 		return None
 	if not for_date:
 		for_date = nowdate()
-	shift_type = frappe.get_doc("Shift Type", shift_type_name)
+	shift_type = frappe.get_cached_value(
+		"Shift Type",
+		shift_type_name,
+		[
+			"name",
+			"start_time",
+			"end_time",
+			"begin_check_in_before_shift_start_time",
+			"allow_check_out_after_shift_end_time",
+		],
+		as_dict=1,
+	)
 	start_datetime = datetime.combine(for_date, datetime.min.time()) + shift_type.start_time
 	for_date = (
 		for_date + timedelta(days=1) if shift_type.start_time > shift_type.end_time else for_date

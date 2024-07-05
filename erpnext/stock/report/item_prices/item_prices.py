@@ -108,7 +108,6 @@ def get_price_list():
 
 	return item_rate_map
 
-
 def get_last_purchase_rate():
 	item_last_purchase_rate_map = {}
 

@@ -29,6 +29,10 @@ doctype_js = {
 
 override_doctype_class = {"Address": "erpnext.accounts.custom.address.ERPNextAddress"}
 
+override_whitelisted_methods = {
+	"frappe.www.contact.send_message": "erpnext.templates.utils.send_message"
+}
+
 welcome_email = "erpnext.setup.utils.welcome_email"
 
 # setup wizard
@@ -334,8 +338,6 @@ has_website_permission = {
 	"Patient": "erpnext.healthcare.web_form.personal_details.personal_details.has_website_permission",
 }
 
-dump_report_map = "erpnext.startup.report_data_map.data_map"
-
 before_tests = "erpnext.setup.utils.before_tests"
 
 standard_queries = {
@@ -383,11 +385,9 @@ doc_events = {
 		"on_trash": "erpnext.regional.check_deletion_permission",
 		"validate": [
 			"erpnext.regional.india.utils.validate_document_name",
-			"erpnext.regional.india.utils.update_taxable_values"
-		]
-	},
-	"POS Invoice": {
-		# "on_submit": ["erpnext.regional.saudi_arabia.utils.create_qr_code"]
+			"erpnext.regional.india.utils.update_taxable_values",
+			"erpnext.regional.india.utils.validate_sez_and_export_invoices",
+		],
 	},
 	"POS Invoice": {"on_submit": ["erpnext.regional.saudi_arabia.utils.create_qr_code"]},
 	"Purchase Invoice": {
@@ -403,28 +403,31 @@ doc_events = {
 		# "validate": "erpnext.regional.india.utils.update_grand_total_for_rcm"
 	},
 	"Payment Entry": {
-		# "validate": "erpnext.regional.india.utils.update_place_of_supply",
+		"validate": "erpnext.regional.india.utils.update_place_of_supply",
 		"on_submit": [
-			"erpnext.regional.create_transaction_log", 
-			"erpnext.accounts.doctype.payment_request.payment_request.update_payment_req_status", 
-			"erpnext.accounts.doctype.dunning.dunning.resolve_dunning"
+			"erpnext.regional.create_transaction_log",
+			"erpnext.accounts.doctype.payment_request.payment_request.update_payment_req_status",
+			"erpnext.accounts.doctype.dunning.dunning.resolve_dunning",
 		],
-		"on_trash": "erpnext.regional.check_deletion_permission"
+		"on_trash": "erpnext.regional.check_deletion_permission",
 	},
-	'Address': {
-		'validate': [
-			# 'erpnext.regional.india.utils.validate_gstin_for_india',
-			# 'erpnext.regional.italy.utils.set_state_code',
-			# 'erpnext.regional.india.utils.update_gst_category',
-			'erpnext.healthcare.utils.update_address_links'
+	"Address": {
+		"validate": [
+			"erpnext.regional.india.utils.validate_gstin_for_india",
+			"erpnext.regional.italy.utils.set_state_code",
+			"erpnext.regional.india.utils.update_gst_category",
+			"erpnext.healthcare.utils.update_address_links",
 		],
 	},
-	'Supplier': {
-		# 'validate': 'erpnext.regional.india.utils.validate_pan_for_india'
-	},
-	('Sales Invoice', 'Sales Order', 'Delivery Note', 'Purchase Invoice', 'Purchase Order', 'Purchase Receipt'): {
-		# 'validate': ['erpnext.regional.india.utils.set_place_of_supply']
-	},
+	"Supplier": {"validate": "erpnext.regional.india.utils.validate_pan_for_india"},
+	(
+		"Sales Invoice",
+		"Sales Order",
+		"Delivery Note",
+		"Purchase Invoice",
+		"Purchase Order",
+		"Purchase Receipt",
+	): {"validate": ["erpnext.regional.india.utils.set_place_of_supply"]},
 	"Contact": {
 		"on_trash": "erpnext.support.doctype.issue.issue.update_issue",
 		"after_insert": "erpnext.telephony.doctype.call_log.call_log.link_existing_conversations",
@@ -459,9 +462,20 @@ after_migrate = ["erpnext.setup.install.update_select_perm_after_install"]
 
 scheduler_events = {
 	"cron": {
+		"0/5 * * * *": [
+			"erpnext.manufacturing.doctype.bom_update_log.bom_update_log.resume_bom_cost_update_jobs",
+		],
 		"0/30 * * * *": [
 			"erpnext.utilities.doctype.video.video.update_youtube_data",
-		]
+		],
+		# Hourly but offset by 30 minutes
+		"30 * * * *": [
+			"erpnext.accounts.doctype.gl_entry.gl_entry.rename_gle_sle_docs",
+		],
+		# Daily but offset by 45 minutes
+		"45 0 * * *": [
+			"erpnext.stock.reorder_item.reorder_item",
+		],
 	},
 	"all": [
 		"erpnext.projects.doctype.project.project.project_status_update_reminder",
@@ -472,18 +486,17 @@ scheduler_events = {
 	"hourly": [
 		"erpnext.stock.reorder_item.reorder_item",
 		"erpnext.hr.doctype.daily_work_summary_group.daily_work_summary_group.trigger_emails",
-		"erpnext.accounts.doctype.subscription.subscription.process_all",
 		"erpnext.erpnext_integrations.doctype.amazon_mws_settings.amazon_mws_settings.schedule_get_order_details",
-		"erpnext.accounts.doctype.gl_entry.gl_entry.rename_gle_sle_docs",
 		"erpnext.erpnext_integrations.doctype.plaid_settings.plaid_settings.automatic_synchronization",
 		"erpnext.projects.doctype.project.project.hourly_reminder",
 		"erpnext.projects.doctype.project.project.collect_project_status",
-		"erpnext.hr.doctype.shift_type.shift_type.process_auto_attendance_for_all_shifts",
 		"erpnext.support.doctype.issue.issue.set_service_level_agreement_variance",
 		"erpnext.erpnext_integrations.connectors.shopify_connection.sync_old_orders",
 	],
 	"hourly_long": [
-		"erpnext.stock.doctype.repost_item_valuation.repost_item_valuation.repost_entries"
+		"erpnext.accounts.doctype.subscription.subscription.process_all",
+		"erpnext.stock.doctype.repost_item_valuation.repost_item_valuation.repost_entries",
+		"erpnext.hr.doctype.shift_type.shift_type.process_auto_attendance_for_all_shifts",
 	],
 	"daily": [
 		"erpnext.support.doctype.issue.issue.auto_close_tickets",
@@ -584,6 +597,7 @@ accounting_dimension_doctypes = [
 	"Shipping Rule",
 	"Landed Cost Item",
 	"Asset Value Adjustment",
+	"Asset Repair",
 	"Loyalty Program",
 	"Fee Schedule",
 	"Fee Structure",
@@ -597,6 +611,9 @@ accounting_dimension_doctypes = [
 	"Subscription Plan",
 	"POS Invoice",
 	"POS Invoice Item",
+	"Purchase Order",
+	"Purchase Receipt",
+	"Sales Order",
 ]
 
 regional_overrides = {

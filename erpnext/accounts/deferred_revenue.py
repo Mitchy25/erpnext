@@ -378,7 +378,7 @@ def book_deferred_income_or_expense(doc, deferred_process, posting_date=None):
 			return
 
 		# check if books nor frozen till endate:
-		if accounts_frozen_upto and (end_date) <= getdate(accounts_frozen_upto):
+		if accounts_frozen_upto and getdate(end_date) <= getdate(accounts_frozen_upto):
 			end_date = get_last_day(add_days(accounts_frozen_upto, 1))
 
 		if via_journal_entry:
@@ -386,7 +386,6 @@ def book_deferred_income_or_expense(doc, deferred_process, posting_date=None):
 				doc,
 				credit_account,
 				debit_account,
-				against,
 				amount,
 				base_amount,
 				end_date,
@@ -570,7 +569,6 @@ def book_revenue_via_journal_entry(
 	doc,
 	credit_account,
 	debit_account,
-	against,
 	amount,
 	base_amount,
 	posting_date,
@@ -591,6 +589,7 @@ def book_revenue_via_journal_entry(
 	journal_entry.voucher_type = (
 		"Deferred Revenue" if doc.doctype == "Sales Invoice" else "Deferred Expense"
 	)
+	journal_entry.process_deferred_accounting = deferred_process
 
 	debit_entry = {
 		"account": credit_account,

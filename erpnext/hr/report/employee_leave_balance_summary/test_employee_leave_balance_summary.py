@@ -9,12 +9,10 @@ from frappe.utils import add_days, flt, get_year_ending, get_year_start, getdate
 
 from erpnext.hr.doctype.employee.test_employee import make_employee
 from erpnext.hr.doctype.holiday_list.test_holiday_list import set_holiday_list
-from erpnext.hr.doctype.leave_application.test_leave_application import (
-	get_first_sunday,
-	make_allocation_record,
-)
+from erpnext.hr.doctype.leave_application.test_leave_application import make_allocation_record
 from erpnext.hr.doctype.leave_ledger_entry.leave_ledger_entry import process_expired_allocation
 from erpnext.hr.report.employee_leave_balance_summary.employee_leave_balance_summary import execute
+from erpnext.hr.tests.test_utils import get_first_sunday
 from erpnext.payroll.doctype.salary_slip.test_salary_slip import (
 	make_holiday_list,
 	make_leave_application,
@@ -36,7 +34,6 @@ class TestEmployeeLeaveBalance(unittest.TestCase):
 
 		frappe.set_user("Administrator")
 
-		self.employee_id = make_employee("test_emp_leave_balance@example.com", company="_Test Company")
 		self.employee_id = make_employee("test_emp_leave_balance@example.com", company="_Test Company")
 
 		self.date = getdate()
@@ -146,3 +143,37 @@ class TestEmployeeLeaveBalance(unittest.TestCase):
 		]
 
 		self.assertEqual(report[1], expected_data)
+
+	@set_holiday_list("_Test Emp Balance Holiday List", "_Test Company")
+	def test_employee_status_filter(self):
+		frappe.get_doc(test_records[0]).insert()
+
+		inactive_emp = make_employee("test_emp_status@example.com", company="_Test Company")
+		allocation = make_allocation_record(
+			employee=inactive_emp, from_date=self.year_start, to_date=self.year_end
+		)
+
+		# set employee as inactive
+		frappe.db.set_value("Employee", inactive_emp, "status", "Inactive")
+
+		filters = frappe._dict(
+			{
+				"date": allocation.from_date,
+				"company": "_Test Company",
+				"employee": inactive_emp,
+				"employee_status": "Active",
+			}
+		)
+		report = execute(filters)
+		self.assertEqual(len(report[1]), 0)
+
+		filters = frappe._dict(
+			{
+				"date": allocation.from_date,
+				"company": "_Test Company",
+				"employee": inactive_emp,
+				"employee_status": "Inactive",
+			}
+		)
+		report = execute(filters)
+		self.assertEqual(len(report[1]), 1)

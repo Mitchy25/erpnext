@@ -3,12 +3,23 @@
 
 
 from json import loads
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import frappe
 import frappe.defaults
 from frappe import _, throw
 from frappe.model.meta import get_field_precision
-from frappe.utils import cint, cstr, flt, formatdate, get_number_format_info, getdate, now, nowdate
+from frappe.utils import (
+	cint,
+	create_batch,
+	cstr,
+	flt,
+	formatdate,
+	get_number_format_info,
+	getdate,
+	now,
+	nowdate,
+)
 from six import string_types
 
 import erpnext
@@ -18,9 +29,8 @@ from erpnext.accounts.doctype.account.account import get_account_currency  # noq
 from erpnext.stock import get_warehouse_account_map
 from erpnext.stock.utils import get_stock_value_on
 
-
-class StockValueAndAccountBalanceOutOfSync(frappe.ValidationError):
-	pass
+if TYPE_CHECKING:
+	from erpnext.stock.doctype.repost_item_valuation.repost_item_valuation import RepostItemValuation
 
 
 class FiscalYearError(frappe.ValidationError):
@@ -29,6 +39,9 @@ class FiscalYearError(frappe.ValidationError):
 
 class PaymentEntryUnlinkError(frappe.ValidationError):
 	pass
+
+
+GL_REPOSTING_CHUNK = 100
 
 
 @frappe.whitelist()
@@ -524,6 +537,10 @@ def update_reference_in_journal_entry(d, journal_entry, do_not_save=False):
 	"""
 	jv_detail = journal_entry.get("accounts", {"name": d["voucher_detail_no"]})[0]
 
+	# Update Advance Paid in SO/PO since they might be getting unlinked
+	if jv_detail.get("reference_type") in ("Sales Order", "Purchase Order"):
+		frappe.get_doc(jv_detail.reference_type, jv_detail.reference_name).set_total_advance_paid()
+
 	if flt(d["unadjusted_amount"]) - flt(d["allocated_amount"]) != 0:
 		# adjust the unreconciled balance
 		amount_in_account_currency = flt(d["unadjusted_amount"]) - flt(d["allocated_amount"])
@@ -583,6 +600,13 @@ def update_reference_in_payment_entry(d, payment_entry, do_not_save=False):
 
 	if d.voucher_detail_no:
 		existing_row = payment_entry.get("references", {"name": d["voucher_detail_no"]})[0]
+
+		# Update Advance Paid in SO/PO since they are getting unlinked
+		if existing_row.get("reference_doctype") in ("Sales Order", "Purchase Order"):
+			frappe.get_doc(
+				existing_row.reference_doctype, existing_row.reference_name
+			).set_total_advance_paid()
+
 		original_row = existing_row.as_dict().copy()
 		existing_row.update(reference_details)
 
@@ -797,7 +821,7 @@ def get_held_invoices(party_type, party):
 
 	if party_type == "Supplier":
 		held_invoices = frappe.db.sql(
-			"select name from `tabPurchase Invoice` where release_date IS NOT NULL and release_date > CURDATE()",
+			"select name from `tabPurchase Invoice` where on_hold = 1 and release_date IS NOT NULL and release_date > CURDATE()",
 			as_dict=1,
 		)
 		held_invoices = set(d["name"] for d in held_invoices)
@@ -805,7 +829,29 @@ def get_held_invoices(party_type, party):
 	return held_invoices
 
 
-def get_outstanding_invoices(party_type, party, account, condition=None, filters=None):
+def remove_return_pos_invoices(party_type, party, invoice_list):
+	if invoice_list:
+
+		if party_type == "Customer":
+			sinv = frappe.qb.DocType("Sales Invoice")
+			return_pos = (
+				frappe.qb.from_(sinv)
+				.select(sinv.name)
+				.where((sinv.is_pos == 1) & (sinv.docstatus == 1) & (sinv.is_return == 1))
+				.run()
+			)
+
+			if return_pos:
+				return_pos = [x[0] for x in return_pos]
+			else:
+				return invoice_list
+
+			invoice_list = [x for x in invoice_list if x.voucher_no not in return_pos]
+
+	return invoice_list
+
+
+def get_outstanding_invoices(party_type, party, account, company, condition=None, filters=None):
 	outstanding_invoices = []
 	precision = frappe.get_precision("Sales Invoice", "outstanding_amount") or 2
 
@@ -855,62 +901,76 @@ def get_outstanding_invoices(party_type, party, account, condition=None, filters
 		as_dict=True,
 	)
 
-	payment_entries = frappe.db.sql(
-		"""
-		select against_voucher_type, against_voucher,
-			ifnull(sum({payment_dr_or_cr}), 0) as payment_amount
-		from `tabGL Entry`
-		where party_type = %(party_type)s and party = %(party)s
-			and account = %(account)s
-			and {payment_dr_or_cr} > 0
-			and against_voucher is not null and against_voucher != ''
-			and is_cancelled=0
-		group by against_voucher_type, against_voucher
-	""".format(
-			payment_dr_or_cr=payment_dr_or_cr
-		),
-		{"party_type": party_type, "party": party, "account": account},
-		as_dict=True,
-	)
+	invoice_list = remove_return_pos_invoices(party_type, party, invoice_list)
 
-	pe_map = frappe._dict()
-	for d in payment_entries:
-		pe_map.setdefault((d.against_voucher_type, d.against_voucher), d.payment_amount)
+	if invoice_list:
+		invoices = [d.voucher_no for d in invoice_list]
+		payment_entries = frappe.db.sql(
+			"""
+			select against_voucher_type, against_voucher,
+				ifnull(sum({payment_dr_or_cr}), 0) as payment_amount
+			from `tabGL Entry`
+			where
+				company = %(company)s
+				and party_type = %(party_type)s and party = %(party)s
+				and account = %(account)s
+				and {payment_dr_or_cr} > 0
+				and ifnull(against_voucher, '') != ''
+				and is_cancelled=0
+				and against_voucher in %(invoices)s
+			group by against_voucher_type, against_voucher
+		""".format(
+				payment_dr_or_cr=payment_dr_or_cr,
+			),
+			{
+				"company": company,
+				"party_type": party_type,
+				"party": party,
+				"account": account,
+				"invoices": invoices,
+			},
+			as_dict=True,
+		)
 
-	for d in invoice_list:
-		payment_amount = pe_map.get((d.voucher_type, d.voucher_no), 0)
-		outstanding_amount = flt(d.invoice_amount - payment_amount, precision)
-		if outstanding_amount > 0.5 / (10**precision):
-			if (
-				filters
-				and filters.get("outstanding_amt_greater_than")
-				and not (
-					outstanding_amount >= filters.get("outstanding_amt_greater_than")
-					and outstanding_amount <= filters.get("outstanding_amt_less_than")
-				)
-			):
-				continue
+		pe_map = frappe._dict()
+		for d in payment_entries:
+			pe_map.setdefault((d.against_voucher_type, d.against_voucher), d.payment_amount)
 
-			if not d.voucher_type == "Purchase Invoice" or d.voucher_no not in held_invoices:
-				outstanding_invoices.append(
-					frappe._dict(
-						{
-							"voucher_no": d.voucher_no,
-							"voucher_type": d.voucher_type,
-							"posting_date": d.posting_date,
-							"invoice_amount": flt(d.invoice_amount),
-							"payment_amount": payment_amount,
-							"outstanding_amount": outstanding_amount,
-							"remarks": d.remarks,
-							"due_date": d.due_date,
-							"currency": d.currency,
-						}
+		for d in invoice_list:
+			payment_amount = pe_map.get((d.voucher_type, d.voucher_no), 0)
+			outstanding_amount = flt(d.invoice_amount - payment_amount, precision)
+			if outstanding_amount > 0.5 / (10**precision):
+				if (
+					filters
+					and filters.get("outstanding_amt_greater_than")
+					and not (
+						outstanding_amount >= filters.get("outstanding_amt_greater_than")
+						and outstanding_amount <= filters.get("outstanding_amt_less_than")
 					)
-				)
+				):
+					continue
 
-	outstanding_invoices = sorted(
-		outstanding_invoices, key=lambda k: k["due_date"] or getdate(nowdate())
-	)
+				if not d.voucher_type == "Purchase Invoice" or d.voucher_no not in held_invoices:
+					outstanding_invoices.append(
+						frappe._dict(
+							{
+								"voucher_no": d.voucher_no,
+								"voucher_type": d.voucher_type,
+								"posting_date": d.posting_date,
+								"invoice_amount": flt(d.invoice_amount),
+								"payment_amount": payment_amount,
+								"outstanding_amount": outstanding_amount,
+								"remarks": d.remarks,
+								"due_date": d.due_date,
+								"currency": d.currency,
+							}
+						)
+					)
+
+		outstanding_invoices = sorted(
+			outstanding_invoices, key=lambda k: k["due_date"] or getdate(nowdate())
+		)
+
 	return outstanding_invoices
 
 
@@ -1126,33 +1186,79 @@ def update_gl_entries_after(
 
 
 def repost_gle_for_stock_vouchers(
-	stock_vouchers, posting_date, company=None, warehouse_account=None
+	stock_vouchers: List[Tuple[str, str]],
+	posting_date: str,
+	company: Optional[str] = None,
+	warehouse_account=None,
+	repost_doc: Optional["RepostItemValuation"] = None,
 ):
-	def _delete_gl_entries(voucher_type, voucher_no):
-		frappe.db.sql(
-			"""delete from `tabGL Entry`
-			where voucher_type=%s and voucher_no=%s""",
-			(voucher_type, voucher_no),
-		)
+	if not stock_vouchers:
+		return
 
 	if not warehouse_account:
 		warehouse_account = get_warehouse_account_map(company)
 
 	precision = get_field_precision(frappe.get_meta("GL Entry").get_field("debit")) or 2
 
-	gle = get_voucherwise_gl_entries(stock_vouchers, posting_date)
-	for voucher_type, voucher_no in stock_vouchers:
-		existing_gle = gle.get((voucher_type, voucher_no), [])
-		voucher_obj = frappe.get_cached_doc(voucher_type, voucher_no)
-		expected_gle = voucher_obj.get_gl_entries(warehouse_account)
-		if expected_gle:
-			if not existing_gle or not compare_existing_and_expected_gle(
-				existing_gle, expected_gle, precision
-			):
+	stock_vouchers = sort_stock_vouchers_by_posting_date(stock_vouchers)
+	if repost_doc and repost_doc.gl_reposting_index:
+		# Restore progress
+		stock_vouchers = stock_vouchers[cint(repost_doc.gl_reposting_index) :]
+
+	for stock_vouchers_chunk in create_batch(stock_vouchers, GL_REPOSTING_CHUNK):
+		gle = get_voucherwise_gl_entries(stock_vouchers_chunk, posting_date)
+		for voucher_type, voucher_no in stock_vouchers_chunk:
+			existing_gle = gle.get((voucher_type, voucher_no), [])
+			voucher_obj = frappe.get_doc(voucher_type, voucher_no)
+			expected_gle = voucher_obj.get_gl_entries(warehouse_account)
+			if expected_gle:
+				if not existing_gle or not compare_existing_and_expected_gle(
+					existing_gle, expected_gle, precision
+				):
+					_delete_gl_entries(voucher_type, voucher_no)
+					voucher_obj.make_gl_entries(gl_entries=expected_gle, from_repost=True)
+			else:
 				_delete_gl_entries(voucher_type, voucher_no)
-				voucher_obj.make_gl_entries(gl_entries=expected_gle, from_repost=True)
-		else:
-			_delete_gl_entries(voucher_type, voucher_no)
+
+		if not frappe.flags.in_test:
+			frappe.db.commit()
+
+		if repost_doc:
+			repost_doc.db_set(
+				"gl_reposting_index", cint(repost_doc.gl_reposting_index) + len(stock_vouchers_chunk)
+			)
+
+
+def _delete_gl_entries(voucher_type, voucher_no):
+	frappe.db.sql(
+		"""delete from `tabGL Entry`
+		where voucher_type=%s and voucher_no=%s""",
+		(voucher_type, voucher_no),
+	)
+
+
+def sort_stock_vouchers_by_posting_date(
+	stock_vouchers: List[Tuple[str, str]]
+) -> List[Tuple[str, str]]:
+	sle = frappe.qb.DocType("Stock Ledger Entry")
+	voucher_nos = [v[1] for v in stock_vouchers]
+
+	sles = (
+		frappe.qb.from_(sle)
+		.select(sle.voucher_type, sle.voucher_no, sle.posting_date, sle.posting_time, sle.creation)
+		.where((sle.is_cancelled == 0) & (sle.voucher_no.isin(voucher_nos)))
+		.groupby(sle.voucher_type, sle.voucher_no)
+		.orderby(sle.posting_date)
+		.orderby(sle.posting_time)
+		.orderby(sle.creation)
+	).run(as_dict=True)
+	sorted_vouchers = [(sle.voucher_type, sle.voucher_no) for sle in sles]
+
+	unknown_vouchers = set(stock_vouchers) - set(sorted_vouchers)
+	if unknown_vouchers:
+		sorted_vouchers.extend(unknown_vouchers)
+
+	return sorted_vouchers
 
 
 def get_future_stock_vouchers(
@@ -1246,47 +1352,6 @@ def compare_existing_and_expected_gle(existing_gle, expected_gle, precision):
 			matched = False
 			break
 	return matched
-
-
-def check_if_stock_and_account_balance_synced(
-	posting_date, company, voucher_type=None, voucher_no=None
-):
-	if not cint(erpnext.is_perpetual_inventory_enabled(company)):
-		return
-
-	accounts = get_stock_accounts(company, voucher_type, voucher_no)
-	stock_adjustment_account = frappe.db.get_value("Company", company, "stock_adjustment_account")
-
-	for account in accounts:
-		account_bal, stock_bal, warehouse_list = get_stock_and_account_balance(
-			account, posting_date, company
-		)
-
-		if abs(account_bal - stock_bal) > 0.1:
-			precision = get_field_precision(
-				frappe.get_meta("GL Entry").get_field("debit"),
-				currency=frappe.get_cached_value("Company", company, "default_currency"),
-			)
-
-			diff = flt(stock_bal - account_bal, precision)
-
-			error_reason = _(
-				"Stock Value ({0}) and Account Balance ({1}) are out of sync for account {2} and it's linked warehouses as on {3}."
-			).format(stock_bal, account_bal, frappe.bold(account), posting_date)
-			error_resolution = _("Please create an adjustment Journal Entry for amount {0} on {1}").format(
-				frappe.bold(diff), frappe.bold(posting_date)
-			)
-
-			frappe.msgprint(
-				msg="""{0}<br></br>{1}<br></br>""".format(error_reason, error_resolution),
-				raise_exception=StockValueAndAccountBalanceOutOfSync,
-				title=_("Values Out Of Sync"),
-				primary_action={
-					"label": _("Make Journal Entry"),
-					"client_action": "erpnext.route_to_adjustment_jv",
-					"args": get_journal_entry(account, stock_adjustment_account, diff),
-				},
-			)
 
 
 def get_stock_accounts(company, voucher_type=None, voucher_no=None):

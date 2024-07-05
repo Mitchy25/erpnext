@@ -39,7 +39,6 @@ def execute(filters=None):
 						data.append(row)
 	return columns, data
 
-
 def get_columns():
 	columns = [
 		"Item Code:Link/Item:100",

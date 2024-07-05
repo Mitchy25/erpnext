@@ -524,11 +524,26 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 			additional_conditions.append("cost_center in %(cost_center)s")
 
 		if filters.get("include_default_book_entries"):
-			additional_conditions.append(
-				"(finance_book in (%(finance_book)s, %(company_fb)s, '') OR finance_book IS NULL)"
-			)
+			if filters.get("finance_book"):
+				if filters.get("company_fb") and cstr(filters.get("finance_book")) != cstr(
+					filters.get("company_fb")
+				):
+					frappe.throw(
+						_("To use a different finance book, please uncheck 'Include Default Book Entries'")
+					)
+				else:
+					additional_conditions.append(
+						"(finance_book in (%(finance_book)s, '') OR finance_book IS NULL)"
+					)
+			else:
+				additional_conditions.append("(finance_book in (%(company_fb)s, '') OR finance_book IS NULL)")
 		else:
-			additional_conditions.append("(finance_book in (%(finance_book)s, '') OR finance_book IS NULL)")
+			if filters.get("finance_book"):
+				additional_conditions.append(
+					"(finance_book in (%(finance_book)s, '') OR finance_book IS NULL)"
+				)
+			else:
+				additional_conditions.append("(finance_book in ('') OR finance_book IS NULL)")
 
 	if accounting_dimensions:
 		for dimension in accounting_dimensions:
@@ -539,7 +554,7 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 					)
 					additional_conditions.append("{0} in %({0})s".format(dimension.fieldname))
 				else:
-					additional_conditions.append("{0} in (%({0})s)".format(dimension.fieldname))
+					additional_conditions.append("{0} in %({0})s".format(dimension.fieldname))
 
 	return " and {}".format(" and ".join(additional_conditions)) if additional_conditions else ""
 

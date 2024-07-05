@@ -6,7 +6,6 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate, nowdate
 
-import erpnext
 from erpnext.accounts.general_ledger import make_gl_entries
 from erpnext.controllers.accounts_controller import AccountsController
 
@@ -23,7 +22,7 @@ class LoanInterestAccrual(AccountsController):
 			frappe.throw(_("Interest Amount or Principal Amount is mandatory"))
 
 		if not self.last_accrual_date:
-			self.last_accrual_date = get_last_accrual_date(self.loan)
+			self.last_accrual_date = get_last_accrual_date(self.loan, self.posting_date)
 
 	def on_submit(self):
 		self.make_gl_entries()
@@ -41,6 +40,8 @@ class LoanInterestAccrual(AccountsController):
 	def make_gl_entries(self, cancel=0, adv_adj=0):
 		gle_map = []
 
+		cost_center = frappe.db.get_value("Loan", self.loan, "cost_center")
+
 		if self.interest_amount:
 			gle_map.append(
 				self.get_gl_dict(
@@ -56,7 +57,7 @@ class LoanInterestAccrual(AccountsController):
 						"remarks": _("Interest accrued from {0} to {1} against loan: {2}").format(
 							self.last_accrual_date, self.posting_date, self.loan
 						),
-						"cost_center": erpnext.get_default_cost_center(self.company),
+						"cost_center": cost_center,
 						"posting_date": self.posting_date,
 					}
 				)
@@ -74,7 +75,7 @@ class LoanInterestAccrual(AccountsController):
 						"remarks": ("Interest accrued from {0} to {1} against loan: {2}").format(
 							self.last_accrual_date, self.posting_date, self.loan
 						),
-						"cost_center": erpnext.get_default_cost_center(self.company),
+						"cost_center": cost_center,
 						"posting_date": self.posting_date,
 					}
 				)
@@ -134,7 +135,11 @@ def calculate_accrual_amount_for_demand_loans(
 def make_accrual_interest_entry_for_demand_loans(
 	posting_date, process_loan_interest, open_loans=None, loan_type=None, accrual_type="Regular"
 ):
-	query_filters = {"status": ("in", ["Disbursed", "Partially Disbursed"]), "docstatus": 1}
+	query_filters = {
+		"status": ("in", ["Disbursed", "Partially Disbursed"]),
+		"docstatus": 1,
+		"is_term_loan": 0,
+	}
 
 	if loan_type:
 		query_filters.update({"loan_type": loan_type})
@@ -146,6 +151,9 @@ def make_accrual_interest_entry_for_demand_loans(
 				"name",
 				"total_payment",
 				"total_amount_paid",
+				"debit_adjustment_amount",
+				"credit_adjustment_amount",
+				"refund_amount",
 				"loan_account",
 				"interest_income_account",
 				"loan_amount",
@@ -228,6 +236,7 @@ def get_term_loans(date, term_loan=None, loan_type=None):
 			AND l.is_term_loan =1
 			AND rs.payment_date <= %s
 			AND rs.is_accrued=0 {0}
+			AND rs.principal_amount > 0
 			AND l.status = 'Disbursed'
 			ORDER BY rs.payment_date""".format(
 			condition
@@ -265,14 +274,14 @@ def make_loan_interest_accrual_entry(args):
 
 
 def get_no_of_days_for_interest_accural(loan, posting_date):
-	last_interest_accrual_date = get_last_accrual_date(loan.name)
+	last_interest_accrual_date = get_last_accrual_date(loan.name, posting_date)
 
 	no_of_days = date_diff(posting_date or nowdate(), last_interest_accrual_date) + 1
 
 	return no_of_days
 
 
-def get_last_accrual_date(loan):
+def get_last_accrual_date(loan, posting_date):
 	last_posting_date = frappe.db.sql(
 		""" SELECT MAX(posting_date) from `tabLoan Interest Accrual`
 		WHERE loan = %s and docstatus = 1""",
@@ -280,10 +289,28 @@ def get_last_accrual_date(loan):
 	)
 
 	if last_posting_date[0][0]:
+		last_interest_accrual_date = last_posting_date[0][0]
 		# interest for last interest accrual date is already booked, so add 1 day
-		return add_days(last_posting_date[0][0], 1)
+		last_disbursement_date = get_last_disbursement_date(loan, posting_date)
+
+		if last_disbursement_date and getdate(last_disbursement_date) > add_days(
+			getdate(last_interest_accrual_date), 1
+		):
+			last_interest_accrual_date = last_disbursement_date
+
+		return add_days(last_interest_accrual_date, 1)
 	else:
 		return frappe.db.get_value("Loan", loan, "disbursement_date")
+
+
+def get_last_disbursement_date(loan, posting_date):
+	last_disbursement_date = frappe.db.get_value(
+		"Loan Disbursement",
+		{"docstatus": 1, "against_loan": loan, "posting_date": ("<=", posting_date)},
+		"MAX(posting_date)",
+	)
+
+	return last_disbursement_date
 
 
 def days_in_year(year):

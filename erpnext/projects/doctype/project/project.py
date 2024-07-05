@@ -84,6 +84,7 @@ class Project(Document):
 				type=task_details.type,
 				issue=task_details.issue,
 				is_group=task_details.is_group,
+				color=task_details.color,
 			)
 		).insert()
 
@@ -350,7 +351,6 @@ def get_list_context(context=None):
 		"get_list": get_project_list,
 		"row_template": "templates/includes/projects/project_row.html",
 	}
-
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs

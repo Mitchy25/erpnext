@@ -518,9 +518,6 @@ frappe.ui.form.on('Depreciation Schedule', {
 	},
 
 	depreciation_amount: function(frm, cdt, cdn) {
-		if (!locals[cdt][cdn].finance_book_id) {
-			locals[cdt][cdn].finance_book_id = "1";
-		}
 		erpnext.asset.set_accumulated_depreciation(frm, locals[cdt][cdn].finance_book_id);
 	}
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
+// Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 // For license information, please see license.txt
 
 frappe.provide("erpnext.accounts");
@@ -39,7 +39,16 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 			};
 		});
 
-		// this.frm.set_value('party_type', '');
+		this.frm.set_query("cost_center", () => {
+			return {
+				"filters": {
+					"company": this.frm.doc.company,
+					"is_group": 0
+				}
+			}
+		});
+
+		this.frm.set_value('party_type', '');
 		this.frm.set_value('party', '');
 		this.frm.set_value('receivable_payable_account', '');
 	},

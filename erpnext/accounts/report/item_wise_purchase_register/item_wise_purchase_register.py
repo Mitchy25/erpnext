@@ -53,9 +53,6 @@ def _execute(filters=None, additional_table_columns=None, additional_query_colum
 	item_details = get_item_details()
 
 	for d in item_list:
-		if not d.stock_qty:
-			continue
-
 		item_record = item_details.get(d.item_code)
 
 		purchase_receipt = None
@@ -90,11 +87,11 @@ def _execute(filters=None, additional_table_columns=None, additional_query_colum
 				"project": d.project,
 				"company": d.company,
 				"purchase_order": d.purchase_order,
-				"purchase_receipt": d.purchase_receipt,
+				"purchase_receipt": purchase_receipt,
 				"expense_account": expense_account,
 				"stock_qty": d.stock_qty,
 				"stock_uom": d.stock_uom,
-				"rate": d.base_net_amount / d.stock_qty,
+				"rate": d.base_net_amount / d.stock_qty if d.stock_qty else d.base_net_amount,
 				"amount": d.base_net_amount,
 			}
 		)
@@ -244,7 +241,7 @@ def get_columns(additional_table_columns, filters):
 		},
 		{
 			"label": _("Purchase Receipt"),
-			"fieldname": "Purchase Receipt",
+			"fieldname": "purchase_receipt",
 			"fieldtype": "Link",
 			"options": "Purchase Receipt",
 			"width": 100,

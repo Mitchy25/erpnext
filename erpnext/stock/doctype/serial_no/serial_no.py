@@ -802,11 +802,11 @@ def auto_fetch_serial_number(
 		exclude_sr_nos = get_serial_nos(clean_serial_no_string("\n".join(exclude_sr_nos)))
 
 	if batch_nos:
-		batch_nos = safe_json_loads(batch_nos)
-		if isinstance(batch_nos, list):
-			filters.batch_no = batch_nos
+		batch_nos_list = safe_json_loads(batch_nos)
+		if isinstance(batch_nos_list, list):
+			filters.batch_no = batch_nos_list
 		else:
-			filters.batch_no = [str(batch_nos)]
+			filters.batch_no = [batch_nos]
 
 	if posting_date:
 		filters.expiry_date = posting_date
@@ -864,16 +864,15 @@ def get_pos_reserved_serial_nos(filters):
 
 	pos_transacted_sr_nos = query.run(as_dict=True)
 
-	reserved_sr_nos = []
-	returned_sr_nos = []
+	reserved_sr_nos = set()
+	returned_sr_nos = set()
 	for d in pos_transacted_sr_nos:
 		if d.is_return == 0:
-			reserved_sr_nos += get_serial_nos(d.serial_no)
+			[reserved_sr_nos.add(x) for x in get_serial_nos(d.serial_no)]
 		elif d.is_return == 1:
-			returned_sr_nos += get_serial_nos(d.serial_no)
+			[returned_sr_nos.add(x) for x in get_serial_nos(d.serial_no)]
 
-	for sr_no in returned_sr_nos:
-		reserved_sr_nos.remove(sr_no)
+	reserved_sr_nos = list(reserved_sr_nos - returned_sr_nos)
 
 	return reserved_sr_nos
 
