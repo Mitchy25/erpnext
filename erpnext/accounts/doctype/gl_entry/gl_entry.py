@@ -245,10 +245,6 @@ class GLEntry(Document):
 				).format(self.voucher_type, self.voucher_no, frappe.bold(self.cost_center))
 			)
 
-		if not self.flags.from_repost and self.cost_center and _check_is_group():
-			frappe.throw(_("""{0} {1}: Cost Center {2} is a group cost center and group cost centers cannot
-				be used in transactions""").format(self.voucher_type, self.voucher_no, frappe.bold(self.cost_center)))
-
 	def validate_party(self):
 		# Allow staff to create payment entry for frozen customer
 		if self.voucher_type == "Payment Entry" or self.voucher_type == "Journal Entry":
