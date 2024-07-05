@@ -15,7 +15,6 @@
   "posting_date",
   "clearance_date",
   "rate_of_interest",
-  "payroll_payable_account",
   "is_term_loan",
   "repay_from_salary",
   "payment_details_section",
@@ -41,6 +40,7 @@
   "amended_from",
   "accounting_details_section",
   "payment_account",
+  "payroll_payable_account",
   "penalty_income_account",
   "column_break_36",
   "loan_account"
@@ -262,7 +262,6 @@
   },
   {
    "default": "0",
-   "fetch_from": "against_loan.repay_from_salary",
    "fieldname": "repay_from_salary",
    "fieldtype": "Check",
    "label": "Repay From Salary"
@@ -280,12 +279,13 @@
    "label": "Accounting Details"
   },
   {
+   "depends_on": "eval:!doc.repay_from_salary",
    "fetch_from": "against_loan.payment_account",
+   "fetch_if_empty": 1,
    "fieldname": "payment_account",
    "fieldtype": "Link",
    "label": "Repayment Account",
-   "options": "Account",
-   "read_only": 1
+   "options": "Account"
   },
   {
    "fieldname": "column_break_36",
@@ -311,11 +311,10 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-02-18 19:10:07.742298",
+ "modified": "2023-09-18 16:50:32.897005",
  "modified_by": "Administrator",
  "module": "Loan Management",
  "name": "Loan Repayment",
- "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -351,6 +350,5 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
  "track_changes": 1
 }

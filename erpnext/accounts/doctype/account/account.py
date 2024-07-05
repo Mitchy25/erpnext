@@ -315,7 +315,6 @@ class Account(NestedSet):
 
 		super(Account, self).on_trash(True)
 
-
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_parent_account(doctype, txt, searchfield, start, page_len, filters):

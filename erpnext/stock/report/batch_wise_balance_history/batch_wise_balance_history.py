@@ -76,9 +76,20 @@ def get_conditions(filters):
 	else:
 		frappe.throw(_("'To Date' is required"))
 
-	for field in ["item_code", "warehouse", "batch_no", "company"]:
+	for field in ["item_code", "batch_no", "company"]:
 		if filters.get(field):
 			conditions += " and {0} = {1}".format("s."+field, frappe.db.escape(filters.get(field)))
+
+	if filters.get("warehouse"):
+		warehouse_details = frappe.db.get_value(
+			"Warehouse", filters.get("warehouse"), ["lft", "rgt"], as_dict=1
+		)
+		if warehouse_details:
+			conditions += (
+				" and exists (select name from `tabWarehouse` wh \
+				where wh.lft >= %s and wh.rgt <= %s and sle.warehouse = wh.name)"
+				% (warehouse_details.lft, warehouse_details.rgt)
+			)
 
 	return conditions
 

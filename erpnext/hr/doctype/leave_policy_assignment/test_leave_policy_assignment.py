@@ -4,8 +4,11 @@
 import unittest
 
 import frappe
-from frappe.utils import add_days, add_months, get_first_day, get_last_day, getdate
+from frappe.tests.utils import FrappeTestCase
+from frappe.utils import add_days, add_months, get_first_day, get_last_day, get_year_start, getdate
 
+from erpnext.hr.doctype.leave_allocation.test_leave_allocation import create_leave_allocation
+from erpnext.hr.doctype.leave_application.leave_application import get_leave_balance_on
 from erpnext.hr.doctype.leave_application.test_leave_application import (
 	get_employee,
 	get_leave_period,
@@ -14,11 +17,12 @@ from erpnext.hr.doctype.leave_policy.test_leave_policy import create_leave_polic
 from erpnext.hr.doctype.leave_policy_assignment.leave_policy_assignment import (
 	create_assignment_for_multiple_employees,
 )
+from erpnext.hr.utils import allocate_earned_leaves
 
 test_dependencies = ["Employee"]
 
 
-class TestLeavePolicyAssignment(unittest.TestCase):
+class TestLeavePolicyAssignment(FrappeTestCase):
 	def setUp(self):
 		for doctype in [
 			"Leave Period",
@@ -33,11 +37,16 @@ class TestLeavePolicyAssignment(unittest.TestCase):
 		self.original_doj = employee.date_of_joining
 		self.employee = employee
 
+		self.leave_type = "Test Earned Leave"
+
 	def test_grant_leaves(self):
 		leave_period = get_leave_period()
 		# allocation = 10
 		leave_policy = create_leave_policy()
 		leave_policy.submit()
+
+		self.employee.date_of_joining = get_first_day(leave_period.from_date)
+		self.employee.save()
 
 		data = {
 			"assignment_based_on": "Leave Period",
@@ -187,19 +196,6 @@ class TestLeavePolicyAssignment(unittest.TestCase):
 		)
 		self.assertEqual(leaves_allocated, 3)
 
-		# if the daily job is not completed yet, there is another check present
-		# to ensure leave is not already allocated to avoid duplication
-		from erpnext.hr.utils import allocate_earned_leaves
-
-		allocate_earned_leaves()
-
-		leaves_allocated = frappe.db.get_value(
-			"Leave Allocation",
-			{"leave_policy_assignment": leave_policy_assignments[0]},
-			"total_leaves_allocated",
-		)
-		self.assertEqual(leaves_allocated, 3)
-
 	def test_earned_leave_alloc_for_passed_months_with_cf_leaves_based_on_leave_period(self):
 		from erpnext.hr.doctype.leave_allocation.test_leave_allocation import create_leave_allocation
 
@@ -241,20 +237,6 @@ class TestLeavePolicyAssignment(unittest.TestCase):
 		self.assertEqual(details.unused_leaves, 5)
 		self.assertEqual(details.total_leaves_allocated, 7)
 
-		# if the daily job is not completed yet, there is another check present
-		# to ensure leave is not already allocated to avoid duplication
-		from erpnext.hr.utils import is_earned_leave_already_allocated
-
-		frappe.flags.current_date = get_last_day(getdate())
-
-		allocation = frappe.get_doc("Leave Allocation", details.name)
-		# 1 leave is still pending to be allocated, irrespective of carry forwarded leaves
-		self.assertFalse(
-			is_earned_leave_already_allocated(
-				allocation, leave_policy.leave_policy_details[0].annual_allocation
-			)
-		)
-
 	def test_earned_leave_alloc_for_passed_months_based_on_joining_date(self):
 		# tests leave alloc for earned leaves for assignment based on joining date in policy assignment
 		leave_type = create_earned_leave_type("Test Earned Leave")
@@ -287,19 +269,6 @@ class TestLeavePolicyAssignment(unittest.TestCase):
 		self.assertEqual(effective_from, self.employee.date_of_joining)
 		self.assertEqual(leaves_allocated, 3)
 
-		# to ensure leave is not already allocated to avoid duplication
-		from erpnext.hr.utils import allocate_earned_leaves
-
-		frappe.flags.current_date = get_last_day(getdate())
-		allocate_earned_leaves()
-
-		leaves_allocated = frappe.db.get_value(
-			"Leave Allocation",
-			{"leave_policy_assignment": leave_policy_assignments[0]},
-			"total_leaves_allocated",
-		)
-		self.assertEqual(leaves_allocated, 3)
-
 	def test_grant_leaves_on_doj_for_earned_leaves_based_on_leave_period(self):
 		# tests leave alloc based on leave period for earned leaves with "based on doj" configuration in leave type
 		leave_period, leave_policy = setup_leave_period_and_policy(
@@ -321,20 +290,6 @@ class TestLeavePolicyAssignment(unittest.TestCase):
 		leave_policy_assignments = create_assignment_for_multiple_employees(
 			[self.employee.name], frappe._dict(data)
 		)
-
-		leaves_allocated = frappe.db.get_value(
-			"Leave Allocation",
-			{"leave_policy_assignment": leave_policy_assignments[0]},
-			"total_leaves_allocated",
-		)
-		self.assertEqual(leaves_allocated, 3)
-
-		# if the daily job is not completed yet, there is another check present
-		# to ensure leave is not already allocated to avoid duplication
-		from erpnext.hr.utils import allocate_earned_leaves
-
-		frappe.flags.current_date = get_first_day(getdate())
-		allocate_earned_leaves()
 
 		leaves_allocated = frappe.db.get_value(
 			"Leave Allocation",
@@ -376,21 +331,91 @@ class TestLeavePolicyAssignment(unittest.TestCase):
 		self.assertEqual(effective_from, self.employee.date_of_joining)
 		self.assertEqual(leaves_allocated, 3)
 
-		# to ensure leave is not already allocated to avoid duplication
-		from erpnext.hr.utils import allocate_earned_leaves
-
-		frappe.flags.current_date = get_first_day(getdate())
-		allocate_earned_leaves()
-
-		leaves_allocated = frappe.db.get_value(
-			"Leave Allocation",
-			{"leave_policy_assignment": leave_policy_assignments[0]},
-			"total_leaves_allocated",
+	def test_overallocation(self):
+		"""Tests if earned leave allocation does not exceed annual allocation"""
+		frappe.flags.current_date = get_year_start(getdate())
+		make_policy_assignment(
+			self.employee,
+			annual_allocation=22,
+			allocate_on_day="First Day",
+			start_date=frappe.flags.current_date,
 		)
-		self.assertEqual(leaves_allocated, 3)
+
+		# leaves for 12 months = 22
+		# With rounding, 22 leaves would be allocated in 11 months only
+		frappe.db.set_value("Leave Type", self.leave_type, "rounding", 1.0)
+		allocate_earned_leaves_for_months(11)
+		self.assertEqual(
+			get_leave_balance_on(self.employee.name, self.leave_type, frappe.flags.current_date), 22
+		)
+
+		# should not allocate more leaves than annual allocation
+		allocate_earned_leaves_for_months(1)
+		self.assertEqual(
+			get_leave_balance_on(self.employee.name, self.leave_type, frappe.flags.current_date), 22
+		)
+
+	def test_over_allocation_during_assignment_creation(self):
+		"""Tests backdated earned leave allocation does not exceed annual allocation"""
+		start_date = get_first_day(add_months(getdate(), -12))
+
+		# joining date set to 1Y ago
+		self.employee.date_of_joining = start_date
+		self.employee.save()
+
+		# create backdated assignment for last year
+		frappe.flags.current_date = get_first_day(getdate())
+
+		leave_policy_assignments = make_policy_assignment(
+			self.employee, start_date=start_date, allocate_on_day="Date of Joining"
+		)
+
+		# 13 months have passed but annual allocation = 12
+		# check annual allocation is not exceeded
+		leaves_allocated = get_allocated_leaves(leave_policy_assignments[0])
+		self.assertEqual(leaves_allocated, 12)
+
+	def test_overallocation_with_carry_forwarding(self):
+		"""Tests earned leave allocation with cf leaves does not exceed annual allocation"""
+		year_start = get_year_start(getdate())
+
+		# initial leave allocation = 5
+		leave_allocation = create_leave_allocation(
+			employee=self.employee.name,
+			employee_name=self.employee.employee_name,
+			leave_type=self.leave_type,
+			from_date=get_first_day(add_months(year_start, -1)),
+			to_date=get_last_day(add_months(year_start, -1)),
+			new_leaves_allocated=5,
+			carry_forward=0,
+		)
+		leave_allocation.submit()
+
+		frappe.flags.current_date = year_start
+		# carry forwarded leaves = 5
+		make_policy_assignment(
+			self.employee,
+			annual_allocation=22,
+			allocate_on_day="First Day",
+			start_date=year_start,
+			carry_forward=True,
+		)
+
+		frappe.db.set_value("Leave Type", self.leave_type, "rounding", 1.0)
+		allocate_earned_leaves_for_months(11)
+
+		# 5 carry forwarded leaves + 22 EL allocated = 27 leaves
+		self.assertEqual(
+			get_leave_balance_on(self.employee.name, self.leave_type, frappe.flags.current_date), 27
+		)
+
+		# should not allocate more leaves than annual allocation (22 excluding 5 cf leaves)
+		allocate_earned_leaves_for_months(1)
+		self.assertEqual(
+			get_leave_balance_on(self.employee.name, self.leave_type, frappe.flags.current_date), 27
+		)
 
 	def tearDown(self):
-		frappe.db.rollback()
 		frappe.db.set_value("Employee", self.employee.name, "date_of_joining", self.original_doj)
 		frappe.flags.current_date = None
 
@@ -440,3 +465,51 @@ def setup_leave_period_and_policy(start_date, based_on_doj=False):
 	).insert()
 
 	return leave_period, leave_policy
+
+
+def make_policy_assignment(
+	employee,
+	allocate_on_day="Last Day",
+	earned_leave_frequency="Monthly",
+	start_date=None,
+	annual_allocation=12,
+	carry_forward=0,
+	assignment_based_on="Leave Period",
+):
+	leave_type = create_earned_leave_type("Test Earned Leave", allocate_on_day)
+	leave_period = create_leave_period("Test Earned Leave Period", start_date=start_date)
+	leave_policy = frappe.get_doc(
+		{
+			"doctype": "Leave Policy",
+			"title": "Test Earned Leave Policy",
+			"leave_policy_details": [
+				{"leave_type": leave_type.name, "annual_allocation": annual_allocation}
+			],
+		}
+	).insert()
+
+	data = {
+		"assignment_based_on": assignment_based_on,
+		"leave_policy": leave_policy.name,
+		"leave_period": leave_period.name,
+		"carry_forward": carry_forward,
+	}
+
+	leave_policy_assignments = create_assignment_for_multiple_employees(
+		[employee.name], frappe._dict(data)
+	)
+	return leave_policy_assignments
+
+
+def get_allocated_leaves(assignment):
+	return frappe.db.get_value(
+		"Leave Allocation",
+		{"leave_policy_assignment": assignment},
+		"total_leaves_allocated",
+	)
+
+
+def allocate_earned_leaves_for_months(months):
+	for i in range(0, months):
+		frappe.flags.current_date = add_months(frappe.flags.current_date, 1)
+		allocate_earned_leaves()

@@ -18,6 +18,7 @@ from frappe.utils import (
 	now_datetime,
 	nowtime,
 	strip,
+	strip_html,
 )
 from frappe.utils.html_utils import clean_html
 
@@ -69,10 +70,6 @@ class Item(Document):
 		self.item_code = strip(self.item_code)
 		self.name = self.item_code
 
-	def before_insert(self):
-		if not self.description:
-			self.description = self.item_name
-
 	def after_insert(self):
 		"""set opening stock and item price"""
 		if self.standard_rate:
@@ -86,7 +83,7 @@ class Item(Document):
 		if not self.item_name:
 			self.item_name = self.item_code
 
-		if not self.description:
+		if not strip_html(cstr(self.description)).strip():
 			self.description = self.item_name
 
 		self.validate_uom()
@@ -357,10 +354,15 @@ class Item(Document):
 		check_list = []
 		for d in self.get("taxes"):
 			if d.item_tax_template:
-				if d.item_tax_template in check_list:
-					frappe.throw(_("{0} entered twice in Item Tax").format(d.item_tax_template))
+				if (d.item_tax_template, d.tax_category) in check_list:
+					frappe.throw(
+						_("{0} entered twice {1} in Item Taxes").format(
+							frappe.bold(d.item_tax_template),
+							"for tax category {0}".format(frappe.bold(d.tax_category)) if d.tax_category else "",
+						)
+					)
 				else:
-					check_list.append(d.item_tax_template)
+					check_list.append((d.item_tax_template, d.tax_category))
 
 	def validate_barcode(self):
 		from stdnum import ean
@@ -1120,7 +1122,6 @@ def invalidate_item_variants_cache_for_website(doc):
 	if item_code:
 		item_cache = ItemVariantsCacheManager(item_code)
 		item_cache.rebuild_cache()
-
 
 def check_stock_uom_with_bin(item, stock_uom):
 	if stock_uom == frappe.db.get_value("Item", item, "stock_uom"):

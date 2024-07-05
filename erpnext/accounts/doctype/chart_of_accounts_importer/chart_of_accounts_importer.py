@@ -120,7 +120,6 @@ def generate_data_from_csv(file_doc, as_dict=False):
 	# convert csv data
 	return data
 
-
 def generate_data_from_excel(file_doc, extension, as_dict=False):
 	content = file_doc.get_content()
 
@@ -143,7 +142,6 @@ def generate_data_from_excel(file_doc, extension, as_dict=False):
 			data.append(row)
 
 	return data
-
 
 @frappe.whitelist()
 def get_coa(doctype, parent, is_root=False, file_name=None, for_validate=0):

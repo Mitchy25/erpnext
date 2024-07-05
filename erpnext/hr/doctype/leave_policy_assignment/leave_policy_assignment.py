@@ -8,7 +8,15 @@ from math import ceil
 import frappe
 from frappe import _, bold
 from frappe.model.document import Document
-from frappe.utils import date_diff, flt, formatdate, get_last_day, get_link_to_form, getdate
+from frappe.utils import (
+	comma_and,
+	date_diff,
+	flt,
+	formatdate,
+	get_last_day,
+	get_link_to_form,
+	getdate,
+)
 from six import string_types
 
 
@@ -66,7 +74,6 @@ class LeavePolicyAssignment(Document):
 				).format(frappe.bold(get_link_to_form("Leave Type", leave_type.name)))
 				frappe.msgprint(msg, indicator="orange", alert=True)
 
-	@frappe.whitelist()
 	def grant_leave_alloc_for_employee(self):
 		if self.leaves_allocated:
 			frappe.throw(_("Leave already have been assigned for this Leave Policy Assignment"))
@@ -93,7 +100,7 @@ class LeavePolicyAssignment(Document):
 			return leave_allocations
 
 	def create_leave_allocation(
-		self, leave_type, new_leaves_allocated, leave_type_details, date_of_joining
+		self, leave_type, annual_allocation, leave_type_details, date_of_joining
 	):
 		# Creates leave allocation for the given employee in the provided leave period
 		carry_forward = self.carry_forward
@@ -101,7 +108,7 @@ class LeavePolicyAssignment(Document):
 			carry_forward = 0
 
 		new_leaves_allocated = self.get_new_leaves(
-			leave_type, new_leaves_allocated, leave_type_details, date_of_joining
+			leave_type, annual_allocation, leave_type_details, date_of_joining
 		)
 
 		allocation = frappe.get_doc(
@@ -122,7 +129,7 @@ class LeavePolicyAssignment(Document):
 		allocation.submit()
 		return allocation.name, new_leaves_allocated
 
-	def get_new_leaves(self, leave_type, new_leaves_allocated, leave_type_details, date_of_joining):
+	def get_new_leaves(self, leave_type, annual_allocation, leave_type_details, date_of_joining):
 		from frappe.model.meta import get_field_precision
 
 		precision = get_field_precision(
@@ -139,20 +146,27 @@ class LeavePolicyAssignment(Document):
 			else:
 				# get leaves for past months if assignment is based on Leave Period / Joining Date
 				new_leaves_allocated = self.get_leaves_for_passed_months(
-					leave_type, new_leaves_allocated, leave_type_details, date_of_joining
+					leave_type, annual_allocation, leave_type_details, date_of_joining
 				)
 
 		# Calculate leaves at pro-rata basis for employees joining after the beginning of the given leave period
-		elif getdate(date_of_joining) > getdate(self.effective_from):
-			remaining_period = (date_diff(self.effective_to, date_of_joining) + 1) / (
-				date_diff(self.effective_to, self.effective_from) + 1
-			)
-			new_leaves_allocated = ceil(new_leaves_allocated * remaining_period)
+		else:
+			if getdate(date_of_joining) > getdate(self.effective_from):
+				remaining_period = (date_diff(self.effective_to, date_of_joining) + 1) / (
+					date_diff(self.effective_to, self.effective_from) + 1
+				)
+				new_leaves_allocated = ceil(annual_allocation * remaining_period)
+			else:
+				new_leaves_allocated = annual_allocation
+
+		# leave allocation should not exceed annual allocation as per policy assignment
+		if new_leaves_allocated > annual_allocation:
+			new_leaves_allocated = annual_allocation
 
 		return flt(new_leaves_allocated, precision)
 
 	def get_leaves_for_passed_months(
-		self, leave_type, new_leaves_allocated, leave_type_details, date_of_joining
+		self, leave_type, annual_allocation, leave_type_details, date_of_joining
 	):
 		from erpnext.hr.utils import get_monthly_earned_leave
 
@@ -177,7 +191,7 @@ class LeavePolicyAssignment(Document):
 
 		if months_passed > 0:
 			monthly_earned_leave = get_monthly_earned_leave(
-				new_leaves_allocated,
+				annual_allocation,
 				leave_type_details.get(leave_type).earned_leave_frequency,
 				leave_type_details.get(leave_type).rounding,
 			)
@@ -192,9 +206,9 @@ def add_current_month_if_applicable(months_passed, date_of_joining, based_on_doj
 	date = getdate(frappe.flags.current_date) or getdate()
 
 	if based_on_doj:
-		# if leave type allocation is based on DOJ, and the date of assignment creation is same as DOJ,
+		# if leave type allocation is based on DOJ, and the date of assignment creation is after DOJ,
 		# then the month should be considered
-		if date.day == date_of_joining.day:
+		if date.day >= date_of_joining.day:
 			months_passed += 1
 	else:
 		last_day_of_month = get_last_day(date)
@@ -207,7 +221,6 @@ def add_current_month_if_applicable(months_passed, date_of_joining, based_on_doj
 
 @frappe.whitelist()
 def create_assignment_for_multiple_employees(employees, data):
-
 	if isinstance(employees, string_types):
 		employees = json.loads(employees)
 
@@ -215,6 +228,8 @@ def create_assignment_for_multiple_employees(employees, data):
 		data = frappe._dict(json.loads(data))
 
 	docs_name = []
+	failed = []
+
 	for employee in employees:
 		assignment = frappe.new_doc("Leave Policy Assignment")
 		assignment.employee = employee
@@ -225,16 +240,43 @@ def create_assignment_for_multiple_employees(employees, data):
 		assignment.leave_period = data.leave_period or None
 		assignment.carry_forward = data.carry_forward
 		assignment.save()
-		try:
-			assignment.submit()
-		except frappe.exceptions.ValidationError:
-			continue
 
-		frappe.db.commit()
+		savepoint = "before_assignment_submission"
+
+		try:
+			frappe.db.savepoint(savepoint)
+			assignment.submit()
+		except Exception as e:
+			frappe.db.rollback(save_point=savepoint)
+			frappe.log_error(title=f"Leave Policy Assignment submission failed for {assignment.name}")
+			failed.append(assignment.name)
 
 		docs_name.append(assignment.name)
 
+	if failed:
+		show_assignment_submission_status(failed)
+
 	return docs_name
+
+
+def show_assignment_submission_status(failed):
+	frappe.clear_messages()
+	assignment_list = [get_link_to_form("Leave Policy Assignment", entry) for entry in failed]
+
+	msg = _("Failed to submit some leave policy assignments:")
+	msg += " " + comma_and(assignment_list, False) + "<hr>"
+	msg += (
+		_("Check {0} for more details")
+		.format("<a href='/app/List/Error Log?reference_doctype=Leave Policy Assignment'>{0}</a>")
+		.format(_("Error Log"))
+	)
+
+	frappe.msgprint(
+		msg,
+		indicator="red",
+		title=_("Submission Failed"),
+		is_minimizable=True,
+	)
 
 
 def get_leave_type_details():

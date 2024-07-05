@@ -46,9 +46,9 @@
   "items",
   "get_stock_and_rate",
   "section_break_19",
-  "total_incoming_value",
-  "column_break_22",
   "total_outgoing_value",
+  "column_break_22",
+  "total_incoming_value",
   "value_difference",
   "additional_costs_section",
   "additional_costs",
@@ -122,7 +122,8 @@
    "oldfieldname": "purpose",
    "oldfieldtype": "Select",
    "options": "Material Issue\nMaterial Receipt\nMaterial Transfer\nMaterial Transfer for Manufacture\nMaterial Consumption for Manufacture\nManufacture\nRepack\nSend to Subcontractor",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "company",
@@ -374,7 +375,7 @@
   {
    "fieldname": "total_incoming_value",
    "fieldtype": "Currency",
-   "label": "Total Incoming Value",
+   "label": "Total Incoming Value (Receipt)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -386,7 +387,7 @@
   {
    "fieldname": "total_outgoing_value",
    "fieldtype": "Currency",
-   "label": "Total Outgoing Value",
+   "label": "Total Outgoing Value (Consumption)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -394,7 +395,7 @@
   {
    "fieldname": "value_difference",
    "fieldtype": "Currency",
-   "label": "Total Value Difference (Out - In)",
+   "label": "Total Value Difference (Incoming - Outgoing)",
    "options": "Company:company:default_currency",
    "print_hide_if_no_value": 1,
    "read_only": 1
@@ -619,7 +620,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-02-07 12:55:14.614077",
+ "modified": "2023-06-19 18:23:40.748114",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry",

@@ -123,6 +123,7 @@ def create_journal_entry_bts(
 	mode_of_payment=None,
 	party_type=None,
 	party=None,
+	cost_center = None,
 	allow_edit=None,
 	multi_currency=None
 ):
@@ -153,6 +154,7 @@ def create_journal_entry_bts(
 			else 0,
 			"party_type": party_type,
 			"party": party,
+			"cost_center": cost_center
 		}
 	)
 
@@ -483,6 +485,7 @@ def get_lr_matching_query(bank_account, amount_condition, filters):
 			loan_repayment.posting_date,
 		)
 		.where(loan_repayment.docstatus == 1)
+		.where(loan_repayment.repay_from_salary == 0)
 		.where(loan_repayment.clearance_date.isnull())
 		.where(loan_repayment.payment_account == bank_account)
 	)
