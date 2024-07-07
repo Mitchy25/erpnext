@@ -142,7 +142,7 @@ erpnext.selling.SellingController = erpnext.TransactionController.extend({
 
 		var item = frappe.get_doc(cdt, cdn);
 		item.discount_percentage = 0.0;
-		this.apply_discount_on_item(doc, cdt, cdn, 'discount_amount');
+		this._super().apply_discount_on_item(doc, cdt, cdn, 'discount_amount');
 	},
 
 	commission_rate: function() {
