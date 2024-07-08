@@ -5,6 +5,7 @@
 import unittest
 
 import frappe
+from frappe.tests.utils import change_settings
 from frappe.utils import flt, nowdate
 
 from erpnext.accounts.doctype.account.test_account import get_inventory_account
@@ -13,6 +14,7 @@ from erpnext.exceptions import InvalidAccountCurrency
 
 
 class TestJournalEntry(unittest.TestCase):
+	@change_settings("Accounts Settings", {"unlink_payment_on_cancellation_of_invoice": 1})
 	def test_journal_entry_with_against_jv(self):
 		jv_invoice = frappe.copy_doc(test_records[2])
 		base_jv = frappe.copy_doc(test_records[0])
@@ -67,10 +69,8 @@ class TestJournalEntry(unittest.TestCase):
 
 		self.assertTrue(
 			frappe.db.sql(
-				"""select name from `tabJournal Entry Account`
-			where reference_type = %s and reference_name = %s and {0}=400""".format(
-					dr_or_cr
-				),
+				f"""select name from `tabJournal Entry Account`
+			where reference_type = %s and reference_name = %s and {dr_or_cr}=400""",
 				(submitted_voucher.doctype, submitted_voucher.name),
 			)
 		)
@@ -82,9 +82,8 @@ class TestJournalEntry(unittest.TestCase):
 	def advance_paid_testcase(self, base_jv, test_voucher, dr_or_cr):
 		# Test advance paid field
 		advance_paid = frappe.db.sql(
-			"""select advance_paid from `tab%s`
-					where name=%s"""
-			% (test_voucher.doctype, "%s"),
+			"""select advance_paid from `tab{}`
+					where name={}""".format(test_voucher.doctype, "%s"),
 			(test_voucher.name),
 		)
 		payment_against_order = base_jv.get("accounts")[0].get(dr_or_cr)
@@ -157,9 +156,7 @@ class TestJournalEntry(unittest.TestCase):
 			jv.cancel()
 
 	def test_multi_currency(self):
-		jv = make_journal_entry(
-			"_Test Bank USD - _TC", "_Test Bank - _TC", 100, exchange_rate=50, save=False
-		)
+		jv = make_journal_entry("_Test Bank USD - _TC", "_Test Bank - _TC", 100, exchange_rate=50, save=False)
 
 		jv.get("accounts")[1].credit_in_account_currency = 5000
 		jv.submit()
@@ -199,7 +196,7 @@ class TestJournalEntry(unittest.TestCase):
 			"credit",
 			"credit_in_account_currency",
 		):
-			for i, gle in enumerate(gl_entries):
+			for _i, gle in enumerate(gl_entries):
 				self.assertEqual(expected_values[gle.account][field], gle[field])
 
 		# cancel
@@ -261,7 +258,7 @@ class TestJournalEntry(unittest.TestCase):
 			"credit",
 			"credit_in_account_currency",
 		):
-			for i, gle in enumerate(gl_entries):
+			for _i, gle in enumerate(gl_entries):
 				self.assertEqual(expected_values[gle.account][field], gle[field])
 
 	def test_disallow_change_in_account_currency_for_a_party(self):
@@ -287,10 +284,6 @@ class TestJournalEntry(unittest.TestCase):
 		jv.submit()
 
 	def test_inter_company_jv(self):
-		frappe.db.set_value("Account", "Sales Expenses - _TC", "inter_company_account", 1)
-		frappe.db.set_value("Account", "Buildings - _TC", "inter_company_account", 1)
-		frappe.db.set_value("Account", "Sales Expenses - _TC1", "inter_company_account", 1)
-		frappe.db.set_value("Account", "Buildings - _TC1", "inter_company_account", 1)
 		jv = make_journal_entry(
 			"Sales Expenses - _TC",
 			"Buildings - _TC",
@@ -333,6 +326,7 @@ class TestJournalEntry(unittest.TestCase):
 
 	def test_jv_with_cost_centre(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
+
 		cost_center = "_Test Cost Center for BS Account - _TC"
 		create_cost_center(cost_center_name="_Test Cost Center for BS Account", company="_Test Company")
 		jv = make_journal_entry(
@@ -409,6 +403,7 @@ class TestJournalEntry(unittest.TestCase):
 	def test_jv_account_and_party_balance_with_cost_centre(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
 		from erpnext.accounts.utils import get_balance_on
+
 		cost_center = "_Test Cost Center for BS Account - _TC"
 		create_cost_center(cost_center_name="_Test Cost Center for BS Account", company="_Test Company")
 		jv = make_journal_entry(

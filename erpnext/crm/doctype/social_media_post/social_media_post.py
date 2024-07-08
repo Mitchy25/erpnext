@@ -26,7 +26,7 @@ class SocialMediaPost(Document):
 	def submit(self):
 		if self.scheduled_time:
 			self.post_status = "Scheduled"
-		super(SocialMediaPost, self).submit()
+		super().submit()
 
 	def on_cancel(self):
 		self.db_set("post_status", "Cancelled")
@@ -70,8 +70,7 @@ class SocialMediaPost(Document):
 
 		except Exception:
 			self.db_set("post_status", "Error")
-			title = _("Error while POSTING {0}").format(self.name)
-			frappe.log_error(message=frappe.get_traceback(), title=title)
+			self.log_error("Social posting failed")
 
 
 def process_scheduled_social_media_posts():

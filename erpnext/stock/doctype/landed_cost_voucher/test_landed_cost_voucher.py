@@ -24,7 +24,7 @@ class TestLandedCostVoucher(FrappeTestCase):
 		pr = make_purchase_receipt(
 			company="_Test Company with perpetual inventory",
 			warehouse="Stores - TCP1",
-			supplier_warehouse="Work in Progress - TCP1",
+			supplier_warehouse="Work In Progress - TCP1",
 			get_multiple_items=True,
 			get_taxes_and_charges=True,
 		)
@@ -62,9 +62,7 @@ class TestLandedCostVoucher(FrappeTestCase):
 			as_dict=1,
 		)
 
-		self.assertEqual(
-			last_sle.qty_after_transaction, last_sle_after_landed_cost.qty_after_transaction
-		)
+		self.assertEqual(last_sle.qty_after_transaction, last_sle_after_landed_cost.qty_after_transaction)
 		self.assertEqual(last_sle_after_landed_cost.stock_value - last_sle.stock_value, 25.0)
 
 		# assert after submit
@@ -87,7 +85,6 @@ class TestLandedCostVoucher(FrappeTestCase):
 		self.assertPurchaseReceiptLCVGLEntries(pr)
 
 	def assertPurchaseReceiptLCVGLEntries(self, pr):
-
 		gl_entries = get_gl_entries("Purchase Receipt", pr.name)
 
 		self.assertTrue(gl_entries)
@@ -170,9 +167,7 @@ class TestLandedCostVoucher(FrappeTestCase):
 			as_dict=1,
 		)
 
-		self.assertEqual(
-			last_sle.qty_after_transaction, last_sle_after_landed_cost.qty_after_transaction
-		)
+		self.assertEqual(last_sle.qty_after_transaction, last_sle_after_landed_cost.qty_after_transaction)
 		self.assertEqual(last_sle_after_landed_cost.stock_value - last_sle.stock_value, 50.0)
 
 	def test_landed_cost_voucher_for_zero_purchase_rate(self):
@@ -229,7 +224,6 @@ class TestLandedCostVoucher(FrappeTestCase):
 		)
 
 	def test_landed_cost_voucher_against_purchase_invoice(self):
-
 		pi = make_purchase_invoice(
 			update_stock=1,
 			posting_date=frappe.utils.nowdate(),
@@ -303,7 +297,7 @@ class TestLandedCostVoucher(FrappeTestCase):
 		pr = make_purchase_receipt(
 			company="_Test Company with perpetual inventory",
 			warehouse="Stores - TCP1",
-			supplier_warehouse="Work in Progress - TCP1",
+			supplier_warehouse="Work In Progress - TCP1",
 			get_multiple_items=True,
 			get_taxes_and_charges=True,
 			do_not_submit=True,
@@ -365,9 +359,7 @@ class TestLandedCostVoucher(FrappeTestCase):
 
 		new_purchase_rate = serial_no_rate + charges
 
-		serial_no = frappe.db.get_value(
-			"Serial No", serial_no, ["warehouse", "purchase_rate"], as_dict=1
-		)
+		serial_no = frappe.db.get_value("Serial No", serial_no, ["warehouse", "purchase_rate"], as_dict=1)
 
 		self.assertEqual(serial_no.purchase_rate, new_purchase_rate)
 
@@ -388,11 +380,11 @@ class TestLandedCostVoucher(FrappeTestCase):
 		pr = make_purchase_receipt(
 			company="_Test Company with perpetual inventory",
 			warehouse="Stores - TCP1",
-			supplier_warehouse="Work in Progress - TCP1",
+			supplier_warehouse="Work In Progress - TCP1",
 			do_not_save=True,
 		)
 		pr.items[0].cost_center = "Main - TCP1"
-		for x in range(2):
+		for _x in range(2):
 			pr.append(
 				"items",
 				{
@@ -569,7 +561,7 @@ def make_landed_cost_voucher(**args):
 
 	lcv = frappe.new_doc("Landed Cost Voucher")
 	lcv.company = args.company or "_Test Company"
-	lcv.distribute_charges_based_on = "Amount"
+	lcv.distribute_charges_based_on = args.distribute_charges_based_on or "Amount"
 
 	lcv.set(
 		"purchase_receipts",
@@ -594,76 +586,6 @@ def make_landed_cost_voucher(**args):
 			}
 		],
 	)
-
-	if not args.do_not_save:
-		lcv.insert()
-		if not args.do_not_submit:
-			lcv.submit()
-
-	return lcv
-
-	def test_multiple_landed_cost_voucher_against_pr(self):
-		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse = "Stores - TCP1", 
-			supplier_warehouse = "Stores - TCP1", do_not_save=True)
-
-		pr.append("items", {
-			"item_code": "_Test Item",
-			"warehouse": "Stores - TCP1",
-			"cost_center": "Main - TCP1",
-			"qty": 5,
-			"rate": 100
-		})
-
-		pr.submit()
-
-		lcv1 = make_landed_cost_voucher(receipt_document_type = 'Purchase Receipt', 
-			receipt_document=pr.name, charges=100, do_not_save=True)
-
-		lcv1.insert()
-		lcv1.set('items', [
-			lcv1.get('items')[0]
-		])
-		distribute_landed_cost_on_items(lcv1)
-
-		lcv1.submit()
-
-		lcv2 = make_landed_cost_voucher(receipt_document_type = 'Purchase Receipt', 
-			receipt_document=pr.name, charges=100, do_not_save=True)
-
-		lcv2.insert()
-		lcv2.set('items', [
-			lcv2.get('items')[1]
-		])
-		distribute_landed_cost_on_items(lcv2)
-
-		lcv2.submit()
-
-		pr.load_from_db()
-
-		self.assertEqual(pr.items[0].landed_cost_voucher_amount, 100)
-		self.assertEqual(pr.items[1].landed_cost_voucher_amount, 100)
-
-def make_landed_cost_voucher(** args):
-	args = frappe._dict(args)
-	ref_doc = frappe.get_doc(args.receipt_document_type, args.receipt_document)
-
-	lcv = frappe.new_doc('Landed Cost Voucher')
-	lcv.company = '_Test Company'
-	lcv.distribute_charges_based_on = 'Amount'
-
-	lcv.set('purchase_receipts', [{
-		"receipt_document_type": args.receipt_document_type,
-		"receipt_document": args.receipt_document,
-		"supplier": ref_doc.supplier,
-		"posting_date": ref_doc.posting_date,
-		"grand_total": ref_doc.grand_total
-	}])
-
-	lcv.set("taxes", [{
-		"description": "Shipping Charges",
-		"expense_account": "Expenses Included In Valuation - TCP1",
-		"amount": args.charges
-	}])
 
 	if not args.do_not_save:
 		lcv.insert()

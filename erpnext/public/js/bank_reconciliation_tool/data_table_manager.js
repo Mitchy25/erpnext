@@ -5,7 +5,12 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 		Object.assign(this, opts);
 		this.dialog_manager = new erpnext.accounts.bank_reconciliation.DialogManager(
 			this.company,
-			this.bank_account
+			this.bank_account,
+			this.bank_statement_from_date,
+			this.bank_statement_to_date,
+			this.filter_by_reference_date,
+			this.from_reference_date,
+			this.to_reference_date
 		);
 		this.make_dt();
 	}
@@ -13,10 +18,11 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 	make_dt() {
 		var me = this;
 		frappe.call({
-			method:
-				"erpnext.accounts.doctype.bank_reconciliation_tool.bank_reconciliation_tool.get_bank_transactions",
+			method: "erpnext.accounts.doctype.bank_reconciliation_tool.bank_reconciliation_tool.get_bank_transactions",
 			args: {
 				bank_account: this.bank_account,
+				from_date: this.bank_statement_from_date,
+				to_date: this.bank_statement_to_date,
 			},
 			callback: function (response) {
 				me.format_data(response.message);
@@ -30,7 +36,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 	get_dt_columns() {
 		this.columns = [
 			{
-				name: "Date",
+				name: __("Date"),
 				editable: false,
 				width: 100,
 			},
@@ -46,44 +52,40 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			// 	width: 40,
 			// },
 			{
-				name: "Description",
+				name: __("Description"),
 				editable: false,
 				width: 400,
 			},
 			{
-				name: "Deposit",
+				name: __("Deposit"),
 				editable: false,
 				width: 100,
 				format: (value) =>
-					"<span style='color:green;'>" +
+					"<span style='color:green;'>" + format_currency(value, this.currency) + "</span>",
+			},
+			{
+				name: __("Withdrawal"),
+				editable: false,
+				width: 100,
+				format: (value) =>
+					"<span style='color:red;'>" + format_currency(value, this.currency) + "</span>",
+			},
+			{
+				name: __("Unallocated Amount"),
+				editable: false,
+				width: 100,
+				format: (value) =>
+					"<span style='color:var(--blue-500);'>" +
 					format_currency(value, this.currency) +
 					"</span>",
 			},
 			{
-				name: "Withdrawal",
-				editable: false,
-				width: 100,
-				format: (value) =>
-					"<span style='color:red;'>" +
-					format_currency(value, this.currency) +
-					"</span>",
-			},
-			{
-				name: "Unallocated Amount",
-				editable: false,
-				width: 100,
-				format: (value) =>
-					"<span style='color:blue;'>" +
-					format_currency(value, this.currency) +
-					"</span>",
-			},
-			{
-				name: "Reference Number",
+				name: __("Reference Number"),
 				editable: false,
 				width: 400,
 			},
 			{
-				name: "Actions",
+				name: __("Actions"),
 				editable: false,
 				sortable: false,
 				focusable: false,
@@ -118,7 +120,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			row["reference_number"],
 			`
 			<Button class="btn btn-primary btn-xs center"  data-name = ${row["name"]} >
-				Actions
+				${__("Actions")}
 			</a>
 			`,
 		];
@@ -132,14 +134,9 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			checkboxColumn: false,
 			inlineFilters: true,
 		};
-		this.datatable = new frappe.DataTable(
-			this.$reconciliation_tool_dt.get(0),
-			datatable_options
-		);
-		$(`.${this.datatable.style.scopeClass} .dt-scrollable`).css(
-			"max-height",
-			"calc(100vh - 400px)"
-		);
+		this.datatable = new frappe.DataTable(this.$reconciliation_tool_dt.get(0), datatable_options);
+		$(`.${this.datatable.style.scopeClass} .dt-scrollable`).css("max-height", "calc(100vh - 400px)");
+
 		if (this.transactions.length > 0) {
 			this.$reconciliation_tool_dt.show();
 			this.$no_bank_transactions.hide();
@@ -151,17 +148,12 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 
 	set_listeners() {
 		var me = this;
-		$(`.${this.datatable.style.scopeClass} .dt-scrollable`).on(
-			"click",
-			`.btn`,
-			function () {
-				me.dialog_manager.show_dialog(
-					$(this).attr("data-name"),
-					(bank_transaction) => me.update_dt_cards(bank_transaction)
-				);
-				return true;
-			}
-		);
+		$(`.${this.datatable.style.scopeClass} .dt-scrollable`).on("click", `.btn`, function () {
+			me.dialog_manager.show_dialog($(this).attr("data-name"), (bank_transaction) =>
+				me.update_dt_cards(bank_transaction)
+			);
+			return true;
+		});
 	}
 
 	update_dt_cards(bank_transaction) {
@@ -170,11 +162,12 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			bank_transaction.name
 		];
 		if (bank_transaction.unallocated_amount > 0) {
-			this.transactions[transaction_index] = this.format_row(
-				bank_transaction
-			);
+			this.transactions[transaction_index] = this.format_row(bank_transaction);
 		} else {
 			this.transactions.splice(transaction_index, 1);
+			for (const [k, v] of Object.entries(this.transaction_dt_map)) {
+				if (v > transaction_index) this.transaction_dt_map[k] = v - 1;
+			}
 		}
 
 		this.datatable.refresh(this.transactions, this.columns);
@@ -188,15 +181,9 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 		// this.make_dt();
 		this.cards_manager = cur_frm.cards_manager
 		this.get_cleared_balance().then(() => {
-			//debugger;
-			this.cards_manager.$cards[1].set_value(
-				format_currency(this.cleared_balance),
-				this.currency
-			);
+			this.cards_manager.$cards[1].set_value(format_currency(this.cleared_balance), this.currency);
 			this.cards_manager.$cards[2].set_value(
-				format_currency(
-					this.bank_statement_closing_balance - this.cleared_balance
-				),
+				format_currency(this.bank_statement_closing_balance - this.cleared_balance),
 				this.currency
 			);
 			this.cards_manager.$cards[2].set_value_color(
@@ -210,14 +197,12 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 	get_cleared_balance() {
 		if (this.bank_account && this.bank_statement_to_date) {
 			return frappe.call({
-				method:
-					"erpnext.accounts.doctype.bank_reconciliation_tool.bank_reconciliation_tool.get_account_balance",
+				method: "erpnext.accounts.doctype.bank_reconciliation_tool.bank_reconciliation_tool.get_account_balance",
 				args: {
 					bank_account: this.bank_account,
 					till_date: this.bank_statement_to_date,
 				},
-				callback: (response) =>
-					(this.cleared_balance = response.message),
+				callback: (response) => (this.cleared_balance = response.message),
 			});
 		}
 	}

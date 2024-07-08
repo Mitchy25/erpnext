@@ -27,7 +27,7 @@
   },
   {
    "fieldname": "billing_email",
-   "fieldtype": "Read Only",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Billing Email"
   },

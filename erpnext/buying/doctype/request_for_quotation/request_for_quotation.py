@@ -12,7 +12,11 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.utils import get_url
 from frappe.utils.print_format import download_pdf
 from frappe.utils.user import get_user_fullname
-from six import string_types
+
+from erpnext.accounts.party import get_party_account_currency, get_party_details
+from erpnext.buying.utils import validate_for_items
+from erpnext.controllers.buying_controller import BuyingController
+from erpnext.stock.doctype.material_request.material_request import set_missing_values
 
 from erpnext.accounts.party import get_party_account_currency, get_party_details
 from erpnext.buying.utils import validate_for_items
@@ -27,12 +31,12 @@ class RequestforQuotation(BuyingController):
 		self.validate_duplicate_supplier()
 		self.validate_supplier_list()
 		validate_for_items(self)
-		super(RequestforQuotation, self).set_qty_as_per_stock_uom()
+		super().set_qty_as_per_stock_uom()
 		self.update_email_id()
 
 		if self.docstatus < 1:
 			# after amend and save, status still shows as cancelled, until submit
-			frappe.db.set(self, "status", "Draft")
+			self.db_set("status", "Draft")
 
 	def validate_duplicate_supplier(self):
 		supplier_list = [d.supplier for d in self.suppliers]
@@ -74,14 +78,23 @@ class RequestforQuotation(BuyingController):
 			)
 
 	def on_submit(self):
-		frappe.db.set(self, "status", "Submitted")
+		self.db_set("status", "Submitted")
 		for supplier in self.suppliers:
 			supplier.email_sent = 0
 			supplier.quote_status = "Pending"
 		self.send_to_supplier()
 
+	def before_print(self, settings=None):
+		"""Use the first suppliers data to render the print preview."""
+		if self.vendor or not self.suppliers:
+			# If a specific supplier is already set, via Tools > Download PDF,
+			# we don't want to override it.
+			return
+
+		self.update_supplier_part_no(self.suppliers[0].supplier)
+
 	def on_cancel(self):
-		frappe.db.set(self, "status", "Cancelled")
+		self.db_set("status", "Cancelled")
 
 	@frappe.whitelist()
 	def get_supplier_email_preview(self, supplier):
@@ -113,7 +126,13 @@ class RequestforQuotation(BuyingController):
 
 	def get_link(self):
 		# RFQ link for supplier portal
-		return get_url("/app/request-for-quotation/" + self.name)
+		route = frappe.db.get_value(
+			"Portal Menu Item", {"reference_doctype": "Request for Quotation"}, ["route"]
+		)
+		if not route:
+			frappe.throw(_("Please add Request for Quotation to the sidebar in Portal Settings."))
+
+		return get_url(f"{route}/{self.name}")
 
 	def update_supplier_part_no(self, supplier):
 		self.vendor = supplier
@@ -176,37 +195,46 @@ class RequestforQuotation(BuyingController):
 		if full_name == "Guest":
 			full_name = "Administrator"
 
-		# send document dict and some important data from suppliers row
-		# to render message_for_supplier from any template
 		doc_args = self.as_dict()
-		doc_args.update({"supplier": data.get("supplier"), "supplier_name": data.get("supplier_name")})
 
-		# Get Contact Full Name
-		supplier_name = None
 		if data.get("contact"):
-			contact_name = frappe.db.get_value(
-				"Contact", data.get("contact"), ["first_name", "middle_name", "last_name"]
-			)
-			supplier_name = (" ").join(x for x in contact_name if x)  # remove any blank values
+			contact = frappe.get_doc("Contact", data.get("contact"))
+			doc_args["contact"] = contact.as_dict()
 
-		args = {
-			"update_password_link": update_password_link,
-			"message": frappe.render_template(self.message_for_supplier, doc_args),
-			"rfq_link": rfq_link,
-			"user_fullname": full_name,
-			"supplier_name": supplier_name or data.get("supplier_name"),
-			"supplier_salutation": self.salutation or "Dear Mx.",
-		}
-
-		subject = self.subject or _("Request for Quotation")
-		template = "templates/emails/request_for_quotation.html"
+		doc_args.update(
+			{
+				"supplier": data.get("supplier"),
+				"supplier_name": data.get("supplier_name"),
+				"update_password_link": f'<a href="{update_password_link}" class="btn btn-default btn-xs" target="_blank">{_("Set Password")}</a>',
+				"portal_link": f'<a href="{rfq_link}" class="btn btn-default btn-xs" target="_blank"> {_("Submit your Quotation")} </a>',
+				"user_fullname": full_name,
+			}
+		)
+		email_template = frappe.get_doc("Email Template", self.email_template)
+		message = frappe.render_template(email_template.response_, doc_args)
+		subject = frappe.render_template(email_template.subject, doc_args)
 		sender = frappe.session.user not in STANDARD_USERS and frappe.session.user or None
-		message = frappe.get_template(template).render(args)
 
 		if preview:
-			return message
+			return {"message": message, "subject": subject}
 
-		attachments = self.get_attachments()
+		attachments = []
+		if self.send_attached_files:
+			attachments = self.get_attachments()
+
+		if self.send_document_print:
+			supplier_language = frappe.db.get_value("Supplier", data.supplier, "language")
+			system_language = frappe.db.get_single_value("System Settings", "language")
+			attachments.append(
+				frappe.attach_print(
+					self.doctype,
+					self.name,
+					doc=self,
+					print_format=self.meta.default_print_format or "Standard",
+					lang=supplier_language or system_language,
+					letterhead=self.letter_head,
+				)
+			)
 
 		self.send_email(data, sender, subject, message, attachments)
 
@@ -225,13 +253,11 @@ class RequestforQuotation(BuyingController):
 		frappe.msgprint(_("Email Sent to Supplier {0}").format(data.supplier))
 
 	def get_attachments(self):
-		attachments = [d.name for d in get_attachments(self.doctype, self.name)]
-		attachments.append(frappe.attach_print(self.doctype, self.name, doc=self))
-		return attachments
+		return [d.name for d in get_attachments(self.doctype, self.name)]
 
 	def update_rfq_supplier_status(self, sup_name=None):
 		for supplier in self.suppliers:
-			if sup_name == None or supplier.supplier == sup_name:
+			if sup_name is None or supplier.supplier == sup_name:
 				quote_status = _("Received")
 				for item in self.items:
 					sqi_count = frappe.db.sql(
@@ -262,9 +288,7 @@ def send_supplier_emails(rfq_name):
 
 
 def check_portal_enabled(reference_doctype):
-	if not frappe.db.get_value(
-		"Portal Menu Item", {"reference_doctype": reference_doctype}, "enabled"
-	):
+	if not frappe.db.get_value("Portal Menu Item", {"reference_doctype": reference_doctype}, "enabled"):
 		frappe.throw(
 			_(
 				"The Access to Request for Quotation From Portal is Disabled. To Allow Access, Enable it in Portal Settings."
@@ -324,7 +348,7 @@ def make_supplier_quotation_from_rfq(source_name, target_doc=None, for_supplier=
 # This method is used to make supplier quotation from supplier's portal.
 @frappe.whitelist()
 def create_supplier_quotation(doc):
-	if isinstance(doc, string_types):
+	if isinstance(doc, str):
 		doc = json.loads(doc)
 
 	try:
@@ -390,17 +414,27 @@ def create_rfq_items(sq_doc, supplier, data):
 
 
 @frappe.whitelist()
-def get_pdf(doctype, name, supplier):
-	doc = get_rfq_doc(doctype, name, supplier)
-	if doc:
-		download_pdf(doctype, name, doc=doc)
-
-
-def get_rfq_doc(doctype, name, supplier):
+def get_pdf(
+	name: str,
+	supplier: str,
+	print_format: str | None = None,
+	language: str | None = None,
+	letterhead: str | None = None,
+):
+	doc = frappe.get_doc("Request for Quotation", name)
 	if supplier:
-		doc = frappe.get_doc(doctype, name)
 		doc.update_supplier_part_no(supplier)
-		return doc
+
+	# permissions get checked in `download_pdf`
+	download_pdf(
+		doc.doctype,
+		doc.name,
+		print_format,
+		doc=doc,
+		language=language,
+		letterhead=letterhead or None,
+	)
+
 
 
 @frappe.whitelist()
@@ -461,9 +495,7 @@ def get_item_from_material_requests_based_on_supplier(source_name, target_doc=No
 @frappe.whitelist()
 def get_supplier_tag():
 	filters = {"document_type": "Supplier"}
-	tags = list(
-		set(tag.tag for tag in frappe.get_all("Tag Link", filters=filters, fields=["tag"]) if tag)
-	)
+	tags = list(set(tag.tag for tag in frappe.get_all("Tag Link", filters=filters, fields=["tag"]) if tag))
 
 	return tags
 
@@ -476,7 +508,7 @@ def get_rfq_containing_supplier(doctype, txt, searchfield, start, page_len, filt
 		conditions += "and rfq.name like '%%" + txt + "%%' "
 
 	if filters.get("transaction_date"):
-		conditions += "and rfq.transaction_date = '{0}'".format(filters.get("transaction_date"))
+		conditions += "and rfq.transaction_date = '{}'".format(filters.get("transaction_date"))
 
 	rfq_data = frappe.db.sql(
 		f"""

@@ -5,7 +5,6 @@ import frappe
 from frappe import _
 from frappe.utils import cstr, flt
 from frappe.utils.file_manager import remove_file
-from six import string_types
 
 from erpnext.controllers.taxes_and_totals import get_itemised_tax
 from erpnext.regional.italy import state_codes
@@ -40,7 +39,7 @@ def export_invoices(filters=None):
 
 	attachments = get_e_invoice_attachments(invoices)
 
-	zip_filename = "{0}-einvoices.zip".format(frappe.utils.get_datetime().strftime("%Y%m%d_%H%M%S"))
+	zip_filename = "{}-einvoices.zip".format(frappe.utils.get_datetime().strftime("%Y%m%d_%H%M%S"))
 
 	download_zip(attachments, zip_filename)
 
@@ -174,7 +173,7 @@ def get_invoice_summary(items, taxes):
 		if tax.rate == 0:
 			for item in items:
 				item_tax_rate = item.item_tax_rate
-				if isinstance(item.item_tax_rate, string_types):
+				if isinstance(item.item_tax_rate, str):
 					item_tax_rate = json.loads(item.item_tax_rate)
 
 				if item_tax_rate and tax.account_head in item_tax_rate:
@@ -308,7 +307,9 @@ def sales_invoice_validate(doc):
 		for row in doc.taxes:
 			if row.rate == 0 and row.tax_amount == 0 and not row.tax_exemption_reason:
 				frappe.throw(
-					_("Row {0}: Please set at Tax Exemption Reason in Sales Taxes and Charges").format(row.idx),
+					_("Row {0}: Please set at Tax Exemption Reason in Sales Taxes and Charges").format(
+						row.idx
+					),
 					title=_("E-Invoicing Information Missing"),
 				)
 
@@ -339,9 +340,7 @@ def sales_invoice_on_submit(doc, method):
 					_("Row {0}: Please set the Mode of Payment in Payment Schedule").format(schedule.idx),
 					title=_("E-Invoicing Information Missing"),
 				)
-			elif not frappe.db.get_value(
-				"Mode of Payment", schedule.mode_of_payment, "mode_of_payment_code"
-			):
+			elif not frappe.db.get_value("Mode of Payment", schedule.mode_of_payment, "mode_of_payment_code"):
 				frappe.throw(
 					_("Row {0}: Please set the correct code on Mode of Payment {1}").format(
 						schedule.idx, schedule.mode_of_payment

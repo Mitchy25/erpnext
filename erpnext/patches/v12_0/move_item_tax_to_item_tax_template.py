@@ -5,6 +5,7 @@ from frappe.model.naming import make_autoname
 from six import iteritems
 
 
+
 def execute():
 	if "tax_type" not in frappe.db.get_table_columns("Item Tax"):
 		return
@@ -81,11 +82,9 @@ def execute():
 
 	for dt in doctypes:
 		for d in frappe.db.sql(
-			"""select name, parenttype, parent, item_code, item_tax_rate from `tab{0} Item`
+			f"""select name, parenttype, parent, item_code, item_tax_rate from `tab{dt} Item`
 								where ifnull(item_tax_rate, '') not in ('', '{{}}')
-								and item_tax_template is NULL""".format(
-				dt
-			),
+								and item_tax_template is NULL""",
 			as_dict=1,
 		):
 			item_tax_map = json.loads(d.item_tax_rate)
@@ -106,7 +105,7 @@ def get_item_tax_template(
 	item_tax_templates, item_tax_map, item_code, parenttype=None, parent=None, tax_types=None
 ):
 	# search for previously created item tax template by comparing tax maps
-	for template, item_tax_template_map in iteritems(item_tax_templates):
+	for template, item_tax_template_map in item_tax_templates.items():
 		if item_tax_map == item_tax_template_map:
 			return template
 
@@ -115,7 +114,7 @@ def get_item_tax_template(
 	item_tax_template.title = make_autoname("Item Tax Template-.####")
 	item_tax_template_name = item_tax_template.title
 
-	for tax_type, tax_rate in iteritems(item_tax_map):
+	for tax_type, tax_rate in item_tax_map.items():
 		account_details = frappe.db.get_value(
 			"Account", tax_type, ["name", "account_type", "company"], as_dict=1
 		)
@@ -146,13 +145,23 @@ def get_item_tax_template(
 				if not parent_account:
 					parent_account = frappe.db.get_value(
 						"Account",
-						filters={"account_type": "Tax", "root_type": "Liability", "is_group": 0, "company": company},
+						filters={
+							"account_type": "Tax",
+							"root_type": "Liability",
+							"is_group": 0,
+							"company": company,
+						},
 						fieldname="parent_account",
 					)
 				if not parent_account:
 					parent_account = frappe.db.get_value(
 						"Account",
-						filters={"account_type": "Tax", "root_type": "Liability", "is_group": 1, "company": company},
+						filters={
+							"account_type": "Tax",
+							"root_type": "Liability",
+							"is_group": 1,
+							"company": company,
+						},
 					)
 				filters = {
 					"account_name": account_name,

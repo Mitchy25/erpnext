@@ -12,9 +12,7 @@ def get_context(context):
 		["user", "view_attachments"],
 		as_dict=True,
 	)
-	if frappe.session.user != "Administrator" and (
-		not project_user or frappe.session.user == "Guest"
-	):
+	if frappe.session.user != "Administrator" and (not project_user or frappe.session.user == "Guest"):
 		raise frappe.PermissionError
 
 	context.no_cache = 1
@@ -38,9 +36,7 @@ def get_context(context):
 def get_tasks(project, start=0, search=None, item_status=None):
 	filters = {"project": project}
 	if search:
-		filters["subject"] = ("like", "%{0}%".format(search))
-	# if item_status:
-	# 		filters["status"] = item_status
+		filters["subject"] = ("like", f"%{search}%")
 	tasks = frappe.get_all(
 		"Task",
 		filters=filters,
@@ -85,7 +81,7 @@ def get_task_html(project, start=0, item_status=None):
 def get_timesheets(project, start=0, search=None):
 	filters = {"project": project}
 	if search:
-		filters["activity_type"] = ("like", "%{0}%".format(search))
+		filters["activity_type"] = ("like", f"%{search}%")
 
 	timesheets = frappe.get_all(
 		"Timesheet Detail",
@@ -102,7 +98,6 @@ def get_timesheets(project, start=0, search=None):
 			limit_start=start,
 			limit_page_length=10,
 		)
-
 		if len(info):
 			timesheet.update(info[0])
 	return timesheets

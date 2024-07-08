@@ -12,9 +12,17 @@ from decimal import Decimal
 import frappe
 from bs4 import BeautifulSoup as bs
 from frappe import _
-from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+from frappe.custom.doctype.custom_field.custom_field import (
+	create_custom_fields as _create_custom_fields,
+)
 from frappe.model.document import Document
 from frappe.utils.data import format_datetime
+
+from erpnext import encode_company_abbr
+from erpnext.accounts.doctype.account.chart_of_accounts.chart_of_accounts import create_charts
+from erpnext.accounts.doctype.chart_of_accounts_importer.chart_of_accounts_importer import (
+	unset_existing_data,
+)
 
 from erpnext import encode_company_abbr
 from erpnext.accounts.doctype.account.chart_of_accounts.chart_of_accounts import create_charts
@@ -35,6 +43,7 @@ def new_doc(document):
 	doc.update(document)
 
 	return doc
+
 
 class TallyMigration(Document):
 	def validate(self):
@@ -84,7 +93,7 @@ class TallyMigration(Document):
 				}
 			)
 			try:
-				f.insert()
+				f.insert(ignore_if_duplicate=True)
 			except frappe.DuplicateEntryError:
 				pass
 			setattr(self, key, f.file_url)
@@ -93,9 +102,7 @@ class TallyMigration(Document):
 		self.default_cost_center, self.default_round_off_account = frappe.db.get_value(
 			"Company", self.erpnext_company, ["cost_center", "round_off_account"]
 		)
-		self.default_warehouse = frappe.db.get_value(
-			"Stock Settings", "Stock Settings", "default_warehouse"
-		)
+		self.default_warehouse = frappe.db.get_value("Stock Settings", "Stock Settings", "default_warehouse")
 
 	def _process_master_data(self):
 		def get_company_name(collection):
@@ -156,7 +163,7 @@ class TallyMigration(Document):
 
 		def get_children_and_parent_dict(accounts):
 			children, parents = {}, {}
-			for parent, account, is_group in accounts:
+			for parent, account, _is_group in accounts:
 				children.setdefault(parent, set()).add(account)
 				parents.setdefault(account, set()).add(parent)
 				parents[account].update(parents.get(parent, []))
@@ -201,7 +208,9 @@ class TallyMigration(Document):
 						{
 							"doctype": party_type,
 							"customer_name": account.NAME.string.strip(),
-							"tax_id": account.INCOMETAXNUMBER.string.strip() if account.INCOMETAXNUMBER else None,
+							"tax_id": account.INCOMETAXNUMBER.string.strip()
+							if account.INCOMETAXNUMBER
+							else None,
 							"customer_group": "All Customer Groups",
 							"territory": "All Territories",
 							"customer_type": "Individual",
@@ -215,7 +224,9 @@ class TallyMigration(Document):
 						{
 							"doctype": party_type,
 							"supplier_name": account.NAME.string.strip(),
-							"pan": account.INCOMETAXNUMBER.string.strip() if account.INCOMETAXNUMBER else None,
+							"pan": account.INCOMETAXNUMBER.string.strip()
+							if account.INCOMETAXNUMBER
+							else None,
 							"supplier_group": "All Supplier Groups",
 							"supplier_type": "Individual",
 						}
@@ -231,7 +242,9 @@ class TallyMigration(Document):
 							"address_line2": address[140:].strip(),
 							"country": account.COUNTRYNAME.string.strip() if account.COUNTRYNAME else None,
 							"state": account.LEDSTATENAME.string.strip() if account.LEDSTATENAME else None,
-							"gst_state": account.LEDSTATENAME.string.strip() if account.LEDSTATENAME else None,
+							"gst_state": account.LEDSTATENAME.string.strip()
+							if account.LEDSTATENAME
+							else None,
 							"pin_code": account.PINCODE.string.strip() if account.PINCODE else None,
 							"mobile": account.LEDGERPHONE.string.strip() if account.LEDGERPHONE else None,
 							"phone": account.LEDGERPHONE.string.strip() if account.LEDGERPHONE else None,
@@ -573,26 +586,29 @@ class TallyMigration(Document):
 				if new_year.year_start_date.year == new_year.year_end_date.year:
 					new_year.year = new_year.year_start_date.year
 				else:
-					new_year.year = "{}-{}".format(new_year.year_start_date.year, new_year.year_end_date.year)
+					new_year.year = f"{new_year.year_start_date.year}-{new_year.year_end_date.year}"
 				new_year.save()
 				oldest_year = new_year
 
-		def create_custom_fields(doctypes):
-			tally_guid_df = {
-				"fieldtype": "Data",
-				"fieldname": "tally_guid",
-				"read_only": 1,
-				"label": "Tally GUID",
-			}
-			tally_voucher_no_df = {
-				"fieldtype": "Data",
-				"fieldname": "tally_voucher_no",
-				"read_only": 1,
-				"label": "Tally Voucher Number",
-			}
-			for df in [tally_guid_df, tally_voucher_no_df]:
-				for doctype in doctypes:
-					create_custom_field(doctype, df)
+		def create_custom_fields():
+			_create_custom_fields(
+				{
+					("Journal Entry", "Purchase Invoice", "Sales Invoice"): [
+						{
+							"fieldtype": "Data",
+							"fieldname": "tally_guid",
+							"read_only": 1,
+							"label": "Tally GUID",
+						},
+						{
+							"fieldtype": "Data",
+							"fieldname": "tally_voucher_no",
+							"read_only": 1,
+							"label": "Tally Voucher Number",
+						},
+					]
+				}
+			)
 
 		def create_price_list():
 			frappe.get_doc(
@@ -628,7 +644,7 @@ class TallyMigration(Document):
 
 			create_fiscal_years(vouchers)
 			create_price_list()
-			create_custom_fields(["Journal Entry", "Purchase Invoice", "Sales Invoice"])
+			create_custom_fields()
 
 			total = len(vouchers)
 			is_last = False

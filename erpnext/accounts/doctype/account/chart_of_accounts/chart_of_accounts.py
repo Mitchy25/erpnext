@@ -7,7 +7,6 @@ import os
 import frappe
 from frappe.utils import cstr
 from frappe.utils.nestedset import rebuild_tree
-from six import iteritems
 from unidecode import unidecode
 
 
@@ -19,7 +18,7 @@ def create_charts(
 		accounts = []
 
 		def _import_accounts(children, parent, root_type, root_account=False):
-			for account_name, child in iteritems(children):
+			for account_name, child in children.items():
 				if root_account:
 					root_type = child.get("root_type")
 
@@ -30,8 +29,8 @@ def create_charts(
 					"root_type",
 					"is_group",
 					"tax_rate",
+					"account_currency",
 				]:
-
 					account_number = cstr(child.get("account_number")).strip()
 					account_name, account_name_in_db = add_suffix_if_duplicate(
 						account_name, account_number, accounts
@@ -39,7 +38,9 @@ def create_charts(
 
 					is_group = identify_is_group(child)
 					report_type = (
-						"Balance Sheet" if root_type in ["Asset", "Liability", "Equity"] else "Profit and Loss"
+						"Balance Sheet"
+						if root_type in ["Asset", "Liability", "Equity"]
+						else "Profit and Loss"
 					)
 
 					account = frappe.get_doc(
@@ -96,7 +97,17 @@ def identify_is_group(child):
 		is_group = child.get("is_group")
 	elif len(
 		set(child.keys())
-		- set(["account_name", "account_type", "root_type", "is_group", "tax_rate", "account_number"])
+		- set(
+			[
+				"account_name",
+				"account_type",
+				"root_type",
+				"is_group",
+				"tax_rate",
+				"account_number",
+				"account_currency",
+			]
+		)
 	):
 		is_group = 1
 	else:
@@ -131,7 +142,7 @@ def get_chart(chart_template, existing_company=None):
 			for fname in os.listdir(path):
 				fname = frappe.as_unicode(fname)
 				if fname.endswith(".json"):
-					with open(os.path.join(path, fname), "r") as f:
+					with open(os.path.join(path, fname)) as f:
 						chart = f.read()
 						if chart and json.loads(chart).get("name") == chart_template:
 							return json.loads(chart).get("tree")
@@ -163,7 +174,7 @@ def get_charts_for_country(country, with_standard=False):
 			for fname in os.listdir(path):
 				fname = frappe.as_unicode(fname)
 				if (fname.startswith(country_code) or fname.startswith(country)) and fname.endswith(".json"):
-					with open(os.path.join(path, fname), "r") as f:
+					with open(os.path.join(path, fname)) as f:
 						_get_chart_name(f.read())
 
 	# if more than one charts, returned then add the standard
@@ -186,6 +197,7 @@ def get_account_tree_from_existing_company(existing_company):
 			"root_type",
 			"tax_rate",
 			"account_number",
+			"account_currency",
 		],
 		order_by="lft, rgt",
 	)
@@ -235,8 +247,14 @@ def validate_bank_account(coa, bank_account):
 	if chart:
 
 		def _get_account_names(account_master):
-			for account_name, child in iteritems(account_master):
-				if account_name not in ["account_number", "account_type", "root_type", "is_group", "tax_rate"]:
+			for account_name, child in account_master.items():
+				if account_name not in [
+					"account_number",
+					"account_type",
+					"root_type",
+					"is_group",
+					"tax_rate",
+				]:
 					accounts.append(account_name)
 
 					_get_account_names(child)
@@ -259,7 +277,7 @@ def build_tree_from_json(chart_template, chart_data=None, from_coa_importer=Fals
 
 	def _import_accounts(children, parent):
 		"""recursively called to form a parent-child based list of dict from chart template"""
-		for account_name, child in iteritems(children):
+		for account_name, child in children.items():
 			account = {}
 			if account_name in [
 				"account_name",
@@ -268,6 +286,7 @@ def build_tree_from_json(chart_template, chart_data=None, from_coa_importer=Fals
 				"root_type",
 				"is_group",
 				"tax_rate",
+				"account_currency",
 			]:
 				continue
 

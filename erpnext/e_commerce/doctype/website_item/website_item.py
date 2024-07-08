@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import json
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
 	from erpnext.stock.doctype.item.item import Item
@@ -37,19 +37,17 @@ class WebsiteItem(WebsiteGenerator):
 
 	def autoname(self):
 		# use naming series to accomodate items with same name (different item code)
-		from frappe.model.naming import make_autoname
-
-		from erpnext.setup.doctype.naming_series.naming_series import get_default_naming_series
+		from frappe.model.naming import get_default_naming_series, make_autoname
 
 		naming_series = get_default_naming_series("Website Item")
 		if not self.name and naming_series:
 			self.name = make_autoname(naming_series, doc=self)
 
 	def onload(self):
-		super(WebsiteItem, self).onload()
+		super().onload()
 
 	def validate(self):
-		super(WebsiteItem, self).validate()
+		super().validate()
 
 		if not self.item_code:
 			frappe.throw(_("Item Code is required"), title=_("Mandatory"))
@@ -60,26 +58,26 @@ class WebsiteItem(WebsiteGenerator):
 		self.publish_unpublish_desk_item(publish=True)
 
 		if not self.get("__islocal"):
-			self.old_website_item_groups = frappe.db.sql_list(
-				"""
-				select
-					item_group
-				from
-					`tabWebsite Item Group`
-				where
-					parentfield='website_item_groups'
-					and parenttype='Website Item'
-					and parent=%s
-				""",
-				self.name,
+			wig = frappe.qb.DocType("Website Item Group")
+			query = (
+				frappe.qb.from_(wig)
+				.select(wig.item_group)
+				.where(
+					(wig.parentfield == "website_item_groups")
+					& (wig.parenttype == "Website Item")
+					& (wig.parent == self.name)
+				)
 			)
+			result = query.run(as_list=True)
+
+			self.old_website_item_groups = [x[0] for x in result]
 
 	def on_update(self):
 		invalidate_cache_for_web_item(self)
 		self.update_template_item()
 
 	def on_trash(self):
-		super(WebsiteItem, self).on_trash()
+		super().on_trash()
 		delete_item_from_index(self)
 		self.publish_unpublish_desk_item(publish=False)
 
@@ -115,11 +113,10 @@ class WebsiteItem(WebsiteGenerator):
 					make_website_item(template_item)
 
 	def validate_website_image(self):
-		"""Validate if the website image is a public file"""
-
 		if frappe.flags.in_import:
 			return
 
+		"""Validate if the website image is a public file"""
 		if not self.website_image:
 			return
 
@@ -199,7 +196,7 @@ class WebsiteItem(WebsiteGenerator):
 						}
 					).save()
 
-				except IOError:
+				except OSError:
 					self.website_image = None
 
 			if file_doc:
@@ -236,9 +233,7 @@ class WebsiteItem(WebsiteGenerator):
 			context.reviews = context.reviews[:4]
 
 		context.wished = False
-		if frappe.db.exists(
-			"Wishlist Item", {"item_code": self.item_code, "parent": frappe.session.user}
-		):
+		if frappe.db.exists("Wishlist Item", {"item_code": self.item_code, "parent": frappe.session.user}):
 			context.wished = True
 
 		context.user_is_customer = check_if_user_is_customer()
@@ -258,9 +253,7 @@ class WebsiteItem(WebsiteGenerator):
 			)
 
 			# make an attribute-value map for easier access in templates
-			variant.attribute_map = frappe._dict(
-				{attr.attribute: attr.value for attr in variant.attributes}
-			)
+			variant.attribute_map = frappe._dict({attr.attribute: attr.value for attr in variant.attributes})
 
 			for attr in variant.attributes:
 				values = attribute_values_available.setdefault(attr.attribute, [])
@@ -285,7 +278,6 @@ class WebsiteItem(WebsiteGenerator):
 					filters={"parent": attr.attribute},
 					order_by="idx asc",
 				):
-
 					if attr_value.attribute_value in attribute_values_available.get(attr.attribute, []):
 						values.append(attr_value.attribute_value)
 
@@ -313,9 +305,7 @@ class WebsiteItem(WebsiteGenerator):
 	def set_shopping_cart_data(self, context):
 		from erpnext.e_commerce.shopping_cart.product_info import get_product_info_for_website
 
-		context.shopping_cart = get_product_info_for_website(
-			self.item_code, skip_quotation_creation=True
-		)
+		context.shopping_cart = get_product_info_for_website(self.item_code, skip_quotation_creation=True)
 
 	@frappe.whitelist()
 	def copy_specification_from_item_group(self):
@@ -351,21 +341,18 @@ class WebsiteItem(WebsiteGenerator):
 		return tab_values
 
 	def get_recommended_items(self, settings):
-		items = frappe.db.sql(
-			f"""
-			select
-				ri.website_item_thumbnail, ri.website_item_name,
-				ri.route, ri.item_code
-			from
-				`tabRecommended Items` ri, `tabWebsite Item` wi
-			where
-				ri.item_code = wi.item_code
-				and ri.parent = '{self.name}'
-				and wi.published = 1
-			order by ri.idx
-		""",
-			as_dict=1,
+		ri = frappe.qb.DocType("Recommended Items")
+		wi = frappe.qb.DocType("Website Item")
+
+		query = (
+			frappe.qb.from_(ri)
+			.join(wi)
+			.on(ri.item_code == wi.item_code)
+			.select(ri.item_code, ri.route, ri.website_item_name, ri.website_item_thumbnail)
+			.where((ri.parent == self.name) & (wi.published == 1))
+			.orderby(ri.idx)
 		)
+		items = query.run(as_dict=True)
 
 		if settings.show_price:
 			is_guest = frappe.session.user == "Guest"
@@ -430,7 +417,7 @@ def check_if_user_is_customer(user=None):
 
 
 @frappe.whitelist()
-def make_website_item(doc: "Item", save: bool = True) -> Union["WebsiteItem", List[str]]:
+def make_website_item(doc: "Item", save: bool = True) -> Union["WebsiteItem", list[str]]:
 	"Make Website Item from Item. Used via Form UI or patch."
 
 	if not doc:

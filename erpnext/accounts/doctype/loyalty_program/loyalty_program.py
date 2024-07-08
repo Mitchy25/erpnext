@@ -25,13 +25,11 @@ def get_loyalty_details(
 		condition += " and expiry_date>='%s' " % expiry_date
 
 	loyalty_point_details = frappe.db.sql(
-		"""select sum(loyalty_points) as loyalty_points,
+		f"""select sum(loyalty_points) as loyalty_points,
 		sum(purchase_amount) as total_spent from `tabLoyalty Point Entry`
 		where customer=%s and loyalty_program=%s and posting_date <= %s
 		{condition}
-		group by customer""".format(
-			condition=condition
-		),
+		group by customer""",
 		(customer, loyalty_program, expiry_date),
 		as_dict=1,
 	)
@@ -52,9 +50,7 @@ def get_loyalty_program_details_with_points(
 	include_expired_entry=False,
 	current_transaction_amount=0,
 ):
-	lp_details = get_loyalty_program_details(
-		customer, loyalty_program, company=company, silent=silent
-	)
+	lp_details = get_loyalty_program_details(customer, loyalty_program, company=company, silent=silent)
 	loyalty_program = frappe.get_doc("Loyalty Program", loyalty_program)
 	lp_details.update(
 		get_loyalty_details(customer, loyalty_program.name, expiry_date, company, include_expired_entry)
@@ -141,7 +137,7 @@ def validate_loyalty_points(ref_doc, points_to_redeem):
 		)
 
 		if points_to_redeem > loyalty_program_details.loyalty_points:
-			frappe.throw(_("You don't have enought Loyalty Points to redeem"))
+			frappe.throw(_("You don't have enough Loyalty Points to redeem"))
 
 		loyalty_amount = flt(points_to_redeem * loyalty_program_details.conversion_factor)
 

@@ -62,6 +62,7 @@ def get_columns(filters):
 
 	return columns
 
+
 def get_data(filters):
 	wo = frappe.qb.DocType("Work Order")
 	query = (

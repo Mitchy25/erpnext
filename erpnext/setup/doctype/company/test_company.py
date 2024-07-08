@@ -11,6 +11,7 @@ from frappe.utils import random_string
 from erpnext.accounts.doctype.account.chart_of_accounts.chart_of_accounts import (
 	get_charts_for_country,
 )
+from erpnext.setup.doctype.company.company import get_default_company_address
 
 test_ignore = ["Account", "Cost Center", "Payment Terms Template", "Salary Component", "Warehouse"]
 test_dependencies = ["Fiscal Year"]
@@ -97,15 +98,6 @@ class TestCompany(unittest.TestCase):
 					self.delete_mode_of_payment(template)
 					frappe.delete_doc("Company", template)
 
-	def test_delete_communication(self):
-		from erpnext.setup.doctype.company.delete_company_transactions import delete_communications
-		company = create_child_company()
-		lead = create_test_lead_in_company(company)
-		communication = create_company_communication("Lead", lead)
-		delete_communications("Lead", "Test Company", "company")
-		self.assertFalse(frappe.db.exists("Communcation", communication))
-		self.assertFalse(frappe.db.exists({"doctype":"Comunication Link", "link_name": communication}))
-
 	def delete_mode_of_payment(self, company):
 		frappe.db.sql(
 			""" delete from `tabMode of Payment Account`
@@ -140,6 +132,38 @@ class TestCompany(unittest.TestCase):
 			self.assertTrue(rgt < parent_rgt)
 			self.assertTrue(lft >= min_lft)
 			self.assertTrue(rgt <= max_rgt)
+
+	def test_primary_address(self):
+		company = "_Test Company"
+
+		secondary = frappe.get_doc(
+			{
+				"address_title": "Non Primary",
+				"doctype": "Address",
+				"address_type": "Billing",
+				"address_line1": "Something",
+				"city": "Mumbai",
+				"state": "Maharashtra",
+				"country": "India",
+				"is_primary_address": 1,
+				"pincode": "400098",
+				"links": [
+					{
+						"link_doctype": "Company",
+						"link_name": company,
+					}
+				],
+			}
+		)
+		secondary.insert()
+		self.addCleanup(secondary.delete)
+
+		primary = frappe.copy_doc(secondary)
+		primary.is_primary_address = 1
+		primary.insert()
+		self.addCleanup(primary.delete)
+
+		self.assertEqual(get_default_company_address(company), primary.name)
 
 	def get_no_of_children(self, company):
 		def get_no_of_children(companies, no_of_children):

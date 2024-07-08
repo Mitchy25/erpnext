@@ -6,7 +6,6 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, get_datetime, getdate
-from six import iteritems
 
 
 class LoanSecurityUnpledge(Document):
@@ -40,9 +39,7 @@ class LoanSecurityUnpledge(Document):
 
 		pledge_qty_map = get_pledged_security_qty(self.loan)
 
-		ltv_ratio_map = frappe._dict(
-			frappe.get_all("Loan Security Type", fields=["name", "loan_to_value_ratio"], as_list=1)
-		)
+		frappe._dict(frappe.get_all("Loan Security Type", fields=["name", "loan_to_value_ratio"], as_list=1))
 
 		loan_security_price_map = frappe._dict(
 			frappe.get_all(
@@ -58,9 +55,6 @@ class LoanSecurityUnpledge(Document):
 			self.loan,
 			[
 				"total_payment",
-				"debit_adjustment_amount",
-				"credit_adjustment_amount",
-				"refund_amount",
 				"total_principal_paid",
 				"loan_amount",
 				"total_interest_payable",
@@ -133,7 +127,7 @@ class LoanSecurityUnpledge(Document):
 			pledged_qty = 0
 			current_pledges = get_pledged_security_qty(self.loan)
 
-			for security, qty in iteritems(current_pledges):
+			for _security, qty in current_pledges.items():
 				pledged_qty += qty
 
 			if not pledged_qty:
@@ -142,7 +136,6 @@ class LoanSecurityUnpledge(Document):
 
 @frappe.whitelist()
 def get_pledged_security_qty(loan):
-
 	current_pledges = {}
 
 	unpledges = frappe._dict(
@@ -173,7 +166,7 @@ def get_pledged_security_qty(loan):
 		)
 	)
 
-	for security, qty in iteritems(pledges):
+	for security, qty in pledges.items():
 		current_pledges.setdefault(security, qty)
 		current_pledges[security] -= unpledges.get(security, 0.0)
 

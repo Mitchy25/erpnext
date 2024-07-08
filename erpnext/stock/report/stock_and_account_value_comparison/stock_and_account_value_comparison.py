@@ -14,15 +14,14 @@ from erpnext.stock.doctype.warehouse.warehouse import get_warehouses_based_on_ac
 def execute(filters=None):
 	if not erpnext.is_perpetual_inventory_enabled(filters.company):
 		frappe.throw(
-			_("Perpetual inventory required for the company {0} to view this report.").format(
-				filters.company
-			)
+			_("Perpetual inventory required for the company {0} to view this report.").format(filters.company)
 		)
 
 	data = get_data(filters)
 	columns = get_columns(filters)
 
 	return columns, data
+
 
 def get_data(report_filters):
 	data = []
@@ -33,7 +32,7 @@ def get_data(report_filters):
 		"posting_date": ("<=", report_filters.as_on_date),
 	}
 
-	currency_precision = get_currency_precision() or 2
+	get_currency_precision() or 2
 	stock_ledger_entries = get_stock_ledger_data(report_filters, filters)
 	voucher_wise_gl_data = get_gl_data(report_filters, filters)
 
@@ -99,6 +98,7 @@ def get_gl_data(report_filters, filters):
 		voucher_wise_gl_data[key] = d
 
 	return voucher_wise_gl_data
+
 
 def get_columns(filters):
 	return [

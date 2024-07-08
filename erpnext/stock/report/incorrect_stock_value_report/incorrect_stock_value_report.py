@@ -5,9 +5,8 @@
 import frappe
 from frappe import _
 from frappe.query_builder import Field
-from frappe.query_builder.functions import Min, Timestamp
+from frappe.query_builder.functions import Min
 from frappe.utils import add_days, getdate, today
-from six import iteritems
 
 import erpnext
 from erpnext.accounts.utils import get_stock_and_account_balance
@@ -17,9 +16,7 @@ from erpnext.stock.utils import get_stock_value_on
 def execute(filters=None):
 	if not erpnext.is_perpetual_inventory_enabled(filters.company):
 		frappe.throw(
-			_("Perpetual inventory required for the company {0} to view this report.").format(
-				filters.company
-			)
+			_("Perpetual inventory required for the company {0} to view this report.").format(filters.company)
 		)
 
 	data = get_data(filters)
@@ -76,17 +73,15 @@ def get_data(report_filters):
 			& (sle.company == report_filters.company)
 			& (sle.is_cancelled == 0)
 		)
-		.orderby(Timestamp(sle.posting_date, sle.posting_time), sle.creation)
+		.orderby(sle.posting_datetime, sle.creation)
 	).run(as_dict=True)
 
 	for d in data:
 		voucher_wise_dict.setdefault((d.item_code, d.warehouse), []).append(d)
 
 	closing_date = add_days(from_date, -1)
-	for key, stock_data in iteritems(voucher_wise_dict):
-		prev_stock_value = get_stock_value_on(
-			posting_date=closing_date, item_code=key[0], warehouse=key[1]
-		)
+	for key, stock_data in voucher_wise_dict.items():
+		prev_stock_value = get_stock_value_on(posting_date=closing_date, item_code=key[0], warehouses=key[1])
 		for data in stock_data:
 			expected_stock_value = prev_stock_value + data.stock_value_difference
 			if abs(data.stock_value - expected_stock_value) > 0.1:

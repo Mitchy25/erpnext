@@ -86,7 +86,7 @@ frappe.ui.form.on("Delivery Note", {
 	},
 
 	refresh: function(frm) {
-		if (frm.doc.docstatus === 1 && frm.doc.is_return === 1 && frm.doc.per_billed !== 100) {
+		if (frm.doc.docstatus === 1 && frm.doc.is_return === 1 && frm.doc.per_billed !== 100 && frappe.model.can_create("Sales Invoice")) {
 			frm.add_custom_button(__('Credit Note'), function() {
 				frappe.model.open_mapped_doc({
 					method: "erpnext.stock.doctype.delivery_note.delivery_note.make_sales_invoice",
@@ -96,7 +96,11 @@ frappe.ui.form.on("Delivery Note", {
 			frm.page.set_inner_btn_group_as_primary(__('Create'));
 		}
 
-		if (frm.doc.docstatus == 1 && !frm.doc.inter_company_reference) {
+		if (
+			frm.doc.docstatus == 1 &&
+			!frm.doc.inter_company_reference &&
+			frappe.model.can_create("Purchase Receipt")
+		) {
 			let internal = frm.doc.is_internal_customer;
 			if (internal) {
 				let button_label = (frm.doc.company === frm.doc.represents_company) ? "Internal Purchase Receipt" :
@@ -124,72 +128,99 @@ frappe.ui.form.on("Delivery Note Item", {
 	}
 });
 
-erpnext.stock.DeliveryNoteController = erpnext.selling.SellingController.extend({
-	setup: function(doc) {
+erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpnext.selling.SellingController {
+	setup(doc) {
 		this.setup_posting_date_time_check();
-		this._super(doc);
+		super.setup(doc);
 		this.frm.make_methods = {
 			'Delivery Trip': this.make_delivery_trip,
 		};
-	},
-	refresh: function(doc, dt, dn) {
+	}
+	refresh(doc, dt, dn) {
 		var me = this;
-		this._super();
-		if ((!doc.is_return) && (doc.status!="Closed" || this.frm.is_new())) {
-			if (this.frm.doc.docstatus===0) {
-				this.frm.add_custom_button(__('Sales Order'),
-					function() {
-						if (!me.frm.doc.customer) {
-							frappe.throw({
-								title: __("Mandatory"),
-								message: __("Please Select a Customer")
-							});
+		super.refresh();
+		if (
+			!doc.is_return
+			&& (doc.status!="Closed" || this.frm.is_new())
+			&& this.frm.has_perm("write")
+			&& frappe.model.can_read("Sales Order")
+			&& this.frm.doc.docstatus===0
+		) {
+			this.frm.add_custom_button(
+				__('Sales Order'),
+				function() {
+					if (!me.frm.doc.customer) {
+						frappe.throw({
+							title: __("Mandatory"),
+							message: __("Please Select a Customer")
+						});
+					}
+					erpnext.utils.map_current_doc({
+						method: "erpnext.selling.doctype.sales_order.sales_order.make_delivery_note",
+						source_doctype: "Sales Order",
+						target: me.frm,
+						setters: {
+							customer: me.frm.doc.customer,
+						},
+						get_query_filters: {
+							docstatus: 1,
+							status: ["not in", ["Closed", "On Hold"]],
+							per_delivered: ["<", 99.99],
+							company: me.frm.doc.company,
+							project: me.frm.doc.project || undefined,
 						}
-						erpnext.utils.map_current_doc({
-							method: "erpnext.selling.doctype.sales_order.sales_order.make_delivery_note",
-							source_doctype: "Sales Order",
-							target: me.frm,
-							setters: {
-								customer: me.frm.doc.customer,
-							},
-							get_query_filters: {
-								docstatus: 1,
-								status: ["not in", ["Closed", "On Hold"]],
-								per_delivered: ["<", 99.99],
-								company: me.frm.doc.company,
-								project: me.frm.doc.project || undefined,
-							}
-						})
-					}, __("Get Items From"));
-			}
+					})
+				},
+				__("Get Items From")
+			);
 		}
 
 		if (!doc.is_return && doc.status!="Closed") {
-			if(doc.docstatus == 1) {
+			if (doc.docstatus == 1 && frappe.model.can_create("Shipment")) {
 				this.frm.add_custom_button(__('Shipment'), function() {
 					me.make_shipment() }, __('Create'));
 			}
 
-			if(flt(doc.per_installed, 2) < 100 && doc.docstatus==1)
-				this.frm.add_custom_button(__('Installation Note'), function() {
-					me.make_installation_note() }, __('Create'));
+			if (
+				flt(doc.per_installed, 2) < 100
+				&& doc.docstatus==1
+				&& frappe.model.can_create("Installation Note")
+			) {
+				this.frm.add_custom_button(
+					__('Installation Note'),
+					function() {
+						me.make_installation_note()
+					},
+					__('Create')
+				);
+			}
 
-			if (doc.docstatus==1) {
+			if (doc.docstatus==1 && this.frm.has_perm("create")) {
 				this.frm.add_custom_button(__('Sales Return'), function() {
 					me.make_sales_return() }, __('Create'));
 			}
 
-			if (doc.docstatus==1) {
+			if (doc.docstatus==1 && frappe.model.can_create("Delivery Trip")) {
 				this.frm.add_custom_button(__('Delivery Trip'), function() {
 					me.make_delivery_trip() }, __('Create'));
 			}
 
-			if(doc.docstatus==0 && !doc.__islocal) {
-				this.frm.add_custom_button(__('Packing Slip'), function() {
-					frappe.model.open_mapped_doc({
-						method: "erpnext.stock.doctype.delivery_note.delivery_note.make_packing_slip",
-						frm: me.frm
-					}) }, __('Create'));
+			if (
+				doc.docstatus==0
+				&& !doc.__islocal
+				&& frappe.model.can_create("Packing Slip")
+				&& (doc.__onload && doc.__onload.has_unpacked_items)
+			) {
+				this.frm.add_custom_button(
+					__('Packing Slip'),
+					function() {
+						frappe.model.open_mapped_doc({
+							method: "erpnext.stock.doctype.delivery_note.delivery_note.make_packing_slip",
+							frm: me.frm
+						});
+					},
+					__('Create')
+				);
 			}
 
 			if (!doc.__islocal && doc.docstatus==1) {
@@ -208,7 +239,13 @@ erpnext.stock.DeliveryNoteController = erpnext.selling.SellingController.extend(
 			}
 		}
 
-		if(doc.docstatus==1 && !doc.is_return && doc.status!="Closed" && flt(doc.per_billed) < 100) {
+		if(
+			doc.docstatus==1
+			&& !doc.is_return
+			&& doc.status!="Closed"
+			&& flt(doc.per_billed) < 100
+			&& frappe.model.can_create("Sales Invoice")
+		) {
 			// show Make Invoice button only if Delivery Note is not created from Sales Invoice
 			var from_sales_invoice = false;
 			from_sales_invoice = me.frm.doc.items.some(function(item) {
@@ -227,69 +264,74 @@ erpnext.stock.DeliveryNoteController = erpnext.selling.SellingController.extend(
 		}
 		erpnext.stock.delivery_note.set_print_hide(doc, dt, dn);
 
-		if(doc.docstatus==1 && !doc.is_return && !doc.auto_repeat) {
+		if(
+			doc.docstatus==1
+			&& !doc.is_return
+			&& !doc.auto_repeat
+			&& frappe.model.can_create("Auto Repeat")
+		) {
 			cur_frm.add_custom_button(__('Subscription'), function() {
 				erpnext.utils.make_subscription(doc.doctype, doc.name)
 			}, __('Create'))
 		}
-	},
+	}
 
-	make_shipment: function() {
+	make_shipment() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.delivery_note.delivery_note.make_shipment",
 			frm: this.frm
 		})
-	},
+	}
 
-	make_sales_invoice: function() {
+	make_sales_invoice() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.delivery_note.delivery_note.make_sales_invoice",
 			frm: this.frm
 		})
-	},
+	}
 
-	make_installation_note: function() {
+	make_installation_note() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.delivery_note.delivery_note.make_installation_note",
 			frm: this.frm
 		});
-	},
+	}
 
-	make_sales_return: function() {
+	make_sales_return() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.delivery_note.delivery_note.make_sales_return",
 			frm: this.frm
 		})
-	},
+	}
 
-	make_delivery_trip: function() {
+	make_delivery_trip() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.delivery_note.delivery_note.make_delivery_trip",
 			frm: cur_frm
 		})
-	},
+	}
 
-	tc_name: function() {
+	tc_name() {
 		this.get_terms();
-	},
+	}
 
-	items_on_form_rendered: function(doc, grid_row) {
+	items_on_form_rendered(doc, grid_row) {
 		erpnext.setup_serial_or_batch_no();
-	},
+	}
 
-	packed_items_on_form_rendered: function(doc, grid_row) {
+	packed_items_on_form_rendered(doc, grid_row) {
 		erpnext.setup_serial_or_batch_no();
-	},
+	}
 
-	close_delivery_note: function(doc){
+	close_delivery_note(doc){
 		this.update_status("Closed")
-	},
+	}
 
-	reopen_delivery_note : function() {
+	reopen_delivery_note() {
 		this.update_status("Submitted")
-	},
+	}
 
-	update_status: function(status) {
+	update_status(status) {
 		var me = this;
 		frappe.ui.form.is_saving = true;
 		frappe.call({
@@ -303,10 +345,10 @@ erpnext.stock.DeliveryNoteController = erpnext.selling.SellingController.extend(
 				frappe.ui.form.is_saving = false;
 			}
 		})
-	},
-});
+	}
+};
 
-$.extend(cur_frm.cscript, new erpnext.stock.DeliveryNoteController({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.stock.DeliveryNoteController({frm: cur_frm}));
 
 frappe.ui.form.on('Delivery Note', {
 	setup: function(frm) {

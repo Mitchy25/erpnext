@@ -33,7 +33,7 @@ class POSClosingEntry(StatusUpdater):
 		for key, value in pos_occurences.items():
 			if len(value) > 1:
 				error_list.append(
-					_("{} is added multiple times on rows: {}".format(frappe.bold(key), frappe.bold(value)))
+					_("{0} is added multiple times on rows: {1}").format(frappe.bold(key), frappe.bold(value))
 				)
 
 		if error_list:
@@ -201,7 +201,11 @@ def make_closing_entry_from_opening(opening_entry):
 			else:
 				payments.append(
 					frappe._dict(
-						{"mode_of_payment": p.mode_of_payment, "opening_amount": 0, "expected_amount": p.amount}
+						{
+							"mode_of_payment": p.mode_of_payment,
+							"opening_amount": 0,
+							"expected_amount": p.amount,
+						}
 					)
 				)
 

@@ -27,7 +27,7 @@ class BankClearance(Document):
 			condition = "and (clearance_date IS NULL or clearance_date='0000-00-00')"
 
 		journal_entries = frappe.db.sql(
-			"""
+			f"""
 			select
 				"Journal Entry" as payment_document, t1.name as payment_entry,
 				t1.cheque_no as cheque_number, t1.cheque_date,
@@ -41,9 +41,7 @@ class BankClearance(Document):
 				and ifnull(t1.is_opening, 'No') = 'No' {condition}
 			group by t2.account, t1.name
 			order by t1.posting_date ASC, t1.name DESC
-		""".format(
-				condition=condition
-			),
+		""",
 			{"account": self.account, "from": self.from_date, "to": self.to_date},
 			as_dict=1,
 		)
@@ -52,7 +50,7 @@ class BankClearance(Document):
 			condition += "and bank_account = %(bank_account)s"
 
 		payment_entries = frappe.db.sql(
-			"""
+			f"""
 			select
 				"Payment Entry" as payment_document, name as payment_entry,
 				reference_no as cheque_number, reference_date as cheque_date,
@@ -67,9 +65,7 @@ class BankClearance(Document):
 				{condition}
 			order by
 				posting_date ASC, name DESC
-		""".format(
-				condition=condition
-			),
+		""",
 			{
 				"account": self.account,
 				"from": self.from_date,
@@ -81,7 +77,7 @@ class BankClearance(Document):
 
 		loan_disbursement = frappe.qb.DocType("Loan Disbursement")
 
-		loan_disbursements = (
+		query = (
 			frappe.qb.from_(loan_disbursement)
 			.select(
 				ConstantColumn("Loan Disbursement").as_("payment_document"),
@@ -90,21 +86,26 @@ class BankClearance(Document):
 				ConstantColumn(0).as_("debit"),
 				loan_disbursement.reference_number.as_("cheque_number"),
 				loan_disbursement.reference_date.as_("cheque_date"),
+				loan_disbursement.clearance_date.as_("clearance_date"),
 				loan_disbursement.disbursement_date.as_("posting_date"),
 				loan_disbursement.applicant.as_("against_account"),
 			)
 			.where(loan_disbursement.docstatus == 1)
 			.where(loan_disbursement.disbursement_date >= self.from_date)
 			.where(loan_disbursement.disbursement_date <= self.to_date)
-			.where(loan_disbursement.clearance_date.isnull())
 			.where(loan_disbursement.disbursement_account.isin([self.bank_account, self.account]))
 			.orderby(loan_disbursement.disbursement_date)
-			.orderby(loan_disbursement.name, frappe.qb.desc)
-		).run(as_dict=1)
+			.orderby(loan_disbursement.name, order=frappe.qb.desc)
+		)
+
+		if not self.include_reconciled_entries:
+			query = query.where(loan_disbursement.clearance_date.isnull())
+
+		loan_disbursements = query.run(as_dict=1)
 
 		loan_repayment = frappe.qb.DocType("Loan Repayment")
 
-		loan_repayments = (
+		query = (
 			frappe.qb.from_(loan_repayment)
 			.select(
 				ConstantColumn("Loan Repayment").as_("payment_document"),
@@ -113,18 +114,25 @@ class BankClearance(Document):
 				ConstantColumn(0).as_("credit"),
 				loan_repayment.reference_number.as_("cheque_number"),
 				loan_repayment.reference_date.as_("cheque_date"),
+				loan_repayment.clearance_date.as_("clearance_date"),
 				loan_repayment.applicant.as_("against_account"),
 				loan_repayment.posting_date,
 			)
 			.where(loan_repayment.docstatus == 1)
-			.where(loan_repayment.clearance_date.isnull())
-			.where(loan_repayment.repay_from_salary == 0)
 			.where(loan_repayment.posting_date >= self.from_date)
 			.where(loan_repayment.posting_date <= self.to_date)
 			.where(loan_repayment.payment_account.isin([self.bank_account, self.account]))
-			.orderby(loan_repayment.posting_date)
-			.orderby(loan_repayment.name, frappe.qb.desc)
-		).run(as_dict=1)
+		)
+
+		if not self.include_reconciled_entries:
+			query = query.where(loan_repayment.clearance_date.isnull())
+
+		if frappe.db.has_column("Loan Repayment", "repay_from_salary"):
+			query = query.where(loan_repayment.repay_from_salary == 0)
+
+		query = query.orderby(loan_repayment.posting_date).orderby(loan_repayment.name, order=frappe.qb.desc)
+
+		loan_repayments = query.run(as_dict=True)
 
 		pos_sales_invoices, pos_purchase_invoices = [], []
 		if self.include_pos_transactions:
@@ -173,7 +181,6 @@ class BankClearance(Document):
 		)
 
 		self.set("payment_entries", [])
-		self.total_amount = 0.0
 		default_currency = erpnext.get_default_currency()
 
 		for d in entries:
@@ -192,7 +199,6 @@ class BankClearance(Document):
 			d.pop("debit")
 			d.pop("account_currency")
 			row.update(d)
-			self.total_amount += flt(amount)
 
 	@frappe.whitelist()
 	def update_clearance_date(self):

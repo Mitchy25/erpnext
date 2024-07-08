@@ -8,59 +8,38 @@ import frappe
 from frappe import _
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 from frappe.model.document import Document
-from frappe.utils import cint, nowdate
+from frappe.utils import cint
 
 from erpnext.stock.utils import check_pending_reposting
 
 
 class AccountsSettings(Document):
-	@frappe.whitelist()
-	def validate_access_key(self):
-		if self.service_provider == "exchangerate.host":
-			if not self.access_key:
-				frappe.throw(_("Access Key is required for exchangerate.host"))
-			else:
-				import requests
-
-				# Validate access key
-				api_url = "https://api.exchangerate.host/convert"
-				response = requests.get(
-					api_url,
-					params={
-						"access_key": self.access_key,
-						"transaction_date": nowdate(),
-						"amount": 1,
-						"from": "USD",
-						"to": "INR",
-					},
-				)
-				# exchangerate.host return 200 for all requests. Can't rely on it to raise exception
-				if not response.json()["success"]:
-					frappe.throw(
-						title=_("Service Provider Error"),
-						msg=_("Currency exchange rate serivce provider: {0} returned Error. {1}").format(
-							frappe.bold(self.service_provider), response.json()
-						),
-						exc=frappe.ValidationError,
-					)
-				frappe.msgprint(msg=_("Success"), title=_("Access Key Validation"))
-
-	def on_update(self):
-		frappe.clear_cache()
-
 	def validate(self):
-		frappe.db.set_default(
-			"add_taxes_from_item_tax_template", self.get("add_taxes_from_item_tax_template", 0)
-		)
+		old_doc = self.get_doc_before_save()
+		clear_cache = False
 
-		frappe.db.set_default(
-			"enable_common_party_accounting", self.get("enable_common_party_accounting", 0)
-		)
+		if old_doc.add_taxes_from_item_tax_template != self.add_taxes_from_item_tax_template:
+			frappe.db.set_default(
+				"add_taxes_from_item_tax_template", self.get("add_taxes_from_item_tax_template", 0)
+			)
+			clear_cache = True
+
+		if old_doc.enable_common_party_accounting != self.enable_common_party_accounting:
+			frappe.db.set_default(
+				"enable_common_party_accounting", self.get("enable_common_party_accounting", 0)
+			)
+			clear_cache = True
 
 		self.validate_stale_days()
-		self.enable_payment_schedule_in_print()
-		self.toggle_discount_accounting_fields()
-		self.validate_pending_reposts()
+
+		if old_doc.show_payment_schedule_in_print != self.show_payment_schedule_in_print:
+			self.enable_payment_schedule_in_print()
+
+		if old_doc.acc_frozen_upto != self.acc_frozen_upto:
+			self.validate_pending_reposts()
+
+		if clear_cache:
+			frappe.clear_cache()
 
 	def validate_stale_days(self):
 		if not self.allow_stale and cint(self.stale_days) <= 0:
@@ -82,74 +61,6 @@ class AccountsSettings(Document):
 				"Check",
 				validate_fields_for_doctype=False,
 			)
-
-	def toggle_discount_accounting_fields(self):
-		enable_discount_accounting = cint(self.enable_discount_accounting)
-
-		for doctype in ["Sales Invoice Item", "Purchase Invoice Item"]:
-			make_property_setter(
-				doctype,
-				"discount_account",
-				"hidden",
-				not (enable_discount_accounting),
-				"Check",
-				validate_fields_for_doctype=False,
-			)
-			if enable_discount_accounting:
-				make_property_setter(
-					doctype,
-					"discount_account",
-					"mandatory_depends_on",
-					"eval: doc.discount_amount",
-					"Code",
-					validate_fields_for_doctype=False,
-				)
-			else:
-				make_property_setter(
-					doctype,
-					"discount_account",
-					"mandatory_depends_on",
-					"",
-					"Code",
-					validate_fields_for_doctype=False,
-				)
-
-		for doctype in ["Sales Invoice", "Purchase Invoice"]:
-			make_property_setter(
-				doctype,
-				"additional_discount_account",
-				"hidden",
-				not (enable_discount_accounting),
-				"Check",
-				validate_fields_for_doctype=False,
-			)
-			if enable_discount_accounting:
-				make_property_setter(
-					doctype,
-					"additional_discount_account",
-					"mandatory_depends_on",
-					"eval: doc.discount_amount",
-					"Code",
-					validate_fields_for_doctype=False,
-				)
-			else:
-				make_property_setter(
-					doctype,
-					"additional_discount_account",
-					"mandatory_depends_on",
-					"",
-					"Code",
-					validate_fields_for_doctype=False,
-				)
-
-		make_property_setter(
-			"Item",
-			"default_discount_account",
-			"hidden",
-			not (enable_discount_accounting),
-			"Check",
-			validate_fields_for_doctype=False,
-		)
 
 	def validate_pending_reposts(self):
 		if self.acc_frozen_upto:

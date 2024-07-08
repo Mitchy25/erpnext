@@ -13,9 +13,7 @@ def execute():
 	)
 
 	frappe.reload_doctype("Opportunity")
-	frappe.db.sql(
-		""" UPDATE `tabOpportunity` set party_name = lead WHERE opportunity_from = 'Lead' """
-	)
+	frappe.db.sql(""" UPDATE `tabOpportunity` set party_name = lead WHERE opportunity_from = 'Lead' """)
 	frappe.db.sql(
 		""" UPDATE `tabOpportunity` set party_name = customer WHERE opportunity_from = 'Customer' """
 	)

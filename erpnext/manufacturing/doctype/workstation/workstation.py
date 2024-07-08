@@ -32,13 +32,41 @@ class OverlapError(frappe.ValidationError):
 
 
 class Workstation(Document):
-	def validate(self):
+	def before_save(self):
+		self.set_data_based_on_workstation_type()
+		self.set_hour_rate()
+
+	def set_hour_rate(self):
 		self.hour_rate = (
 			flt(self.hour_rate_labour)
 			+ flt(self.hour_rate_electricity)
 			+ flt(self.hour_rate_consumable)
 			+ flt(self.hour_rate_rent)
 		)
+
+	@frappe.whitelist()
+	def set_data_based_on_workstation_type(self):
+		if self.workstation_type:
+			fields = [
+				"hour_rate_labour",
+				"hour_rate_electricity",
+				"hour_rate_consumable",
+				"hour_rate_rent",
+				"hour_rate",
+				"description",
+			]
+
+			data = frappe.get_cached_value("Workstation Type", self.workstation_type, fields, as_dict=True)
+
+			if not data:
+				return
+
+			for field in fields:
+				if self.get(field):
+					continue
+
+				if value := data.get(field):
+					self.set(field, value)
 
 	def on_update(self):
 		self.validate_overlap_for_operation_timings()
@@ -60,7 +88,8 @@ class Workstation(Document):
 
 			if existing:
 				frappe.throw(
-					_("Row #{0}: Timings conflicts with row {1}").format(d.idx, comma_and(existing)), OverlapError
+					_("Row #{0}: Timings conflicts with row {1}").format(d.idx, comma_and(existing)),
+					OverlapError,
 				)
 
 	def update_bom_operation(self):
@@ -86,7 +115,7 @@ class Workstation(Document):
 
 		if schedule_date in tuple(get_holidays(self.holiday_list)):
 			schedule_date = add_days(schedule_date, 1)
-			self.validate_workstation_holiday(schedule_date, skip_holiday_list_check=True)
+			return self.validate_workstation_holiday(schedule_date, skip_holiday_list_check=True)
 
 		return schedule_date
 
@@ -145,7 +174,9 @@ def check_workstation_for_holiday(workstation, from_datetime, to_datetime):
 
 		if applicable_holidays:
 			frappe.throw(
-				_("Workstation is closed on the following dates as per Holiday List: {0}").format(holiday_list)
+				_("Workstation is closed on the following dates as per Holiday List: {0}").format(
+					holiday_list
+				)
 				+ "\n"
 				+ "\n".join(applicable_holidays),
 				WorkstationHolidayError,

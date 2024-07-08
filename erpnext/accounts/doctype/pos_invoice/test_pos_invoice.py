@@ -338,9 +338,7 @@ class TestPOSInvoice(unittest.TestCase):
 		)
 
 		pos.set("payments", [])
-		pos.append(
-			"payments", {"mode_of_payment": "Bank Draft", "account": "_Test Bank - _TC", "amount": 50}
-		)
+		pos.append("payments", {"mode_of_payment": "Bank Draft", "account": "_Test Bank - _TC", "amount": 50})
 		pos.append(
 			"payments", {"mode_of_payment": "Cash", "account": "Cash - _TC", "amount": 60, "default": 1}
 		)
@@ -464,6 +462,37 @@ class TestPOSInvoice(unittest.TestCase):
 		pos2.insert()
 		self.assertRaises(frappe.ValidationError, pos2.submit)
 
+	def test_pos_invoice_with_duplicate_serial_no(self):
+		from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+		from erpnext.stock.doctype.stock_entry.test_stock_entry import make_serialized_item
+
+		se = make_serialized_item(
+			company="_Test Company",
+			target_warehouse="Stores - _TC",
+			cost_center="Main - _TC",
+			expense_account="Cost of Goods Sold - _TC",
+		)
+
+		serial_nos = get_serial_nos(se.get("items")[0].serial_no)
+
+		pos = create_pos_invoice(
+			company="_Test Company",
+			debit_to="Debtors - _TC",
+			account_for_change_amount="Cash - _TC",
+			warehouse="Stores - _TC",
+			income_account="Sales - _TC",
+			expense_account="Cost of Goods Sold - _TC",
+			cost_center="Main - _TC",
+			item=se.get("items")[0].item_code,
+			rate=1000,
+			qty=2,
+			do_not_save=1,
+		)
+
+		pos.get("items")[0].has_serial_no = 1
+		pos.get("items")[0].serial_no = serial_nos[0] + "\n" + serial_nos[0]
+		self.assertRaises(frappe.ValidationError, pos.submit)
+
 	def test_invalid_serial_no_validation(self):
 		from erpnext.stock.doctype.stock_entry.test_stock_entry import make_serialized_item
 
@@ -563,9 +592,7 @@ class TestPOSInvoice(unittest.TestCase):
 		from erpnext.accounts.doctype.loyalty_program.test_loyalty_program import create_records
 
 		create_records()
-		frappe.db.set_value(
-			"Customer", "Test Loyalty Customer", "loyalty_program", "Test Single Loyalty"
-		)
+		frappe.db.set_value("Customer", "Test Loyalty Customer", "loyalty_program", "Test Single Loyalty")
 		before_lp_details = get_loyalty_program_details_with_points(
 			"Test Loyalty Customer", company="_Test Company", loyalty_program="Test Single Loyalty"
 		)
@@ -808,19 +835,19 @@ class TestPOSInvoice(unittest.TestCase):
 			pos_inv = create_pos_invoice(qty=1, do_not_submit=1)
 			pos_inv.items[0].rate = 300
 			pos_inv.save()
-			self.assertEquals(pos_inv.items[0].discount_percentage, 10)
+			self.assertEqual(pos_inv.items[0].discount_percentage, 10)
 			# rate shouldn't change
-			self.assertEquals(pos_inv.items[0].rate, 405)
+			self.assertEqual(pos_inv.items[0].rate, 405)
 
 			pos_inv.ignore_pricing_rule = 1
 			pos_inv.save()
-			self.assertEquals(pos_inv.ignore_pricing_rule, 1)
+			self.assertEqual(pos_inv.ignore_pricing_rule, 1)
 			# rate should reset since pricing rules are ignored
-			self.assertEquals(pos_inv.items[0].rate, 450)
+			self.assertEqual(pos_inv.items[0].rate, 450)
 
 			pos_inv.items[0].rate = 300
 			pos_inv.save()
-			self.assertEquals(pos_inv.items[0].rate, 300)
+			self.assertEqual(pos_inv.items[0].rate, 300)
 
 		finally:
 			item_price.delete()
@@ -843,7 +870,7 @@ class TestPOSInvoice(unittest.TestCase):
 			dn = create_delivery_note(item_code="_Test Serialized Item With Series", serial_no=serial_no)
 
 			delivery_document_no = frappe.db.get_value("Serial No", serial_no, "delivery_document_no")
-			self.assertEquals(delivery_document_no, dn.name)
+			self.assertEqual(delivery_document_no, dn.name)
 
 			init_user_and_profile()
 

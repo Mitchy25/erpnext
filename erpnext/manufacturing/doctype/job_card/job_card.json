@@ -27,14 +27,18 @@
   "operation",
   "operation_row_number",
   "column_break_18",
+  "workstation_type",
   "workstation",
   "employee",
   "section_break_21",
   "sub_operations",
   "timing_detail",
+  "expected_start_date",
+  "expected_end_date",
   "time_logs",
   "section_break_13",
   "total_completed_qty",
+  "process_loss_qty",
   "column_break_15",
   "total_time_in_mins",
   "section_break_8",
@@ -416,11 +420,33 @@
    "fieldtype": "Link",
    "label": "Quality Inspection Template",
    "options": "Quality Inspection Template"
+  },
+  {
+   "fieldname": "workstation_type",
+   "fieldtype": "Link",
+   "label": "Workstation Type",
+   "options": "Workstation Type"
+  },
+  {
+   "fieldname": "expected_start_date",
+   "fieldtype": "Datetime",
+   "label": "Expected Start Date"
+  },
+  {
+   "fieldname": "expected_end_date",
+   "fieldtype": "Datetime",
+   "label": "Expected End Date"
+  },
+  {
+   "fieldname": "process_loss_qty",
+   "fieldtype": "Float",
+   "label": "Process Loss Qty",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2023-05-22 23:26:57.589331",
+ "modified": "2023-06-09 12:04:55.534264",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Job Card",
@@ -475,6 +501,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "operation",
  "track_changes": 1
 }

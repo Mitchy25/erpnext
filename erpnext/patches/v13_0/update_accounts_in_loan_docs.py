@@ -2,11 +2,6 @@ import frappe
 
 
 def execute():
-
-	frappe.reload_doc("loan_management", "doctype", "loan")
-	frappe.reload_doc("loan_management", "doctype", "loan_disbursement")
-	frappe.reload_doc("loan_management", "doctype", "loan_repayment")
-
 	ld = frappe.qb.DocType("Loan Disbursement").as_("ld")
 	lr = frappe.qb.DocType("Loan Repayment").as_("lr")
 	loan = frappe.qb.DocType("Loan")
@@ -19,6 +14,4 @@ def execute():
 		lr.payment_account, loan.payment_account
 	).set(lr.loan_account, loan.loan_account).set(
 		lr.penalty_income_account, loan.penalty_income_account
-	).where(
-		lr.docstatus < 2
-	).run()
+	).where(lr.docstatus < 2).run()

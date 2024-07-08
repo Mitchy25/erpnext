@@ -4,12 +4,13 @@
 import frappe
 from frappe import _, qb
 from frappe.query_builder import Column, functions
-from frappe.utils import add_days, date_diff, flt, get_first_day, get_last_day, rounded
+from frappe.utils import add_days, date_diff, flt, get_first_day, get_last_day, getdate, rounded
 
 from erpnext.accounts.report.financial_statements import get_period_list
+from erpnext.accounts.utils import get_fiscal_year
 
 
-class Deferred_Item(object):
+class Deferred_Item:
 	"""
 	Helper class for processing items with deferred revenue/expense
 	"""
@@ -151,13 +152,11 @@ class Deferred_Item(object):
 					if posting.posted == "posted":
 						actual += self.get_amount(posting)
 
-			self.period_total.append(
-				frappe._dict({"key": period.key, "total": period_sum, "actual": actual})
-			)
+			self.period_total.append(frappe._dict({"key": period.key, "total": period_sum, "actual": actual}))
 		return self.period_total
 
 
-class Deferred_Invoice(object):
+class Deferred_Invoice:
 	def __init__(self, invoice, items, filters, period_list):
 		"""
 		Helper class for processing invoices with deferred revenue/expense items
@@ -193,7 +192,7 @@ class Deferred_Invoice(object):
 		for item in self.items:
 			item_total = item.calculate_item_revenue_expense_for_period()
 			# update invoice total
-			for idx, period in enumerate(self.period_list, 0):
+			for idx in range(len(self.period_list)):
 				self.period_total[idx].total += item_total[idx].total
 				self.period_total[idx].actual += item_total[idx].actual
 		return self.period_total
@@ -218,7 +217,7 @@ class Deferred_Invoice(object):
 		return ret_data
 
 
-class Deferred_Revenue_and_Expense_Report(object):
+class Deferred_Revenue_and_Expense_Report:
 	def __init__(self, filters=None):
 		"""
 		Initialize deferred revenue/expense report with user provided filters or system defaults, if none is provided
@@ -226,7 +225,7 @@ class Deferred_Revenue_and_Expense_Report(object):
 
 		# If no filters are provided, get user defaults
 		if not filters:
-			fiscal_year = frappe.get_doc("Fiscal Year", frappe.defaults.get_user_default("fiscal_year"))
+			fiscal_year = frappe.get_doc("Fiscal Year", get_fiscal_year(date=getdate()))
 			self.filters = frappe._dict(
 				{
 					"company": frappe.defaults.get_user_default("Company"),
@@ -347,7 +346,7 @@ class Deferred_Revenue_and_Expense_Report(object):
 		for inv in self.deferred_invoices:
 			inv_total = inv.calculate_invoice_revenue_expense_for_period()
 			# calculate total for whole report
-			for idx, period in enumerate(self.period_list, 0):
+			for idx in range(len(self.period_list)):
 				self.period_total[idx].total += inv_total[idx].total
 				self.period_total[idx].actual += inv_total[idx].actual
 
@@ -395,7 +394,7 @@ class Deferred_Revenue_and_Expense_Report(object):
 				"labels": [period.label for period in self.period_list],
 				"datasets": [
 					{
-						"name": "Actual Posting",
+						"name": _("Actual Posting"),
 						"chartType": "bar",
 						"values": [x.actual for x in self.period_total],
 					}
@@ -409,7 +408,7 @@ class Deferred_Revenue_and_Expense_Report(object):
 
 		if self.filters.with_upcoming_postings:
 			chart["data"]["datasets"].append(
-				{"name": "Expected", "chartType": "line", "values": [x.total for x in self.period_total]}
+				{"name": _("Expected"), "chartType": "line", "values": [x.total for x in self.period_total]}
 			)
 
 		return chart

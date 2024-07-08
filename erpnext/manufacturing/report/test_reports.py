@@ -1,5 +1,4 @@
 import unittest
-from typing import List, Tuple
 
 import frappe
 
@@ -13,7 +12,7 @@ DEFAULT_FILTERS = {
 }
 
 
-REPORT_FILTER_TEST_CASES: List[Tuple[ReportName, ReportFilters]] = [
+REPORT_FILTER_TEST_CASES: list[tuple[ReportName, ReportFilters]] = [
 	("BOM Explorer", {"bom": frappe.get_last_doc("BOM").name}),
 	("BOM Operations Time", {}),
 	("BOM Stock Calculated", {"bom": frappe.get_last_doc("BOM").name, "qty_to_make": 2}),
@@ -55,10 +54,11 @@ class TestManufacturingReports(unittest.TestCase):
 	def test_execute_all_manufacturing_reports(self):
 		"""Test that all script report in manufacturing modules are executable with supported filters"""
 		for report, filter in REPORT_FILTER_TEST_CASES:
-			execute_script_report(
-				report_name=report,
-				module="Manufacturing",
-				filters=filter,
-				default_filters=DEFAULT_FILTERS,
-				optional_filters=OPTIONAL_FILTERS if filter.get("_optional") else None,
-			)
+			with self.subTest(report=report):
+				execute_script_report(
+					report_name=report,
+					module="Manufacturing",
+					filters=filter,
+					default_filters=DEFAULT_FILTERS,
+					optional_filters=OPTIONAL_FILTERS if filter.get("_optional") else None,
+				)

@@ -3,11 +3,10 @@
 
 
 import frappe
-from six import iteritems
+
 
 
 def execute():
-
 	frappe.reload_doc("accounts", "doctype", "subscription")
 	frappe.reload_doc("accounts", "doctype", "subscription_invoice")
 	frappe.reload_doc("accounts", "doctype", "subscription_plan")
@@ -38,7 +37,7 @@ def execute():
 		"Based on price list": "Based On Price List",
 	}
 
-	for key, value in iteritems(price_determination_map):
+	for key, value in price_determination_map.items():
 		frappe.db.sql(
 			"""
 			UPDATE `tabSubscription Plan`

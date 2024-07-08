@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "barcode",
+  "has_item_scanned",
   "section_break_2",
   "item_code",
   "product_bundle",
@@ -68,6 +69,7 @@
   "item_tax_amount",
   "rm_supp_cost",
   "landed_cost_voucher_amount",
+  "rate_difference_with_purchase_invoice",
   "billed_amt",
   "warehouse_and_reference",
   "warehouse",
@@ -108,6 +110,7 @@
   "manufacturer_part_no",
   "accounting_details_section",
   "expense_account",
+  "wip_composite_asset",
   "column_break_102",
   "provisional_expense_account",
   "accounting_dimensions_section",
@@ -115,7 +118,9 @@
   "dimension_col_break",
   "cost_center",
   "section_break_80",
-  "page_break"
+  "page_break",
+  "sales_order",
+  "sales_order_item"
  ],
  "fields": [
   {
@@ -182,6 +187,7 @@
    "width": "300px"
   },
   {
+   "fetch_from": "item_code.image",
    "fieldname": "image",
    "fieldtype": "Attach",
    "hidden": 1,
@@ -255,7 +261,7 @@
    "width": "100px"
   },
   {
-   "fetch_from": "item_code.stock_uom",
+   "depends_on": "eval:doc.uom != doc.stock_uom",
    "fieldname": "stock_uom",
    "fieldtype": "Link",
    "label": "Stock UOM",
@@ -269,6 +275,7 @@
    "width": "100px"
   },
   {
+   "depends_on": "eval:doc.uom != doc.stock_uom",
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
    "label": "Conversion Factor",
@@ -494,6 +501,7 @@
   {
    "fieldname": "rejected_warehouse",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Rejected Warehouse",
    "no_copy": 1,
    "oldfieldname": "rejected_warehouse",
@@ -550,6 +558,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.uom != doc.stock_uom",
    "fieldname": "stock_qty",
    "fieldtype": "Float",
    "label": "Accepted Qty in Stock UOM",
@@ -645,16 +654,19 @@
    "print_hide": 1
   },
   {
+   "depends_on": "eval:parent.is_old_subcontracting_flow",
    "fieldname": "bom",
    "fieldtype": "Link",
    "label": "BOM",
    "no_copy": 1,
    "options": "BOM",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1,
+   "read_only_depends_on": "eval:!parent.is_old_subcontracting_flow"
   },
   {
    "default": "0",
-   "depends_on": "eval:parent.is_subcontracted == 'Yes'",
+   "depends_on": "eval:parent.is_subcontracted",
    "fieldname": "include_exploded_items",
    "fieldtype": "Check",
    "label": "Include Exploded Items",
@@ -855,7 +867,8 @@
    "label": "Purchase Receipt Item",
    "no_copy": 1,
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
@@ -880,7 +893,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "returned_qty",
+   "depends_on": "doc.returned_qty",
    "fieldname": "returned_qty",
    "fieldtype": "Float",
    "label": "Returned Qty in Stock UOM",
@@ -889,6 +902,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.uom != doc.stock_uom",
    "fieldname": "received_stock_qty",
    "fieldtype": "Float",
    "label": "Received Qty in Stock UOM",
@@ -911,10 +925,12 @@
    "label": "Delivery Note Item",
    "no_copy": 1,
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval: doc.margin_type || doc.discount_amount",
    "fieldname": "discount_and_margin_section",
    "fieldtype": "Section Break",
    "label": "Discount and Margin"
@@ -968,7 +984,8 @@
    "label": "Purchase Invoice Item",
    "no_copy": 1,
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "product_bundle",
@@ -991,15 +1008,58 @@
   {
    "fieldname": "column_break_102",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "depends_on": "barcode",
+   "fieldname": "has_item_scanned",
+   "fieldtype": "Check",
+   "label": "Has Item Scanned",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate_difference_with_purchase_invoice",
+   "fieldtype": "Currency",
+   "label": "Rate Difference with Purchase Invoice",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "wip_composite_asset",
+   "fieldtype": "Link",
+   "label": "WIP Composite Asset",
+   "options": "Asset"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "no_copy": 1,
+   "options": "Sales Order",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "sales_order_item",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Sales Order Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-03-14 15:44:16.683988",
+ "modified": "2023-12-25 22:32:09.801965",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt Item",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,

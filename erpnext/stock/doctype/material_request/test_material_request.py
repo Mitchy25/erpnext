@@ -8,8 +8,10 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import flt, today
+
 from erpnext.stock.doctype.item.test_item import create_item
 from erpnext.stock.doctype.material_request.material_request import (
+	make_in_transit_stock_entry,
 	make_purchase_order,
 	make_stock_entry,
 	make_supplier_quotation,
@@ -52,8 +54,28 @@ class TestMaterialRequest(FrappeTestCase):
 		mr.submit()
 		se = make_stock_entry(mr.name)
 
+		self.assertEqual(se.stock_entry_type, "Material Transfer")
+		self.assertEqual(se.purpose, "Material Transfer")
 		self.assertEqual(se.doctype, "Stock Entry")
 		self.assertEqual(len(se.get("items")), len(mr.get("items")))
+
+	def test_in_transit_make_stock_entry(self):
+		mr = frappe.copy_doc(test_records[0]).insert()
+
+		self.assertRaises(frappe.ValidationError, make_stock_entry, mr.name)
+
+		mr = frappe.get_doc("Material Request", mr.name)
+		mr.material_request_type = "Material Transfer"
+		mr.submit()
+
+		in_transit_warehouse = get_in_transit_warehouse(mr.company)
+		se = make_in_transit_stock_entry(mr.name, in_transit_warehouse)
+
+		self.assertEqual(se.stock_entry_type, "Material Transfer")
+		self.assertEqual(se.purpose, "Material Transfer")
+		self.assertEqual(se.doctype, "Stock Entry")
+		for row in se.get("items"):
+			self.assertEqual(row.t_warehouse, in_transit_warehouse)
 
 	def _insert_stock_entry(self, qty1, qty2, warehouse=None):
 		se = frappe.get_doc(
@@ -215,7 +237,7 @@ class TestMaterialRequest(FrappeTestCase):
 		po.load_from_db()
 		mr.update_status("Stopped")
 		self.assertRaises(frappe.InvalidStatusError, po.submit)
-		frappe.db.set(po, "docstatus", 1)
+		po.db_set("docstatus", 1)
 		self.assertRaises(frappe.InvalidStatusError, po.cancel)
 
 		# resubmit and check for per complete
@@ -589,6 +611,7 @@ class TestMaterialRequest(FrappeTestCase):
 		mr = frappe.copy_doc(test_records[0])
 		mr.material_request_type = "Material Issue"
 		mr.submit()
+		frappe.db.value_cache = {}
 
 		# testing bin value after material request is submitted
 		self.assertEqual(_get_requested_qty(), existing_requested_qty - 54.0)
@@ -721,9 +744,7 @@ class TestMaterialRequest(FrappeTestCase):
 		self.assertEqual(mr.per_ordered, 100)
 
 	def test_customer_provided_parts_mr(self):
-		create_item(
-			"CUST-0987", is_customer_provided_item=1, customer="_Test Customer", is_purchase_item=0
-		)
+		create_item("CUST-0987", is_customer_provided_item=1, customer="_Test Customer", is_purchase_item=0)
 		existing_requested_qty = self._get_requested_qty("_Test Customer", "_Test Warehouse - _TC")
 
 		mr = make_material_request(item_code="CUST-0987", material_request_type="Customer Provided")
@@ -738,6 +759,91 @@ class TestMaterialRequest(FrappeTestCase):
 
 		self.assertEqual(mr.per_ordered, 100)
 		self.assertEqual(existing_requested_qty, current_requested_qty)
+
+	def test_auto_email_users_with_company_user_permissions(self):
+		from erpnext.stock.reorder_item import get_email_list
+
+		comapnywise_users = {
+			"_Test Company": "test_auto_email_@example.com",
+			"_Test Company 1": "test_auto_email_1@example.com",
+		}
+
+		permissions = []
+
+		for company, user in comapnywise_users.items():
+			if not frappe.db.exists("User", user):
+				frappe.get_doc(
+					{
+						"doctype": "User",
+						"email": user,
+						"first_name": user,
+						"send_notifications": 0,
+						"enabled": 1,
+						"user_type": "System User",
+						"roles": [{"role": "Purchase Manager"}],
+					}
+				).insert(ignore_permissions=True)
+
+			if not frappe.db.exists(
+				"User Permission", {"user": user, "allow": "Company", "for_value": company}
+			):
+				perm_doc = frappe.get_doc(
+					{
+						"doctype": "User Permission",
+						"user": user,
+						"allow": "Company",
+						"for_value": company,
+						"apply_to_all_doctypes": 1,
+					}
+				).insert(ignore_permissions=True)
+
+				permissions.append(perm_doc)
+
+		comapnywise_mr_list = frappe._dict({})
+		mr1 = make_material_request()
+		comapnywise_mr_list.setdefault(mr1.company, []).append(mr1.name)
+
+		mr2 = make_material_request(
+			company="_Test Company 1", warehouse="Stores - _TC1", cost_center="Main - _TC1"
+		)
+		comapnywise_mr_list.setdefault(mr2.company, []).append(mr2.name)
+
+		for company, _mr_list in comapnywise_mr_list.items():
+			emails = get_email_list(company)
+
+			self.assertTrue(comapnywise_users[company] in emails)
+
+		for perm in permissions:
+			perm.delete()
+
+
+def get_in_transit_warehouse(company):
+	if not frappe.db.exists("Warehouse Type", "Transit"):
+		frappe.get_doc(
+			{
+				"doctype": "Warehouse Type",
+				"name": "Transit",
+			}
+		).insert()
+
+	in_transit_warehouse = frappe.db.exists("Warehouse", {"warehouse_type": "Transit", "company": company})
+
+	if not in_transit_warehouse:
+		in_transit_warehouse = (
+			frappe.get_doc(
+				{
+					"doctype": "Warehouse",
+					"warehouse_name": "Transit",
+					"warehouse_type": "Transit",
+					"company": company,
+				}
+			)
+			.insert()
+			.name
+		)
+
+	return in_transit_warehouse
+
 
 def make_material_request(**args):
 	args = frappe._dict(args)

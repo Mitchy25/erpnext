@@ -1,5 +1,5 @@
 import frappe
-from frappe.utils import cint
+from frappe.utils import cint, flt
 
 from erpnext.e_commerce.doctype.e_commerce_settings.e_commerce_settings import (
 	get_shopping_cart_settings,
@@ -35,7 +35,7 @@ def get_item_codes_by_attributes(attribute_filters, template_item_code=None):
 		else:
 			variant_of_query = ""
 
-		query = """
+		query = f"""
 			SELECT
 				t1.parent
 			FROM
@@ -58,11 +58,9 @@ def get_item_codes_by_attributes(attribute_filters, template_item_code=None):
 				t1.parent
 			ORDER BY
 				NULL
-		""".format(
-			attribute_query=attribute_query, variant_of_query=variant_of_query
-		)
+		"""
 
-		item_codes = set([r[0] for r in frappe.db.sql(query, query_values)])
+		item_codes = set([r[0] for r in frappe.db.sql(query, query_values)])  # nosemgrep
 		items.append(item_codes)
 
 	res = list(set.intersection(*items))
@@ -82,7 +80,7 @@ def get_attributes_and_values(item_code):
 	attribute_list = [a.attribute for a in attributes]
 
 	valid_options = {}
-	for item_code, attribute, attribute_value in item_variants_data:
+	for _, attribute, attribute_value in item_variants_data:
 		if attribute in attribute_list:
 			valid_options.setdefault(attribute, set()).add(attribute_value)
 
@@ -104,6 +102,8 @@ def get_attributes_and_values(item_code):
 
 @frappe.whitelist(allow_guest=True)
 def get_next_attribute_and_values(item_code, selected_attributes):
+	from erpnext.stock.doctype.warehouse.warehouse import get_child_warehouses
+
 	"""Find the count of Items that match the selected attributes.
 	Also, find the attribute values that are not applicable for further searching.
 	If less than equal to 10 items are found, return item_codes of those items.
@@ -162,9 +162,32 @@ def get_next_attribute_and_values(item_code, selected_attributes):
 		product_info = get_item_variant_price_dict(exact_match[0], cart_settings)
 
 		if product_info:
+			product_info["is_stock_item"] = frappe.get_cached_value("Item", exact_match[0], "is_stock_item")
 			product_info["allow_items_not_in_stock"] = cint(cart_settings.allow_items_not_in_stock)
 	else:
 		product_info = None
+
+	product_id = ""
+	warehouse = ""
+	if exact_match or filtered_items:
+		if exact_match and len(exact_match) == 1:
+			product_id = exact_match[0]
+		elif filtered_items_count == 1:
+			product_id = next(iter(filtered_items))
+
+	if product_id:
+		warehouse = frappe.get_cached_value("Website Item", {"item_code": product_id}, "website_warehouse")
+
+	available_qty = 0.0
+	if warehouse and frappe.get_cached_value("Warehouse", warehouse, "is_group") == 1:
+		warehouses = get_child_warehouses(warehouse)
+	else:
+		warehouses = [warehouse] if warehouse else []
+
+	for warehouse in warehouses:
+		available_qty += flt(
+			frappe.db.get_value("Bin", {"item_code": product_id, "warehouse": warehouse}, "actual_qty")
+		)
 
 	return {
 		"next_attribute": next_attribute,
@@ -173,6 +196,7 @@ def get_next_attribute_and_values(item_code, selected_attributes):
 		"filtered_items": filtered_items if filtered_items_count < 10 else [],
 		"exact_match": exact_match,
 		"product_info": product_info,
+		"available_qty": available_qty,
 	}
 
 

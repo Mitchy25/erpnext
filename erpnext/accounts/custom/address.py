@@ -10,21 +10,27 @@ from frappe.contacts.doctype.address.address import (
 class ERPNextAddress(Address):
 	def validate(self):
 		self.validate_reference()
-		super(ERPNextAddress, self).validate()
+		self.update_compnay_address()
+		super().validate()
 
 	def link_address(self):
 		"""Link address based on owner"""
 		if self.is_your_company_address:
 			return
 
-		return super(ERPNextAddress, self).link_address()
+		return super().link_address()
+
+	def update_compnay_address(self):
+		for link in self.get("links"):
+			if link.link_doctype == "Company":
+				self.is_your_company_address = 1
 
 	def validate_reference(self):
-		if self.is_your_company_address and not [
-			row for row in self.links if row.link_doctype == "Company"
-		]:
+		if self.is_your_company_address and not [row for row in self.links if row.link_doctype == "Company"]:
 			frappe.throw(
-				_("Address needs to be linked to a Company. Please add a row for Company in the Links table."),
+				_(
+					"Address needs to be linked to a Company. Please add a row for Company in the Links table."
+				),
 				title=_("Company Not Linked"),
 			)
 

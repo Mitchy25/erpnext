@@ -5,7 +5,6 @@
 import frappe
 from frappe import _, scrub
 from frappe.utils import add_days, add_to_date, flt, getdate
-from six import iteritems
 
 from erpnext.accounts.utils import get_fiscal_year
 
@@ -14,7 +13,7 @@ def execute(filters=None):
 	return Analytics(filters).run()
 
 
-class Analytics(object):
+class Analytics:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.date_field = (
@@ -72,20 +71,15 @@ class Analytics(object):
 			)
 
 		if self.filters.tree_type == "Item":
-			self.columns.append({
-				"label": _("UOM"),
-				"fieldname": 'stock_uom',
-				"fieldtype": "Link",
-				"options": "UOM",
-				"width": 100
-			})
-			self.columns.append({
-				"label": _("Item Brand"),
-				"fieldname": 'item_brand',
-				"fieldtype": "Link",
-				"options": "Brand",
-				"width": 100
-			})
+			self.columns.append(
+				{
+					"label": _("UOM"),
+					"fieldname": "stock_uom",
+					"fieldtype": "Link",
+					"options": "UOM",
+					"width": 100,
+				}
+			)
 
 		for end_date in self.periodic_daterange:
 			period = self.get_period(end_date)
@@ -93,9 +87,7 @@ class Analytics(object):
 				{"label": _(period), "fieldname": scrub(period), "fieldtype": "Float", "width": 120}
 			)
 
-		self.columns.append(
-			{"label": _("Total"), "fieldname": "total", "fieldtype": "Float", "width": 120}
-		)
+		self.columns.append({"label": _("Total"), "fieldname": "total", "fieldtype": "Float", "width": 120})
 
 	def get_data(self):
 		if self.filters.tree_type in ["Customer", "Supplier"]:
@@ -135,9 +127,7 @@ class Analytics(object):
 			""" select s.order_type as entity, s.{value_field} as value_field, s.{date_field}
 			from `tab{doctype}` s where s.docstatus = 1 and s.company = %s and s.{date_field} between %s and %s
 			and ifnull(s.order_type, '') != '' order by s.order_type
-		""".format(
-				date_field=self.date_field, value_field=value_field, doctype=self.filters.doc_type
-			),
+		""".format(date_field=self.date_field, value_field=value_field, doctype=self.filters.doc_type),
 			(self.filters.company, self.filters.from_date, self.filters.to_date),
 			as_dict=1,
 		)
@@ -157,17 +147,14 @@ class Analytics(object):
 			entity = "supplier as entity"
 			entity_name = "supplier_name as entity_name"
 
-		filters = {
-			"docstatus": 1,
-			"company": self.filters.company,
-			self.date_field: ('between', [self.filters.from_date, self.filters.to_date])
-		}
-		if self.filters.customer_id:
-			filters['customer'] = self.filters.customer_id
-
-		self.entries = frappe.get_all(self.filters.doc_type,
+		self.entries = frappe.get_all(
+			self.filters.doc_type,
 			fields=[entity, entity_name, value_field, self.date_field],
-			filters=filters
+			filters={
+				"docstatus": 1,
+				"company": self.filters.company,
+				self.date_field: ("between", [self.filters.from_date, self.filters.to_date]),
+			},
 		)
 
 		self.entity_names = {}
@@ -175,25 +162,21 @@ class Analytics(object):
 			self.entity_names.setdefault(d.entity, d.entity_name)
 
 	def get_sales_transactions_based_on_items(self):
-
 		if self.filters["value_quantity"] == "Value":
-			value_field = "base_amount"
+			value_field = "base_net_amount"
 		else:
 			value_field = "stock_qty"
 
-		if "item_brand" in self.filters:
-			brand_filter = f'i.brand = "{self.filters.get("item_brand")}" and'
-		else:
-			brand_filter = ""
-
-		self.entries = frappe.db.sql("""
-			select i.item_code as entity, i.item_name as entity_name, i.stock_uom, i.brand, i.{value_field} as value_field, s.{date_field}
+		self.entries = frappe.db.sql(
+			"""
+			select i.item_code as entity, i.item_name as entity_name, i.stock_uom, i.{value_field} as value_field, s.{date_field}
 			from `tab{doctype} Item` i , `tab{doctype}` s
 			where s.name = i.parent and i.docstatus = 1 and s.company = %s
-			and {brand_filter} s.{date_field} between %s and %s
-		"""
-		.format(date_field=self.date_field, value_field=value_field, doctype=self.filters.doc_type, brand_filter=brand_filter),
-		(self.filters.company, self.filters.from_date, self.filters.to_date), as_dict=1)
+			and s.{date_field} between %s and %s
+		""".format(date_field=self.date_field, value_field=value_field, doctype=self.filters.doc_type),
+			(self.filters.company, self.filters.from_date, self.filters.to_date),
+			as_dict=1,
+		)
 
 		self.entity_names = {}
 		for d in self.entries:
@@ -226,19 +209,17 @@ class Analytics(object):
 
 	def get_sales_transactions_based_on_item_group(self):
 		if self.filters["value_quantity"] == "Value":
-			value_field = "base_amount"
+			value_field = "base_net_amount"
 		else:
 			value_field = "qty"
 
 		self.entries = frappe.db.sql(
-			"""
-			select i.item_group as entity, i.{value_field} as value_field, s.{date_field}
-			from `tab{doctype} Item` i , `tab{doctype}` s
+			f"""
+			select i.item_group as entity, i.{value_field} as value_field, s.{self.date_field}
+			from `tab{self.filters.doc_type} Item` i , `tab{self.filters.doc_type}` s
 			where s.name = i.parent and i.docstatus = 1 and s.company = %s
-			and s.{date_field} between %s and %s
-		""".format(
-				date_field=self.date_field, value_field=value_field, doctype=self.filters.doc_type
-			),
+			and s.{self.date_field} between %s and %s
+		""",
 			(self.filters.company, self.filters.from_date, self.filters.to_date),
 			as_dict=1,
 		)
@@ -268,7 +249,7 @@ class Analytics(object):
 		self.data = []
 		self.get_periodic_data()
 
-		for entity, period_data in iteritems(self.entity_periodic_data):
+		for entity, period_data in self.entity_periodic_data.items():
 			row = {
 				"entity": entity,
 				"entity_name": self.entity_names.get(entity) if hasattr(self, "entity_names") else None,
@@ -305,7 +286,7 @@ class Analytics(object):
 				total += amount
 
 			row["total"] = total
-			out = [row] + out
+			out = [row, *out]
 
 		self.data = out
 
@@ -320,16 +301,17 @@ class Analytics(object):
 			self.entity_periodic_data[d.entity][period] += flt(d.value_field)
 
 			if self.filters.tree_type == "Item":
-				self.entity_periodic_data[d.entity]['stock_uom'] = d.stock_uom
-				self.entity_periodic_data[d.entity]['item_brand'] = d.brand
+				self.entity_periodic_data[d.entity]["stock_uom"] = d.stock_uom
 
 	def get_period(self, posting_date):
 		if self.filters.range == "Weekly":
-			period = "Week " + str(posting_date.isocalendar()[1]) + " " + str(posting_date.year)
+			period = _("Week {0} {1}").format(str(posting_date.isocalendar()[1]), str(posting_date.year))
 		elif self.filters.range == "Monthly":
-			period = str(self.months[posting_date.month - 1]) + " " + str(posting_date.year)
+			period = _(str(self.months[posting_date.month - 1])) + " " + str(posting_date.year)
 		elif self.filters.range == "Quarterly":
-			period = "Quarter " + str(((posting_date.month - 1) // 3) + 1) + " " + str(posting_date.year)
+			period = _("Quarter {0} {1}").format(
+				str(((posting_date.month - 1) // 3) + 1), str(posting_date.year)
+			)
 		else:
 			year = get_fiscal_year(posting_date, company=self.filters.company)
 			period = str(year[0])
@@ -340,9 +322,7 @@ class Analytics(object):
 
 		from_date, to_date = getdate(self.filters.from_date), getdate(self.filters.to_date)
 
-		increment = {"Monthly": 1, "Quarterly": 3, "Half-Yearly": 6, "Yearly": 12}.get(
-			self.filters.range, 1
-		)
+		increment = {"Monthly": 1, "Quarterly": 3, "Half-Yearly": 6, "Yearly": 12}.get(self.filters.range, 1)
 
 		if self.filters.range in ["Monthly", "Quarterly"]:
 			from_date = from_date.replace(day=1)
@@ -352,7 +332,7 @@ class Analytics(object):
 			from_date = from_date + relativedelta(from_date, weekday=MO(-1))
 
 		self.periodic_daterange = []
-		for dummy in range(1, 53):
+		for _dummy in range(1, 53):
 			if self.filters.range == "Weekly":
 				period_end_date = add_days(from_date, 6)
 			else:
@@ -380,10 +360,8 @@ class Analytics(object):
 		self.depth_map = frappe._dict()
 
 		self.group_entries = frappe.db.sql(
-			"""select name, lft, rgt , {parent} as parent
-			from `tab{tree}` order by lft""".format(
-				tree=self.filters.tree_type, parent=parent
-			),
+			f"""select name, lft, rgt , {parent} as parent
+			from `tab{self.filters.tree_type}` order by lft""",
 			as_dict=1,
 		)
 
@@ -397,12 +375,10 @@ class Analytics(object):
 		self.depth_map = frappe._dict()
 
 		self.group_entries = frappe.db.sql(
-			""" select * from (select "Order Types" as name, 0 as lft,
+			f""" select * from (select "Order Types" as name, 0 as lft,
 			2 as rgt, '' as parent union select distinct order_type as name, 1 as lft, 1 as rgt, "Order Types" as parent
-			from `tab{doctype}` where ifnull(order_type, '') != '') as b order by lft, name
-		""".format(
-				doctype=self.filters.doc_type
-			),
+			from `tab{self.filters.doc_type}` where ifnull(order_type, '') != '') as b order by lft, name
+		""",
 			as_dict=1,
 		)
 
@@ -423,7 +399,7 @@ class Analytics(object):
 		if self.filters.tree_type in ["Customer", "Supplier"]:
 			labels = [d.get("label") for d in self.columns[2 : length - 1]]
 		elif self.filters.tree_type == "Item":
-			labels = [d.get("label") for d in self.columns[4:length - 1]]
+			labels = [d.get("label") for d in self.columns[3 : length - 1]]
 		else:
 			labels = [d.get("label") for d in self.columns[1 : length - 1]]
 		self.chart = {"data": {"labels": labels, "datasets": []}, "type": "line"}

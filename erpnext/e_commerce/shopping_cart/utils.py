@@ -1,16 +1,12 @@
-# Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
+# Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 import frappe
-import frappe.defaults
 
 from erpnext.e_commerce.doctype.e_commerce_settings.e_commerce_settings import is_cart_enabled
 
 
 def show_cart_count():
-	if (
-		is_cart_enabled()
-		and frappe.db.get_value("User", frappe.session.user, "user_type") == "Website User"
-	):
+	if is_cart_enabled() and frappe.db.get_value("User", frappe.session.user, "user_type") == "Website User":
 		return True
 
 	return False

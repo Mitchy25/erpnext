@@ -24,10 +24,14 @@
   "invoice_limit",
   "payment_limit",
   "bank_cash_account",
+  "accounting_dimensions_section",
   "cost_center",
+  "dimension_col_break",
   "sec_break1",
+  "invoice_name",
   "invoices",
   "column_break_15",
+  "payment_name",
   "payments",
   "sec_break2",
   "allocation"
@@ -136,6 +140,7 @@
    "label": "Minimum Invoice Amount"
   },
   {
+   "default": "50",
    "description": "System will fetch all the entries if limit value is zero.",
    "fieldname": "invoice_limit",
    "fieldtype": "Int",
@@ -166,6 +171,7 @@
    "label": "Maximum Payment Amount"
   },
   {
+   "default": "50",
    "description": "System will fetch all the entries if limit value is zero.",
    "fieldname": "payment_limit",
    "fieldtype": "Int",
@@ -185,13 +191,36 @@
    "fieldtype": "Link",
    "label": "Cost Center",
    "options": "Cost Center"
+  },
+  {
+   "fieldname": "invoice_name",
+   "fieldtype": "Data",
+   "label": "Filter on Invoice"
+  },
+  {
+   "fieldname": "payment_name",
+   "fieldtype": "Data",
+   "label": "Filter on Payment"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval: doc.invoices.length == 0",
+   "depends_on": "eval:doc.receivable_payable_account",
+   "fieldname": "accounting_dimensions_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting Dimensions Filter"
+  },
+  {
+   "fieldname": "dimension_col_break",
+   "fieldtype": "Column Break"
   }
  ],
  "hide_toolbar": 1,
  "icon": "icon-resize-horizontal",
+ "is_virtual": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-04-29 15:37:10.246831",
+ "modified": "2023-12-14 13:38:16.264013",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Reconciliation",
@@ -216,6 +245,5 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "track_changes": 1
+ "states": []
 }

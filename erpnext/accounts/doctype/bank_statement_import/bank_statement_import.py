@@ -15,14 +15,13 @@ from frappe.utils.background_jobs import enqueue
 from frappe.utils.xlsxutils import ILLEGAL_CHARACTERS_RE, handle_html
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
-from six import string_types
 
 INVALID_VALUES = ("", None)
 
 
 class BankStatementImport(DataImport):
 	def __init__(self, *args, **kwargs):
-		super(BankStatementImport, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 	def validate(self):
 		doc_before_save = self.get_doc_before_save()
@@ -31,7 +30,6 @@ class BankStatementImport(DataImport):
 			or (doc_before_save and doc_before_save.import_file != self.import_file)
 			or (doc_before_save and doc_before_save.google_sheets_url != self.google_sheets_url)
 		):
-
 			template_options_dict = {}
 			column_to_field_map = {}
 			bank = frappe.get_doc("Bank", self.bank)
@@ -46,7 +44,6 @@ class BankStatementImport(DataImport):
 		self.validate_google_sheets_url()
 
 	def start_import(self):
-
 		preview = frappe.get_doc("Bank Statement Import", self.name).get_preview_from_template(
 			self.import_file, self.google_sheets_url
 		)
@@ -116,6 +113,7 @@ def get_preview_from_template(data_import, import_file=None, google_sheets_url=N
 	return preview_records
 
 
+
 @frappe.whitelist()
 def form_start_import(data_import):
 	return frappe.get_doc("Bank Statement Import", data_import).start_import()
@@ -130,7 +128,7 @@ def download_errored_template(data_import_name):
 def parse_data_from_template(raw_data):
 	data = []
 
-	for i, row in enumerate(raw_data):
+	for _i, row in enumerate(raw_data):
 		if all(v in INVALID_VALUES for v in row):
 			# empty row
 			continue
@@ -140,9 +138,7 @@ def parse_data_from_template(raw_data):
 	return data
 
 
-def start_import(
-	data_import, bank_account, import_file_path, google_sheets_url, bank, template_options
-):
+def start_import(data_import, bank_account, import_file_path, google_sheets_url, bank, template_options):
 	"""This method runs in background job"""
 
 	update_mapping_db(bank, template_options)
@@ -164,7 +160,7 @@ def start_import(
 	except Exception:
 		frappe.db.rollback()
 		data_import.db_set("status", "Error")
-		frappe.log_error(title=data_import.name)
+		data_import.log_error("Bank Statement Import failed")
 	finally:
 		frappe.flags.in_import = False
 
@@ -230,14 +226,12 @@ def write_xlsx(data, sheet_name, wb=None, column_widths=None, file_path=None):
 	for row in data:
 		clean_row = []
 		for item in row:
-			if isinstance(item, string_types) and (
-				sheet_name not in ["Data Import Template", "Data Export"]
-			):
+			if isinstance(item, str) and (sheet_name not in ["Data Import Template", "Data Export"]):
 				value = handle_html(item)
 			else:
 				value = item
 
-			if isinstance(item, string_types) and next(ILLEGAL_CHARACTERS_RE.finditer(value), None):
+			if isinstance(item, str) and next(ILLEGAL_CHARACTERS_RE.finditer(value), None):
 				# Remove illegal characters from the string
 				value = re.sub(ILLEGAL_CHARACTERS_RE, "", value)
 

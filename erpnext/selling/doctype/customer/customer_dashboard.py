@@ -19,8 +19,9 @@ def get_data():
 			'Journal Entry': 'party',
 			'Customer': 'creation'
 		},
-		'dynamic_links': {
-			'party_name': ['Customer', 'quotation_to']
+		"dynamic_links": {
+			"party_name": ["Customer", "quotation_to"],
+			"party": ["Customer", "party_type"],
 		},
 		'transactions': [
 			# {

@@ -11,7 +11,6 @@ import frappe
 from frappe import _, throw
 from frappe.model.document import Document
 from frappe.utils import cint, flt, getdate
-from six import string_types
 
 apply_on_dict = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands"}
 
@@ -25,6 +24,7 @@ class PricingRule(Document):
 		self.validate_applicable_for_selling_or_buying()
 		self.validate_min_max_amt()
 		self.validate_min_max_qty()
+		self.validate_recursion()
 		self.cleanup_fields_value()
 		self.validate_rate_or_discount()
 		self.validate_max_discount()
@@ -47,6 +47,12 @@ class PricingRule(Document):
 				frappe.throw(_("Duplicate {0} found in the table").format(self.apply_on))
 
 	def validate_mandatory(self):
+		if self.has_priority and not self.priority:
+			throw(_("Priority is mandatory"), frappe.MandatoryError, _("Please Set Priority"))
+
+		if self.priority and not self.has_priority:
+			self.has_priority = 1
+
 		for apply_on, field in apply_on_dict.items():
 			if self.apply_on == apply_on and len(self.get(field) or []) < 1:
 				throw(_("{0} is not added in the table").format(apply_on), frappe.MandatoryError)
@@ -77,9 +83,9 @@ class PricingRule(Document):
 
 			if self.priority and cint(self.priority) == 1:
 				throw(
-					_("As the field {0} is enabled, the value of the field {1} should be more than 1.").format(
-						frappe.bold("Apply Discount on Discounted Rate"), frappe.bold("Priority")
-					)
+					_(
+						"As the field {0} is enabled, the value of the field {1} should be more than 1."
+					).format(frappe.bold("Apply Discount on Discounted Rate"), frappe.bold("Priority"))
 				)
 
 	def validate_applicable_for_selling_or_buying(self):
@@ -110,6 +116,18 @@ class PricingRule(Document):
 	def validate_min_max_amt(self):
 		if self.min_amt and self.max_amt and flt(self.min_amt) > flt(self.max_amt):
 			throw(_("Min Amt can not be greater than Max Amt"))
+
+	def validate_recursion(self):
+		if self.price_or_product_discount != "Product":
+			return
+		if self.free_item or self.same_item:
+			if flt(self.recurse_for) <= 0:
+				self.recurse_for = 1
+		if self.is_recursive:
+			if flt(self.apply_recursion_over) > flt(self.min_qty):
+				throw(_("Min Qty should be greater than Recurse Over Qty"))
+			if flt(self.apply_recursion_over) < 0:
+				throw(_("Recurse Over Qty cannot be less than 0"))
 
 	def cleanup_fields_value(self):
 		for logic_field in ["apply_on", "applicable_for", "rate_or_discount"]:
@@ -210,7 +228,7 @@ def apply_pricing_rule(args, doc=None):
 	}
 	"""
 
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)
@@ -245,7 +263,7 @@ def apply_pricing_rule(args, doc=None):
 	for item in item_list:
 		args_copy = copy.deepcopy(args)
 		args_copy.update(item)
-		data = get_pricing_rule_for_item(args_copy, item.get("price_list_rate"), doc=doc)
+		data = get_pricing_rule_for_item(args_copy, doc=doc)
 		out.append(data)
 
 		if (
@@ -262,9 +280,7 @@ def apply_pricing_rule(args, doc=None):
 def get_serial_no_for_item(args):
 	from erpnext.stock.get_item_details import get_serial_no
 
-	item_details = frappe._dict(
-		{"doctype": args.doctype, "name": args.name, "serial_no": args.serial_no}
-	)
+	item_details = frappe._dict({"doctype": args.doctype, "name": args.name, "serial_no": args.serial_no})
 	if args.get("parenttype") in ("Sales Invoice", "Delivery Note") and flt(args.stock_qty) > 0:
 		item_details.serial_no = get_serial_no(args)
 	return item_details
@@ -282,7 +298,7 @@ def update_pricing_rule_uom(pricing_rule, args):
 			pricing_rule.uom = row.uom
 
 
-def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=False):
+def get_pricing_rule_for_item(args, doc=None, for_validate=False):
 	from erpnext.accounts.doctype.pricing_rule.utils import (
 		get_applied_pricing_rules,
 		get_pricing_rule_items,
@@ -290,7 +306,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 		get_product_discount_rule,
 	)
 
-	if isinstance(doc, string_types):
+	if isinstance(doc, str):
 		doc = json.loads(doc)
 
 	if doc:
@@ -318,13 +334,6 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 		}
 	)
 
-	if args.ignore_pricing_rules:
-		if frappe.db.exists(args.doctype, args.name) and args.get("pricing_rules"):
-			item_details.pricing_rules = ''
-			return item_details
-		else:
-			return item_details
-
 	if args.ignore_pricing_rule or not args.item_code:
 		if frappe.db.exists(args.doctype, args.name) and args.get("pricing_rules"):
 			item_details = remove_pricing_rule_for_item(
@@ -350,7 +359,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 			if not pricing_rule:
 				continue
 
-			if isinstance(pricing_rule, string_types):
+			if isinstance(pricing_rule, str):
 				pricing_rule = frappe.get_cached_doc("Pricing Rule", pricing_rule)
 				update_pricing_rule_uom(pricing_rule, args)
 				pricing_rule.apply_rule_on_other_items = get_pricing_rule_items(pricing_rule) or []
@@ -366,7 +375,6 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 			if pricing_rule.mixed_conditions or pricing_rule.apply_rule_on_other:
 				item_details.update(
 					{
-						"apply_rule_on_other_items": json.dumps(pricing_rule.apply_rule_on_other_items),
 						"price_or_product_discount": pricing_rule.price_or_product_discount,
 						"apply_rule_on": (
 							frappe.scrub(pricing_rule.apply_rule_on_other)
@@ -376,7 +384,12 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 					}
 				)
 
-			if pricing_rule.coupon_code_based == 1 and args.coupon_code == None:
+				if pricing_rule.apply_rule_on_other_items:
+					item_details["apply_rule_on_other_items"] = json.dumps(
+						pricing_rule.apply_rule_on_other_items
+					)
+
+			if pricing_rule.coupon_code_based == 1 and args.coupon_code is None:
 				return item_details
 
 			if not pricing_rule.validate_applied_rule:
@@ -409,18 +422,17 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 
 def update_args_for_pricing_rule(args):
 	if not (args.item_group and args.brand):
-		try:
-			args.item_group, args.brand = frappe.get_cached_value(
-				"Item", args.item_code, ["item_group", "brand"]
-			)
-		except frappe.DoesNotExistError:
+		item = frappe.get_cached_value("Item", args.item_code, ("item_group", "brand"))
+		if not item:
 			return
+
+		args.item_group, args.brand = item
+
 		if not args.item_group:
 			frappe.throw(_("Item Group not mentioned in item master for item {0}").format(args.item_code))
 
 	if args.transaction_type == "selling":
 		if args.customer and not (args.customer_group and args.territory):
-
 			if args.quotation_to and args.quotation_to != "Customer":
 				customer = frappe._dict()
 			else:
@@ -451,9 +463,9 @@ def get_pricing_rule_details(args, pricing_rule):
 def apply_price_discount_rule(pricing_rule, item_details, args):
 	item_details.pricing_rule_for = pricing_rule.rate_or_discount
 
-	if (
-		pricing_rule.margin_type in ["Amount", "Percentage"] and pricing_rule.currency == args.currency
-	) or (pricing_rule.margin_type == "Percentage"):
+	if (pricing_rule.margin_type in ["Amount", "Percentage"] and pricing_rule.currency == args.currency) or (
+		pricing_rule.margin_type == "Percentage"
+	):
 		item_details.margin_type = pricing_rule.margin_type
 		item_details.has_margin = True
 
@@ -488,6 +500,22 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 		if pricing_rule.apply_discount_on_rate and item_details.get("discount_percentage"):
 			# Apply discount on discounted rate
 			item_details[field] += (100 - item_details[field]) * (pricing_rule.get(field, 0) / 100)
+		elif args.price_list_rate:
+			value = pricing_rule.get(field, 0)
+			calculate_discount_percentage = False
+			if field == "discount_percentage":
+				field = "discount_amount"
+				value = args.price_list_rate * (value / 100)
+				calculate_discount_percentage = True
+
+			if field not in item_details:
+				item_details.setdefault(field, 0)
+
+			item_details[field] += value if pricing_rule else args.get(field, 0)
+			if calculate_discount_percentage and args.price_list_rate and item_details.discount_amount:
+				item_details.discount_percentage = flt(
+					(flt(item_details.discount_amount) / flt(args.price_list_rate)) * 100
+				)
 		else:
 			if field not in item_details:
 				item_details.setdefault(field, 0)
@@ -524,7 +552,7 @@ def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None, ra
 			)
 
 		if pricing_rule.get("mixed_conditions") or pricing_rule.get("apply_rule_on_other"):
-			items = get_pricing_rule_items(pricing_rule)
+			items = get_pricing_rule_items(pricing_rule, other_items=True)
 			item_details.apply_on = (
 				frappe.scrub(pricing_rule.apply_rule_on_other)
 				if pricing_rule.apply_rule_on_other
@@ -540,7 +568,7 @@ def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None, ra
 
 @frappe.whitelist()
 def remove_pricing_rules(item_list):
-	if isinstance(item_list, string_types):
+	if isinstance(item_list, str):
 		item_list = json.loads(item_list)
 
 	out = []
@@ -596,7 +624,7 @@ def get_item_uoms(doctype, txt, searchfield, start, page_len, filters):
 
 	return frappe.get_all(
 		"UOM Conversion Detail",
-		filters={"parent": ("in", items), "uom": ("like", "{0}%".format(txt))},
+		filters={"parent": ("in", items), "uom": ("like", f"{txt}%")},
 		fields=["distinct uom"],
 		as_list=1,
 	)

@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "barcode",
+  "has_item_scanned",
   "item_code",
   "col_break1",
   "item_name",
@@ -96,6 +97,10 @@
   "delivery_note",
   "dn_detail",
   "delivered_qty",
+  "internal_transfer_section",
+  "purchase_order",
+  "column_break_92",
+  "purchase_order_item",
   "accounting_dimensions_section",
   "cost_center",
   "dimension_col_break",
@@ -162,6 +167,7 @@
    "print_hide": 1
   },
   {
+   "fetch_from": "item_code.image",
    "fieldname": "image",
    "fieldtype": "Attach",
    "hidden": 1,
@@ -182,6 +188,7 @@
    "oldfieldtype": "Currency"
   },
   {
+   "depends_on": "eval:doc.uom != doc.stock_uom",
    "fieldname": "stock_uom",
    "fieldtype": "Link",
    "label": "Stock UOM",
@@ -200,6 +207,7 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.uom != doc.stock_uom",
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
    "label": "UOM Conversion Factor",
@@ -207,6 +215,7 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.uom != doc.stock_uom",
    "fieldname": "stock_qty",
    "fieldtype": "Float",
    "label": "Qty as per Stock UOM",
@@ -240,6 +249,7 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval: doc.margin_type || doc.discount_amount",
    "fieldname": "discount_and_margin",
    "fieldtype": "Section Break",
    "label": "Discount and Margin"
@@ -430,6 +440,7 @@
    "label": "Accounting Details"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "income_account",
    "fieldtype": "Link",
    "label": "Income Account",
@@ -442,6 +453,7 @@
    "width": "120px"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "expense_account",
    "fieldtype": "Link",
    "label": "Expense Account",
@@ -461,6 +473,7 @@
    "print_hide": 1
   },
   {
+   "allow_on_submit": 1,
    "default": ":Company",
    "fieldname": "cost_center",
    "fieldtype": "Link",
@@ -592,7 +605,8 @@
    "in_list_view": 1,
    "label": "Batch No",
    "options": "Batch",
-   "print_hide": 1
+   "print_hide": 1,
+   "search_index": 1
   },
   {
    "fieldname": "col_break5",
@@ -792,6 +806,7 @@
    "options": "Finance Book"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "project",
    "fieldtype": "Link",
    "label": "Project",
@@ -814,7 +829,6 @@
    "label": "Incoming Rate (Costing)",
    "no_copy": 1,
    "options": "Company:company:default_currency",
-   "precision": "6",
    "print_hide": 1
   },
   {
@@ -827,6 +841,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "discount_account",
    "fieldtype": "Link",
    "label": "Discount Account",
@@ -839,17 +854,54 @@
    "fieldtype": "Check",
    "label": "Grant Commission",
    "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval:parent.is_internal_customer == 1",
+   "fieldname": "internal_transfer_section",
+   "fieldtype": "Section Break",
+   "label": "Internal Transfer"
+  },
+  {
+   "fieldname": "purchase_order",
+   "fieldtype": "Link",
+   "label": "Purchase Order",
+   "options": "Purchase Order",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_92",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_order_item",
+   "fieldtype": "Data",
+   "label": "Purchase Order Item",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "barcode",
+   "fieldname": "has_item_scanned",
+   "fieldtype": "Check",
+   "label": "Has Item Scanned",
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-04-04 10:16:04.255671",
+ "modified": "2024-05-23 16:36:18.970862",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice Item",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }
