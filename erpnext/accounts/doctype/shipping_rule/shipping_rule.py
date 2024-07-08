@@ -44,7 +44,8 @@ class ShippingRule(Document):
 				zero_to_values.append(d)
 			elif d.from_value >= d.to_value:
 				throw(
-					_("From value must be less than to value in row {0}").format(d.idx), FromGreaterThanToError
+					_("From value must be less than to value in row {0}").format(d.idx),
+					FromGreaterThanToError,
 				)
 
 		# check if more than two or more rows has To Value = 0
@@ -113,7 +114,9 @@ class ShippingRule(Document):
 				)
 			if shipping_country not in [d.country for d in self.countries]:
 				frappe.throw(
-					_("Shipping rule not applicable for country {0} in Shipping Address").format(shipping_country)
+					_("Shipping rule not applicable for country {0} in Shipping Address").format(
+						shipping_country
+					)
 				)
 
 	def add_shipping_rule_to_tax_table(self, doc, shipping_amount):
@@ -121,7 +124,6 @@ class ShippingRule(Document):
 			"charge_type": "Actual",
 			"account_head": self.account,
 			"cost_center": self.cost_center,
-			"from_shipping_rule": 1
 		}
 		if self.shipping_rule_type == "Selling":
 			# check if not applied on purchase
@@ -215,11 +217,9 @@ class ShippingRule(Document):
 			messages = []
 			for d1, d2 in overlaps:
 				messages.append(
-					"%s-%s = %s "
-					% (d1.from_value, d1.to_value, fmt_money(d1.shipping_amount, currency=company_currency))
+					f"{d1.from_value}-{d1.to_value} = {fmt_money(d1.shipping_amount, currency=company_currency)} "
 					+ _("and")
-					+ " %s-%s = %s"
-					% (d2.from_value, d2.to_value, fmt_money(d2.shipping_amount, currency=company_currency))
+					+ f" {d2.from_value}-{d2.to_value} = {fmt_money(d2.shipping_amount, currency=company_currency)}"
 				)
 
 			msgprint("\n".join(messages), raise_exception=OverlappingConditionError)

@@ -38,14 +38,6 @@ def get_conditions(filters):
 
 	if filters.get("company"):
 		conditions["company"] = filters.company
-	if filters.get('purchase_date'):
-		conditions["purchase_date"] = ('<=', filters.get('purchase_date'))
-	if filters.get('available_for_use_date'):
-		conditions["available_for_use_date"] = ('<=', filters.get('available_for_use_date'))
-	if filters.get('is_existing_asset'):
-		conditions["is_existing_asset"] = filters.get('is_existing_asset')
-	if filters.get('asset_category'):
-		conditions["asset_category"] = filters.get('asset_category')
 
 	if filters.filter_based_on == "Date Range":
 		if not filters.from_date and not filters.to_date:
@@ -130,16 +122,13 @@ def get_data(filters):
 	assets_record = frappe.db.get_all("Asset", filters=conditions, fields=fields)
 
 	for asset in assets_record:
-		if (
-			assets_linked_to_fb
-			and asset.calculate_depreciation
-			and asset.asset_id not in assets_linked_to_fb
-		):
+		if assets_linked_to_fb and asset.calculate_depreciation and asset.asset_id not in assets_linked_to_fb:
 			continue
 
-		asset_value = get_asset_value_after_depreciation(
-			asset.asset_id, finance_book
-		) or get_asset_value_after_depreciation(asset.asset_id)
+		depreciation_amount = depreciation_amount_map.get(asset.asset_id) or 0.0
+		asset_value = (
+			asset.gross_purchase_amount - asset.opening_accumulated_depreciation - depreciation_amount
+		)
 
 		row = {
 			"asset_id": asset.asset_id,
@@ -151,12 +140,13 @@ def get_data(filters):
 			or pi_supplier_map.get(asset.purchase_invoice),
 			"gross_purchase_amount": asset.gross_purchase_amount,
 			"opening_accumulated_depreciation": asset.opening_accumulated_depreciation,
-			"depreciated_amount": depreciation_amount_map.get(asset.asset_id) or 0.0,
+			"depreciated_amount": depreciation_amount,
 			"available_for_use_date": asset.available_for_use_date,
 			"location": asset.location,
 			"asset_category": asset.asset_category,
 			"purchase_date": asset.purchase_date,
 			"asset_value": asset_value,
+			"company": asset.company,
 		}
 		data.append(row)
 
@@ -164,6 +154,8 @@ def get_data(filters):
 
 
 def prepare_chart_data(data, filters):
+	if not data:
+		return
 	labels_values_map = {}
 	if filters.filter_based_on not in ("Date Range", "Fiscal Year"):
 		filters_filter_based_on = "Date Range"
@@ -229,7 +221,7 @@ def get_assets_linked_to_fb(filters):
 		company_fb = frappe.get_cached_value("Company", filters.company, "default_finance_book")
 
 		if filters.finance_book and company_fb and cstr(filters.finance_book) != cstr(company_fb):
-			frappe.throw(_("To use a different finance book, please uncheck 'Include Default Book Assets'"))
+			frappe.throw(_("To use a different finance book, please uncheck 'Include Default FB Assets'"))
 
 		query = query.where(
 			(afb.finance_book.isin([cstr(filters.finance_book), cstr(company_fb), ""]))
@@ -246,9 +238,7 @@ def get_assets_linked_to_fb(filters):
 
 
 def get_asset_depreciation_amount_map(filters, finance_book):
-	start_date = (
-		filters.from_date if filters.filter_based_on == "Date Range" else filters.year_start_date
-	)
+	start_date = filters.from_date if filters.filter_based_on == "Date Range" else filters.year_start_date
 	end_date = filters.to_date if filters.filter_based_on == "Date Range" else filters.year_end_date
 
 	asset = frappe.qb.DocType("Asset")
@@ -265,9 +255,7 @@ def get_asset_depreciation_amount_map(filters, finance_book):
 		.join(company)
 		.on(company.name == asset.company)
 		.select(asset.name.as_("asset"), Sum(gle.debit).as_("depreciation_amount"))
-		.where(
-			gle.account == IfNull(aca.depreciation_expense_account, company.depreciation_expense_account)
-		)
+		.where(gle.account == IfNull(aca.depreciation_expense_account, company.depreciation_expense_account))
 		.where(gle.debit != 0)
 		.where(gle.is_cancelled == 0)
 		.where(company.name == filters.company)
@@ -286,9 +274,7 @@ def get_asset_depreciation_amount_map(filters, finance_book):
 		else:
 			query = query.where(asset.status.isin(["Sold", "Scrapped", "Capitalized", "Decapitalized"]))
 	if finance_book:
-		query = query.where(
-			(gle.finance_book.isin([cstr(finance_book), ""])) | (gle.finance_book.isnull())
-		)
+		query = query.where((gle.finance_book.isin([cstr(finance_book), ""])) | (gle.finance_book.isnull()))
 	else:
 		query = query.where((gle.finance_book.isin([""])) | (gle.finance_book.isnull()))
 	if filters.filter_based_on in ("Date Range", "Fiscal Year"):
@@ -385,29 +371,36 @@ def get_columns(filters):
 				"label": _("Gross Purchase Amount"),
 				"fieldname": "gross_purchase_amount",
 				"fieldtype": "Currency",
-				"options": "company:currency",
+				"options": "Company:company:default_currency",
 				"width": 250,
 			},
 			{
 				"label": _("Opening Accumulated Depreciation"),
 				"fieldname": "opening_accumulated_depreciation",
 				"fieldtype": "Currency",
-				"options": "company:currency",
+				"options": "Company:company:default_currency",
 				"width": 250,
 			},
 			{
 				"label": _("Depreciated Amount"),
 				"fieldname": "depreciated_amount",
 				"fieldtype": "Currency",
-				"options": "company:currency",
+				"options": "Company:company:default_currency",
 				"width": 250,
 			},
 			{
 				"label": _("Asset Value"),
 				"fieldname": "asset_value",
 				"fieldtype": "Currency",
-				"options": "company:currency",
+				"options": "Company:company:default_currency",
 				"width": 250,
+			},
+			{
+				"label": _("Company"),
+				"fieldname": "company",
+				"fieldtype": "Link",
+				"options": "Company",
+				"width": 120,
 			},
 		]
 
@@ -439,28 +432,28 @@ def get_columns(filters):
 			"label": _("Gross Purchase Amount"),
 			"fieldname": "gross_purchase_amount",
 			"fieldtype": "Currency",
-			"options": "company:currency",
+			"options": "Company:company:default_currency",
 			"width": 100,
 		},
 		{
 			"label": _("Asset Value"),
 			"fieldname": "asset_value",
 			"fieldtype": "Currency",
-			"options": "company:currency",
+			"options": "Company:company:default_currency",
 			"width": 100,
 		},
 		{
 			"label": _("Opening Accumulated Depreciation"),
 			"fieldname": "opening_accumulated_depreciation",
 			"fieldtype": "Currency",
-			"options": "company:currency",
+			"options": "Company:company:default_currency",
 			"width": 90,
 		},
 		{
 			"label": _("Depreciated Amount"),
 			"fieldname": "depreciated_amount",
 			"fieldtype": "Currency",
-			"options": "company:currency",
+			"options": "Company:company:default_currency",
 			"width": 100,
 		},
 		{
@@ -484,5 +477,12 @@ def get_columns(filters):
 			"fieldname": "location",
 			"options": "Location",
 			"width": 100,
+		},
+		{
+			"label": _("Company"),
+			"fieldname": "company",
+			"fieldtype": "Link",
+			"options": "Company",
+			"width": 120,
 		},
 	]

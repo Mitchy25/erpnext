@@ -57,11 +57,11 @@ class CallLog(Document):
 			self.update_received_by()
 
 		if _is_call_missed(doc_before_save, self):
-			frappe.publish_realtime("call_{id}_missed".format(id=self.id), self)
+			frappe.publish_realtime(f"call_{self.id}_missed", self)
 			self.trigger_call_popup()
 
 		if _is_call_ended(doc_before_save, self):
-			frappe.publish_realtime("call_{id}_ended".format(id=self.id), self)
+			frappe.publish_realtime(f"call_{self.id}_ended", self)
 
 	def is_incoming_call(self):
 		return self.type == "Incoming"
@@ -94,8 +94,7 @@ class CallLog(Document):
 				frappe.publish_realtime("show_call_popup", self, user=email)
 
 	def update_received_by(self):
-		employees = get_employees_with_number(self.get("to"))
-		if employees:
+		if employees := get_employees_with_number(self.get("to")):
 			self.call_received_by = employees[0].get("name")
 			self.employee_user_id = employees[0].get("user_id")
 
@@ -119,7 +118,7 @@ def get_employees_with_number(number):
 
 	employee_doc_name_and_emails = frappe.get_all(
 		"Employee",
-		filters={"cell_number": ["like", "%{}%".format(number)], "user_id": ["!=", ""]},
+		filters={"cell_number": ["like", f"%{number}%"], "user_id": ["!=", ""]},
 		fields=["name", "user_id"],
 	)
 
@@ -156,7 +155,7 @@ def link_existing_conversations(doc, state):
 					END
 				)=0
 			""",
-				dict(phone_number="%{}".format(number), docname=doc.name, doctype=doc.doctype),
+				dict(phone_number=f"%{number}", docname=doc.name, doctype=doc.doctype),
 			)
 
 			for log in logs:

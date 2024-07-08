@@ -4,7 +4,11 @@
 
 import frappe
 from frappe.utils.dashboard import cache_source
-from six import iteritems
+
+from erpnext.loan_management.report.applicant_wise_loan_security_exposure.applicant_wise_loan_security_exposure import (
+	get_loan_security_details,
+)
+
 
 from erpnext.loan_management.report.applicant_wise_loan_security_exposure.applicant_wise_loan_security_exposure import (
 	get_loan_security_details,
@@ -46,16 +50,14 @@ def get_data(
 
 	unpledges = frappe._dict(
 		frappe.db.sql(
-			"""
+			f"""
 		SELECT u.loan_security, sum(u.qty) as qty
 		FROM `tabLoan Security Unpledge` up, `tabUnpledge` u
 		WHERE u.parent = up.name
 		AND up.status = 'Approved'
 		{conditions}
 		GROUP BY u.loan_security
-	""".format(
-				conditions=conditions
-			),
+	""",
 			filters,
 			as_list=1,
 		)
@@ -63,29 +65,27 @@ def get_data(
 
 	pledges = frappe._dict(
 		frappe.db.sql(
-			"""
+			f"""
 		SELECT p.loan_security, sum(p.qty) as qty
 		FROM `tabLoan Security Pledge` lp, `tabPledge`p
 		WHERE p.parent = lp.name
 		AND lp.status = 'Pledged'
 		{conditions}
 		GROUP BY p.loan_security
-	""".format(
-				conditions=conditions
-			),
+	""",
 			filters,
 			as_list=1,
 		)
 	)
 
-	for security, qty in iteritems(pledges):
+	for security, qty in pledges.items():
 		current_pledges.setdefault(security, qty)
 		current_pledges[security] -= unpledges.get(security, 0.0)
 
 	sorted_pledges = dict(sorted(current_pledges.items(), key=lambda item: item[1], reverse=True))
 
 	count = 0
-	for security, qty in iteritems(sorted_pledges):
+	for security, qty in sorted_pledges.items():
 		values.append(qty * loan_security_details.get(security, {}).get("latest_price", 0))
 		labels.append(security)
 		count += 1

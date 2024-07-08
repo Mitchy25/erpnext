@@ -4,6 +4,7 @@
 
 import frappe
 from frappe import _
+from frappe.query_builder.custom import ConstantColumn
 from frappe.utils import getdate, nowdate
 
 
@@ -62,33 +63,90 @@ def get_conditions(filters):
 def get_entries(filters):
 	conditions = get_conditions(filters)
 	journal_entries = frappe.db.sql(
-		"""SELECT
+		f"""SELECT
 			"Journal Entry", jv.name, jv.posting_date, jv.cheque_no,
 			jv.clearance_date, jvd.against_account, jvd.debit - jvd.credit
 		FROM
 			`tabJournal Entry Account` jvd, `tabJournal Entry` jv
 		WHERE
-			jvd.parent = jv.name and jv.docstatus=1 and jvd.account = %(account)s {0}
-			order by posting_date DESC, jv.name DESC""".format(
-			conditions
-		),
+			jvd.parent = jv.name and jv.docstatus=1 and jvd.account = %(account)s {conditions}
+			order by posting_date DESC, jv.name DESC""",
 		filters,
 		as_list=1,
 	)
 
 	payment_entries = frappe.db.sql(
-		"""SELECT
+		f"""SELECT
 			"Payment Entry", name, posting_date, reference_no, clearance_date, party,
 			if(paid_from=%(account)s, ((paid_amount * -1) - total_taxes_and_charges) , received_amount)
 		FROM
 			`tabPayment Entry`
 		WHERE
-			docstatus=1 and (paid_from = %(account)s or paid_to = %(account)s) {0}
-			order by posting_date DESC, name DESC""".format(
-			conditions
-		),
+			docstatus=1 and (paid_from = %(account)s or paid_to = %(account)s) {conditions}
+			order by posting_date DESC, name DESC""",
 		filters,
 		as_list=1,
 	)
 
-	return sorted(journal_entries + payment_entries, key=lambda k: k[2] or getdate(nowdate()))
+	# Loan Disbursement
+	loan_disbursement = frappe.qb.DocType("Loan Disbursement")
+
+	query = (
+		frappe.qb.from_(loan_disbursement)
+		.select(
+			ConstantColumn("Loan Disbursement").as_("payment_document_type"),
+			loan_disbursement.name.as_("payment_entry"),
+			loan_disbursement.disbursement_date.as_("posting_date"),
+			loan_disbursement.reference_number.as_("cheque_no"),
+			loan_disbursement.clearance_date.as_("clearance_date"),
+			loan_disbursement.applicant.as_("against"),
+			-loan_disbursement.disbursed_amount.as_("amount"),
+		)
+		.where(loan_disbursement.docstatus == 1)
+		.where(loan_disbursement.disbursement_date >= filters["from_date"])
+		.where(loan_disbursement.disbursement_date <= filters["to_date"])
+		.where(loan_disbursement.disbursement_account == filters["account"])
+		.orderby(loan_disbursement.disbursement_date, order=frappe.qb.desc)
+		.orderby(loan_disbursement.name, order=frappe.qb.desc)
+	)
+
+	if filters.get("from_date"):
+		query = query.where(loan_disbursement.disbursement_date >= filters["from_date"])
+	if filters.get("to_date"):
+		query = query.where(loan_disbursement.disbursement_date <= filters["to_date"])
+
+	loan_disbursements = query.run(as_list=1)
+
+	# Loan Repayment
+	loan_repayment = frappe.qb.DocType("Loan Repayment")
+
+	query = (
+		frappe.qb.from_(loan_repayment)
+		.select(
+			ConstantColumn("Loan Repayment").as_("payment_document_type"),
+			loan_repayment.name.as_("payment_entry"),
+			loan_repayment.posting_date.as_("posting_date"),
+			loan_repayment.reference_number.as_("cheque_no"),
+			loan_repayment.clearance_date.as_("clearance_date"),
+			loan_repayment.applicant.as_("against"),
+			loan_repayment.amount_paid.as_("amount"),
+		)
+		.where(loan_repayment.docstatus == 1)
+		.where(loan_repayment.posting_date >= filters["from_date"])
+		.where(loan_repayment.posting_date <= filters["to_date"])
+		.where(loan_repayment.payment_account == filters["account"])
+		.orderby(loan_repayment.posting_date, order=frappe.qb.desc)
+		.orderby(loan_repayment.name, order=frappe.qb.desc)
+	)
+
+	if filters.get("from_date"):
+		query = query.where(loan_repayment.posting_date >= filters["from_date"])
+	if filters.get("to_date"):
+		query = query.where(loan_repayment.posting_date <= filters["to_date"])
+
+	loan_repayments = query.run(as_list=1)
+
+	return sorted(
+		journal_entries + payment_entries + loan_disbursements + loan_repayments,
+		key=lambda k: k[2].strftime("%H%M%S") or getdate(nowdate()),
+	)

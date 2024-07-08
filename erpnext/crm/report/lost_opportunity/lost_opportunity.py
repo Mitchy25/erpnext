@@ -61,43 +61,33 @@ def get_columns():
 			"options": "Territory",
 			"width": 150,
 		},
-		{
-			"label": _("Next Contact By"),
-			"fieldname": "contact_by",
-			"fieldtype": "Link",
-			"options": "User",
-			"width": 150,
-		},
 	]
 	return columns
 
 
 def get_data(filters):
 	return frappe.db.sql(
-		"""
+		f"""
 		SELECT
 			`tabOpportunity`.name,
 			`tabOpportunity`.opportunity_from,
 			`tabOpportunity`.party_name,
 			`tabOpportunity`.customer_name,
 			`tabOpportunity`.opportunity_type,
-			`tabOpportunity`.contact_by,
 			GROUP_CONCAT(`tabOpportunity Lost Reason Detail`.lost_reason separator ', ') lost_reason,
 			`tabOpportunity`.sales_stage,
 			`tabOpportunity`.territory
 		FROM
 			`tabOpportunity`
-			{join}
+			{get_join(filters)}
 		WHERE
 			`tabOpportunity`.status = 'Lost' and `tabOpportunity`.company = %(company)s
 			AND DATE(`tabOpportunity`.modified) BETWEEN %(from_date)s AND %(to_date)s
-			{conditions}
+			{get_conditions(filters)}
 		GROUP BY
 			`tabOpportunity`.name
 		ORDER BY
-			`tabOpportunity`.creation asc  """.format(
-			conditions=get_conditions(filters), join=get_join(filters)
-		),
+			`tabOpportunity`.creation asc  """,
 		filters,
 		as_dict=1,
 	)
@@ -115,9 +105,6 @@ def get_conditions(filters):
 	if filters.get("party_name"):
 		conditions.append(" and `tabOpportunity`.party_name=%(party_name)s")
 
-	if filters.get("contact_by"):
-		conditions.append(" and `tabOpportunity`.contact_by=%(contact_by)s")
-
 	return " ".join(conditions) if conditions else ""
 
 
@@ -130,9 +117,7 @@ def get_join(filters):
 		join = """JOIN `tabOpportunity Lost Reason Detail`
 			ON `tabOpportunity Lost Reason Detail`.parenttype = 'Opportunity' and
 			`tabOpportunity Lost Reason Detail`.parent = `tabOpportunity`.name and
-			`tabOpportunity Lost Reason Detail`.lost_reason = '{0}'
-			""".format(
-			filters.get("lost_reason")
-		)
+			`tabOpportunity Lost Reason Detail`.lost_reason = '{}'
+			""".format(filters.get("lost_reason"))
 
 	return join

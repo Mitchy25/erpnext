@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_import": 1,
+ "autoname": "hash",
  "creation": "2013-05-02 16:29:48",
  "description": "Multiple Item prices.",
  "doctype": "DocType",
@@ -77,9 +78,10 @@
   {
    "fetch_from": "item_code.brand",
    "fieldname": "brand",
-   "fieldtype": "Read Only",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Brand",
+   "options": "Brand",
    "read_only": 1
   },
   {
@@ -102,7 +104,8 @@
    "in_standard_filter": 1,
    "label": "Price List",
    "options": "Price List",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "bold": 1,
@@ -218,11 +221,11 @@
  "idx": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-09-02 16:33:55.612992",
+ "modified": "2024-03-13 12:23:39.630290",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Price",
- "name_case": "Title Case",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {

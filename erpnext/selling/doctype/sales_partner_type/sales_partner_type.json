@@ -10,7 +10,6 @@
  ],
  "fields": [
   {
-   "default": "Practitioner",
    "fieldname": "sales_partner_type",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -20,10 +19,11 @@
   }
  ],
  "links": [],
- "modified": "2024-02-27 13:39:36.687174",
+ "modified": "2023-02-10 01:00:20.110800",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Partner Type",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -41,5 +41,7 @@
  ],
  "quick_entry": 1,
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": [],
+ "translated_doctype": 1
 }

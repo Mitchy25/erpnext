@@ -6,7 +6,6 @@ import frappe
 from frappe import _, msgprint
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form, now
-from six import iteritems
 
 
 class POSProfile(Document):
@@ -49,7 +48,7 @@ class POSProfile(Document):
 			"Warehouse": [self.warehouse],
 		}
 
-		for link_dt, dn_list in iteritems(accounts):
+		for link_dt, dn_list in accounts.items():
 			for link_dn in dn_list:
 				if link_dn and not frappe.db.exists(
 					{"doctype": link_dt, "company": self.company, "name": link_dn}
@@ -62,13 +61,13 @@ class POSProfile(Document):
 
 		if len(item_groups) != len(set(item_groups)):
 			frappe.throw(
-				_("Duplicate item group found in the item group table"), title="Duplicate Item Group"
+				_("Duplicate item group found in the item group table"), title=_("Duplicate Item Group")
 			)
 
 		if len(customer_groups) != len(set(customer_groups)):
 			frappe.throw(
 				_("Duplicate customer group found in the cutomer group table"),
-				title="Duplicate Customer Group",
+				title=_("Duplicate Customer Group"),
 			)
 
 	def validate_payment_methods(self):
@@ -115,10 +114,8 @@ class POSProfile(Document):
 			condition = " where pfu.default = 1 "
 
 		pos_view_users = frappe.db.sql_list(
-			"""select pfu.user
-			from `tabPOS Profile User` as pfu {0}""".format(
-				condition
-			)
+			f"""select pfu.user
+			from `tabPOS Profile User` as pfu {condition}"""
 		)
 
 		for user in pos_view_users:
@@ -145,10 +142,8 @@ def get_item_groups(pos_profile):
 def get_child_nodes(group_type, root):
 	lft, rgt = frappe.db.get_value(group_type, root, ["lft", "rgt"])
 	return frappe.db.sql(
-		""" Select name, lft, rgt from `tab{tab}` where
-			lft >= {lft} and rgt <= {rgt} order by lft""".format(
-			tab=group_type, lft=lft, rgt=rgt
-		),
+		f""" Select name, lft, rgt from `tab{group_type}` where
+			lft >= {lft} and rgt <= {rgt} order by lft""",
 		as_dict=1,
 	)
 
@@ -174,7 +169,7 @@ def pos_profile_query(doctype, txt, searchfield, start, page_len, filters):
 		where
 			pfu.parent = pf.name and pfu.user = %(user)s and pf.company = %(company)s
 			and (pf.name like %(txt)s)
-			and pf.disabled = 0 limit %(start)s, %(page_len)s""",
+			and pf.disabled = 0 limit %(page_len)s offset %(start)s""",
 		args,
 	)
 

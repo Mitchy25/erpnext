@@ -92,6 +92,7 @@ def validate_customer_code_erpnext(customer_code):
 		frappe.throw("Customer {} not exits in ERPNext!".format(customer_code))
 	return payment_category, accepts_backorders
 
+
 @frappe.whitelist(allow_guest=True)
 def order(*args, **kwargs):
 	woocommerce_settings = frappe.get_doc("Woocommerce Settings")

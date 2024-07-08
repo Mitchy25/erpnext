@@ -1,10 +1,9 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-
 import frappe
 import frappe.defaults
-from frappe import _, throw
+from frappe import _, bold, throw
 from frappe.contacts.doctype.address.address import get_address_display
 from frappe.contacts.doctype.contact.contact import get_contact_name
 from frappe.utils import cint, cstr, flt, get_fullname
@@ -112,8 +111,8 @@ def place_order():
 				item_stock = get_web_item_qty_in_stock(item.item_code, "website_warehouse")
 				if not cint(item_stock.in_stock):
 					throw(_("{0} Not in Stock").format(item.item_code))
-				if item.qty > item_stock.stock_qty[0][0]:
-					throw(_("Only {0} in Stock for item {1}").format(item_stock.stock_qty[0][0], item.item_code))
+				if item.qty > item_stock.stock_qty:
+					throw(_("Only {0} in Stock for item {1}").format(item_stock.stock_qty, item.item_code))
 
 	sales_order.flags.ignore_permissions = True
 	sales_order.insert()
@@ -151,6 +150,8 @@ def update_cart(item_code, qty, additional_notes=None, with_items=False):
 			empty_card = True
 
 	else:
+		warehouse = frappe.get_cached_value("Website Item", {"item_code": item_code}, "website_warehouse")
+
 		quotation_items = quotation.get("items", {"item_code": item_code})
 		if not quotation_items:
 			quotation.append(
@@ -160,11 +161,13 @@ def update_cart(item_code, qty, additional_notes=None, with_items=False):
 					"item_code": item_code,
 					"qty": qty,
 					"additional_notes": additional_notes,
+					"warehouse": warehouse,
 				},
 			)
 		else:
 			quotation_items[0].qty = qty
 			quotation_items[0].additional_notes = additional_notes
+			quotation_items[0].warehouse = warehouse
 
 	apply_cart_settings(quotation=quotation)
 
@@ -202,6 +205,11 @@ def get_shopping_cart_menu(context=None):
 @frappe.whitelist()
 def add_new_address(doc):
 	doc = frappe.parse_json(doc)
+	address_title = doc.get("address_title")
+	if frappe.db.exists("Address", {"address_title": address_title}):
+		msg = f"The address with the title {bold(address_title)} already exists. Please change the title accordingly."
+		frappe.throw(_(msg), title=_("Address Already Exists"))
+
 	doc.update({"doctype": "Address"})
 	address = frappe.get_doc(doc)
 	address.save(ignore_permissions=True)
@@ -233,14 +241,12 @@ def create_lead_for_item_inquiry(lead, subject, message):
 
 	lead_doc.add_comment(
 		"Comment",
-		text="""
+		text=f"""
 		<div>
 			<h5>{subject}</h5>
 			<p>{message}</p>
 		</div>
-	""".format(
-			subject=subject, message=message
-		),
+	""",
 	)
 
 	return lead_doc
@@ -290,9 +296,7 @@ def guess_territory():
 		territory = frappe.db.get_value("Territory", geoip_country)
 
 	return (
-		territory
-		or frappe.db.get_value("E Commerce Settings", None, "territory")
-		or get_root_of("Territory")
+		territory or frappe.db.get_value("E Commerce Settings", None, "territory") or get_root_of("Territory")
 	)
 
 
@@ -318,6 +322,10 @@ def decorate_quotation_doc(doc):
 				fields = fields[2:]
 
 		d.update(frappe.db.get_value("Website Item", {"item_code": item_code}, fields, as_dict=True))
+		website_warehouse = frappe.get_cached_value(
+			"Website Item", {"item_code": item_code}, "website_warehouse"
+		)
+		d.warehouse = website_warehouse
 
 	return doc
 
@@ -487,6 +495,7 @@ def get_party(user=None):
 	contact_name = get_contact_name(user)
 	party = None
 
+	contact = None
 	if contact_name:
 		contact = frappe.get_doc("Contact", contact_name)
 		if contact.links:
@@ -524,11 +533,15 @@ def get_party(user=None):
 		customer.flags.ignore_mandatory = True
 		customer.insert(ignore_permissions=True)
 
-		contact = frappe.new_doc("Contact")
-		contact.update({"first_name": fullname, "email_ids": [{"email_id": user, "is_primary": 1}]})
+		if not contact:
+			contact = frappe.new_doc("Contact")
+			contact.update({"first_name": fullname, "email_ids": [{"email_id": user, "is_primary": 1}]})
+			contact.insert(ignore_permissions=True)
+			contact.reload()
+
 		contact.append("links", dict(link_doctype="Customer", link_name=customer.name))
 		contact.flags.ignore_mandatory = True
-		contact.insert(ignore_permissions=True)
+		contact.save(ignore_permissions=True)
 
 		return customer
 
@@ -572,9 +585,7 @@ def get_debtors_account(cart_settings):
 		return debtors_account_name
 
 
-def get_address_docs(
-	doctype=None, txt=None, filters=None, limit_start=0, limit_page_length=20, party=None
-):
+def get_address_docs(doctype=None, txt=None, filters=None, limit_start=0, limit_page_length=20, party=None):
 	if not party:
 		party = get_party()
 
@@ -630,7 +641,6 @@ def get_applicable_shipping_rules(party=None, quotation=None):
 	shipping_rules = get_shipping_rules(quotation)
 
 	if shipping_rules:
-		rule_label_map = frappe.db.get_values("Shipping Rule", shipping_rules, "label")
 		# we need this in sorted order as per the position of the rule in the settings page
 		return [[rule, rule] for rule in shipping_rules]
 
@@ -643,13 +653,18 @@ def get_shipping_rules(quotation=None, cart_settings=None):
 	if quotation.shipping_address_name:
 		country = frappe.db.get_value("Address", quotation.shipping_address_name, "country")
 		if country:
-			shipping_rules = frappe.db.sql_list(
-				"""select distinct sr.name
-				from `tabShipping Rule Country` src, `tabShipping Rule` sr
-				where src.country = %s and
-				sr.disabled != 1 and sr.name = src.parent""",
-				country,
+			sr_country = frappe.qb.DocType("Shipping Rule Country")
+			sr = frappe.qb.DocType("Shipping Rule")
+			query = (
+				frappe.qb.from_(sr_country)
+				.join(sr)
+				.on(sr.name == sr_country.parent)
+				.select(sr.name)
+				.distinct()
+				.where((sr_country.country == country) & (sr.disabled != 1))
 			)
+			result = query.run(as_list=True)
+			shipping_rules = [x[0] for x in result]
 
 	return shipping_rules
 
@@ -686,6 +701,7 @@ def apply_coupon_code(applied_code, applied_referral_sales_partner):
 	coupon_name = coupon_list[0].name
 
 	from erpnext.accounts.doctype.pricing_rule.utils import validate_coupon_code
+
 	validate_coupon_code(coupon_name)
 	quotation = _get_cart_quotation()
 	quotation.coupon_code = coupon_name

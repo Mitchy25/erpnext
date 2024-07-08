@@ -32,15 +32,17 @@ class PaymentOrder(Document):
 		for d in self.references:
 			frappe.db.set_value(self.payment_order_type, d.get(ref_doc_field), ref_field, status)
 
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_mop_query(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.db.sql(
 		""" select mode_of_payment from `tabPayment Order Reference`
 		where parent = %(parent)s and mode_of_payment like %(txt)s
-		limit %(start)s, %(page_len)s""",
+		limit %(page_len)s offset %(start)s""",
 		{"parent": filters.get("parent"), "start": start, "page_len": page_len, "txt": "%%%s%%" % txt},
 	)
+
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
@@ -49,7 +51,7 @@ def get_supplier_query(doctype, txt, searchfield, start, page_len, filters):
 		""" select supplier from `tabPayment Order Reference`
 		where parent = %(parent)s and supplier like %(txt)s and
 		(payment_reference is null or payment_reference='')
-		limit %(start)s, %(page_len)s""",
+		limit %(page_len)s offset %(start)s""",
 		{"parent": filters.get("parent"), "start": start, "page_len": page_len, "txt": "%%%s%%" % txt},
 	)
 
@@ -64,9 +66,7 @@ def make_journal_entry(doc, supplier, mode_of_payment=None):
 	je = frappe.new_doc("Journal Entry")
 	je.payment_order = doc.name
 	je.posting_date = nowdate()
-	mode_of_payment_type = frappe._dict(
-		frappe.get_all("Mode of Payment", fields=["name", "type"], as_list=1)
-	)
+	mode_of_payment_type = frappe._dict(frappe.get_all("Mode of Payment", fields=["name", "type"], as_list=1))
 
 	je.voucher_type = "Bank Entry"
 	if mode_of_payment and mode_of_payment_type.get(mode_of_payment) == "Cash":

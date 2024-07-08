@@ -157,6 +157,38 @@ class TestOpeningInvoiceCreationTool(FrappeTestCase):
 		disable_dimension()
 
 
+	def test_renaming_of_invoice_using_invoice_number_field(self):
+		company = "_Test Opening Invoice Company"
+		party_1, party_2 = make_customer("Customer A"), make_customer("Customer B")
+		self.make_invoices(
+			company=company, party_1=party_1, party_2=party_2, invoice_number="TEST-NEW-INV-11"
+		)
+
+		sales_inv1 = frappe.get_all("Sales Invoice", filters={"customer": "Customer A"})[0].get("name")
+		sales_inv2 = frappe.get_all("Sales Invoice", filters={"customer": "Customer B"})[0].get("name")
+		self.assertEqual(sales_inv1, "TEST-NEW-INV-11")
+
+		# teardown
+		for inv in [sales_inv1, sales_inv2]:
+			doc = frappe.get_doc("Sales Invoice", inv)
+			doc.cancel()
+
+	def test_opening_invoice_with_accounting_dimension(self):
+		invoices = self.make_invoices(
+			invoice_type="Sales", company="_Test Opening Invoice Company", department="Sales - _TOIC"
+		)
+
+		expected_value = {
+			"keys": ["customer", "outstanding_amount", "status", "department"],
+			0: ["_Test Customer", 300, "Overdue", "Sales - _TOIC"],
+			1: ["_Test Customer 1", 250, "Overdue", "Sales - _TOIC"],
+		}
+		self.check_expected_values(invoices, expected_value, invoice_type="Sales")
+
+	def tearDown(self):
+		disable_dimension()
+
+
 def get_opening_invoice_creation_dict(**args):
 	party = "Customer" if args.get("invoice_type", "Sales") == "Sales" else "Supplier"
 	company = args.get("company", "_Test Company")
@@ -169,7 +201,7 @@ def get_opening_invoice_creation_dict(**args):
 				{
 					"qty": 1.0,
 					"outstanding_amount": 300,
-					"party": args.get("party_1") or "_Test {0}".format(party),
+					"party": args.get("party_1") or f"_Test {party}",
 					"item_name": "Opening Item",
 					"due_date": "2016-09-10",
 					"posting_date": "2016-09-05",
@@ -179,7 +211,7 @@ def get_opening_invoice_creation_dict(**args):
 				{
 					"qty": 2.0,
 					"outstanding_amount": 250,
-					"party": args.get("party_2") or "_Test {0} 1".format(party),
+					"party": args.get("party_2") or f"_Test {party} 1",
 					"item_name": "Opening Item",
 					"due_date": "2016-09-10",
 					"posting_date": "2016-09-05",

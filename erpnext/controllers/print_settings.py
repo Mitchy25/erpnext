@@ -13,9 +13,6 @@ def set_print_templates_for_item_table(doc, settings):
 		}
 	}
 
-	if doc.meta.get_field("items"):
-		doc.meta.get_field("items").hide_in_print_layout = ["uom", "stock_uom"]
-
 	doc.flags.compact_item_fields = ["description", "qty", "rate", "amount"]
 
 	if settings.compact_item_print:
@@ -42,7 +39,7 @@ def set_print_templates_for_taxes(doc, settings):
 
 
 def format_columns(display_columns, compact_fields):
-	compact_fields = compact_fields + ["image", "item_code", "item_name"]
+	compact_fields = [*compact_fields, "image", "item_code", "item_name"]
 	final_columns = []
 	for column in display_columns:
 		if column not in compact_fields:

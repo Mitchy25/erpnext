@@ -5,7 +5,6 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.model.naming import set_name_by_naming_series
 from frappe.utils import getdate, nowdate
 
 
@@ -14,11 +13,13 @@ class Contract(Document):
 		if frappe.db.get_single_value("Selling Settings", "contract_naming_by") == "Naming Series":
 			set_name_by_naming_series(self)
 
-		else:
-			name = self.party_name
+		if self.contract_template:
+			name += f" - {self.contract_template} Agreement"
 
-			if self.contract_template:
-				name = f"{name} - {self.contract_template} Agreement"
+		# If identical, append contract name with the next number in the iteration
+		if frappe.db.exists("Contract", name):
+			count = len(frappe.get_all("Contract", filters={"name": ["like", f"%{name}%"]}))
+			name = f"{name} - {count}"
 
 			# If identical, append contract name with the next number in the iteration
 			if frappe.db.exists("Contract", name):

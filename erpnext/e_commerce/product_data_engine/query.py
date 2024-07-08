@@ -56,7 +56,7 @@ class ProductQuery:
 		"""
 		# track if discounts included in field filters
 		self.filter_with_discount = bool(fields.get("discount"))
-		result, discount_list, website_item_groups, cart_items, count = [], [], [], [], 0
+		result, discount_list, _website_item_groups, cart_items, count = [], [], [], [], 0
 
 		if fields:
 			self.build_fields_filters(fields)
@@ -163,7 +163,6 @@ class ProductQuery:
 			# handle multiselect fields in filter addition
 			meta = frappe.get_meta("Website Item", cached=True)
 			df = meta.get_field(field)
-
 			if df.fieldtype == "Table MultiSelect":
 				child_doctype = df.options
 				child_meta = frappe.get_meta(child_doctype, cached=True)
@@ -216,7 +215,7 @@ class ProductQuery:
 			search_fields.discard("web_long_description")
 
 		# Build or filters for query
-		search = "%{}%".format(search_term)
+		search = f"%{search_term}%"
 		for field in search_fields:
 			self.or_filters.append([field, "like", search])
 
@@ -260,6 +259,10 @@ class ProductQuery:
 			)
 
 	def get_stock_availability(self, item):
+		from erpnext.templates.pages.wishlist import (
+			get_stock_availability as get_stock_availability_from_template,
+		)
+
 		"""Modify item object and add stock details."""
 		item.in_stock = False
 		warehouse = item.get("website_warehouse")
@@ -275,11 +278,7 @@ class ProductQuery:
 			else:
 				item.in_stock = True
 		elif warehouse:
-			# stock item and has warehouse
-			actual_qty = frappe.db.get_value(
-				"Bin", {"item_code": item.item_code, "warehouse": item.get("website_warehouse")}, "actual_qty"
-			)
-			item.in_stock = bool(flt(actual_qty))
+			item.in_stock = get_stock_availability_from_template(item.item_code, warehouse)
 
 	def get_cart_items(self):
 		customer = get_customer(silent=True)

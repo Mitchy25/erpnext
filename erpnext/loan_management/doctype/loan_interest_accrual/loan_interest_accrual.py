@@ -32,7 +32,7 @@ class LoanInterestAccrual(AccountsController):
 			self.update_is_accrued()
 
 		self.make_gl_entries(cancel=1)
-		self.ignore_linked_doctypes = ["GL Entry"]
+		self.ignore_linked_doctypes = ["GL Entry", "Payment Ledger Entry"]
 
 	def update_is_accrued(self):
 		frappe.db.set_value("Repayment Schedule", self.repayment_schedule_name, "is_accrued", 0)
@@ -72,7 +72,7 @@ class LoanInterestAccrual(AccountsController):
 						"credit_in_account_currency": self.interest_amount,
 						"against_voucher_type": "Loan",
 						"against_voucher": self.loan,
-						"remarks": ("Interest accrued from {0} to {1} against loan: {2}").format(
+						"remarks": ("Interest accrued from {} to {} against loan: {}").format(
 							self.last_accrual_date, self.posting_date, self.loan
 						),
 						"cost_center": cost_center,
@@ -88,9 +88,7 @@ class LoanInterestAccrual(AccountsController):
 # For Eg: If Loan disbursement date is '01-09-2019' and disbursed amount is 1000000 and
 # rate of interest is 13.5 then first loan interest accural will be on '01-10-2019'
 # which means interest will be accrued for 30 days which should be equal to 11095.89
-def calculate_accrual_amount_for_demand_loans(
-	loan, posting_date, process_loan_interest, accrual_type
-):
+def calculate_accrual_amount_for_demand_loans(loan, posting_date, process_loan_interest, accrual_type):
 	from erpnext.loan_management.doctype.loan_repayment.loan_repayment import (
 		calculate_amounts,
 		get_pending_principal_amount,
@@ -151,9 +149,6 @@ def make_accrual_interest_entry_for_demand_loans(
 				"name",
 				"total_payment",
 				"total_amount_paid",
-				"debit_adjustment_amount",
-				"credit_adjustment_amount",
-				"refund_amount",
 				"loan_account",
 				"interest_income_account",
 				"loan_amount",
@@ -226,7 +221,7 @@ def get_term_loans(date, term_loan=None, loan_type=None):
 		condition += " AND l.loan_type = %s" % frappe.db.escape(loan_type)
 
 	term_loans = frappe.db.sql(
-		"""SELECT l.name, l.total_payment, l.total_amount_paid, l.loan_account,
+		f"""SELECT l.name, l.total_payment, l.total_amount_paid, l.loan_account,
 			l.interest_income_account, l.is_term_loan, l.disbursement_date, l.applicant_type, l.applicant,
 			l.rate_of_interest, l.total_interest_payable, l.repayment_start_date, rs.name as payment_entry,
 			rs.payment_date, rs.principal_amount, rs.interest_amount, rs.is_accrued , rs.balance_loan_amount
@@ -235,12 +230,10 @@ def get_term_loans(date, term_loan=None, loan_type=None):
 			AND l.docstatus=1
 			AND l.is_term_loan =1
 			AND rs.payment_date <= %s
-			AND rs.is_accrued=0 {0}
+			AND rs.is_accrued=0 {condition}
 			AND rs.principal_amount > 0
 			AND l.status = 'Disbursed'
-			ORDER BY rs.payment_date""".format(
-			condition
-		),
+			ORDER BY rs.payment_date""",
 		(getdate(date)),
 		as_dict=1,
 	)
@@ -306,7 +299,7 @@ def get_last_accrual_date(loan, posting_date):
 def get_last_disbursement_date(loan, posting_date):
 	last_disbursement_date = frappe.db.get_value(
 		"Loan Disbursement",
-		{"docstatus": 1, "against_loan": loan, "posting_date": ("<=", posting_date)},
+		{"docstatus": 1, "against_loan": loan, "posting_date": ("<", posting_date)},
 		"MAX(posting_date)",
 	)
 
@@ -326,6 +319,4 @@ def get_per_day_interest(principal_amount, rate_of_interest, posting_date=None):
 	if not posting_date:
 		posting_date = getdate()
 
-	return flt(
-		(principal_amount * rate_of_interest) / (days_in_year(get_datetime(posting_date).year) * 100)
-	)
+	return flt((principal_amount * rate_of_interest) / (days_in_year(get_datetime(posting_date).year) * 100))

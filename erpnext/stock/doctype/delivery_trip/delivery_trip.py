@@ -8,13 +8,12 @@ import frappe
 from frappe import _
 from frappe.contacts.doctype.address.address import get_address_display
 from frappe.model.document import Document
-from frappe.model.mapper import get_mapped_doc
 from frappe.utils import cint, get_datetime, get_link_to_form
 
 
 class DeliveryTrip(Document):
 	def __init__(self, *args, **kwargs):
-		super(DeliveryTrip, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 		# Google Maps returns distances in meters by default
 		self.default_distance_uom = (
@@ -25,6 +24,9 @@ class DeliveryTrip(Document):
 		)
 
 	def validate(self):
+		if self._action == "submit" and not self.driver:
+			frappe.throw(_("A driver must be set to submit."))
+
 		self.validate_stop_addresses()
 
 	def on_submit(self):
@@ -168,7 +170,7 @@ class DeliveryTrip(Document):
 		for stop in self.delivery_stops:
 			leg.append(stop.customer_address)
 
-			if optimize and stop.lock:
+			if optimize and stop.locked:
 				route_list.append(leg)
 				leg = [stop.customer_address]
 
@@ -263,9 +265,9 @@ def get_default_contact(out, name):
 			FROM
 				`tabDynamic Link` dl
 			WHERE
-				dl.link_doctype="Customer"
+				dl.link_doctype='Customer'
 				AND dl.link_name=%s
-				AND dl.parenttype = "Contact"
+				AND dl.parenttype = 'Contact'
 		""",
 		(name),
 		as_dict=1,
@@ -289,9 +291,9 @@ def get_default_address(out, name):
 			FROM
 				`tabDynamic Link` dl
 			WHERE
-				dl.link_doctype="Customer"
+				dl.link_doctype='Customer'
 				AND dl.link_name=%s
-				AND dl.parenttype = "Address"
+				AND dl.parenttype = 'Address'
 		""",
 		(name),
 		as_dict=1,
@@ -313,14 +315,11 @@ def get_contact_display(contact):
 		"Contact", contact, ["first_name", "last_name", "phone", "mobile_no"], as_dict=1
 	)
 
-	contact_info.html = (
-		""" <b>%(first_name)s %(last_name)s</b> <br> %(phone)s <br> %(mobile_no)s"""
-		% {
-			"first_name": contact_info.first_name,
-			"last_name": contact_info.last_name or "",
-			"phone": contact_info.phone or "",
-			"mobile_no": contact_info.mobile_no or "",
-		}
+	contact_info.html = """ <b>{first_name} {last_name}</b> <br> {phone} <br> {mobile_no}""".format(
+		first_name=contact_info.first_name,
+		last_name=contact_info.last_name or "",
+		phone=contact_info.phone or "",
+		mobile_no=contact_info.mobile_no or "",
 	)
 
 	return contact_info.html
@@ -388,7 +387,7 @@ def notify_customers(delivery_trip):
 
 	if email_recipients:
 		frappe.msgprint(_("Email sent to {0}").format(", ".join(email_recipients)))
-		delivery_trip.db_set("email_notification_sent", True)
+		delivery_trip.db_set("email_notification_sent", 1)
 	else:
 		frappe.msgprint(_("No contacts with email IDs found."))
 
@@ -416,15 +415,3 @@ def get_driver_email(driver):
 	employee = frappe.db.get_value("Driver", driver, "employee")
 	email = frappe.db.get_value("Employee", employee, "prefered_email")
 	return {"email": email}
-
-
-@frappe.whitelist()
-def make_expense_claim(source_name, target_doc=None):
-	doc = get_mapped_doc(
-		"Delivery Trip",
-		source_name,
-		{"Delivery Trip": {"doctype": "Expense Claim", "field_map": {"name": "delivery_trip"}}},
-		target_doc,
-	)
-
-	return doc

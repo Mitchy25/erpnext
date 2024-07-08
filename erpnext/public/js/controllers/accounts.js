@@ -9,7 +9,7 @@ frappe.ui.form.on(cur_frm.doctype, {
 	setup: function(frm) {
 		// set conditional display for rate column in taxes
 		$(frm.wrapper).on('grid-row-render', function(e, grid_row) {
-			if(in_list(['Sales Taxes and Charges', 'Purchase Taxes and Charges'], grid_row.doc.doctype)) {
+			if(['Sales Taxes and Charges', 'Purchase Taxes and Charges'].includes(grid_row.doc.doctype)) {
 				erpnext.taxes.set_conditional_mandatory_rate_or_amount(grid_row);
 			}
 		});
@@ -28,7 +28,6 @@ frappe.ui.form.on(cur_frm.doctype, {
 					filters: {
 						"account_type": account_type,
 						"company": doc.company,
-						"disabled": 0
 					}
 				}
 			});
@@ -55,6 +54,14 @@ frappe.ui.form.on(cur_frm.doctype, {
 	},
 
 	allocate_advances_automatically: function(frm) {
+		frm.trigger('fetch_advances');
+	},
+
+	only_include_allocated_payments: function(frm) {
+		frm.trigger('fetch_advances');
+	},
+
+	fetch_advances: function(frm) {
 		if(frm.doc.allocate_advances_automatically) {
 			frappe.call({
 				doc: frm.doc,
@@ -83,6 +90,12 @@ frappe.ui.form.on("Sales Invoice", {
 });
 
 frappe.ui.form.on('Purchase Invoice', {
+	setup: (frm) => {
+		frm.make_methods = {
+			'Landed Cost Voucher': function () { frm.trigger('create_landedcost_voucher') },
+		}
+	},
+
 	mode_of_payment: function(frm) {
 		get_payment_mode_account(frm, frm.doc.mode_of_payment, function(account){
 			frm.set_value('cash_bank_account', account);
@@ -91,6 +104,20 @@ frappe.ui.form.on('Purchase Invoice', {
 
 	payment_terms_template: function() {
 		cur_frm.trigger("disable_due_date");
+	},
+
+	create_landedcost_voucher: function (frm) {
+		let lcv = frappe.model.get_new_doc('Landed Cost Voucher');
+		lcv.company = frm.doc.company;
+
+		let lcv_receipt = frappe.model.get_new_doc('Landed Cost Purchase Invoice');
+		lcv_receipt.receipt_document_type = 'Purchase Invoice';
+		lcv_receipt.receipt_document = frm.doc.name;
+		lcv_receipt.supplier = frm.doc.supplier;
+		lcv_receipt.grand_total = frm.doc.grand_total;
+		lcv.purchase_receipts = [lcv_receipt];
+
+		frappe.set_route("Form", lcv.doctype, lcv.name);
 	}
 });
 
@@ -143,6 +170,12 @@ var get_payment_mode_account = function(frm, mode_of_payment, callback) {
 
 cur_frm.cscript.account_head = function(doc, cdt, cdn) {
 	var d = locals[cdt][cdn];
+
+	if (doc.docstatus == 1) {
+		// Should not trigger any changes on change post submit
+		return;
+	}
+
 	if(!d.charge_type && d.account_head){
 		frappe.msgprint(__("Please select Charge Type first"));
 		frappe.model.set_value(cdt, cdn, "account_head", "");

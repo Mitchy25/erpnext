@@ -11,9 +11,8 @@ from frappe.contacts.address_and_contact import (
 )
 from frappe.model.naming import set_name_by_naming_series, set_name_from_naming_options
 
-from erpnext.accounts.party import (  # noqa
+from erpnext.accounts.party import (
 	get_dashboard_info,
-	get_timeline_data,
 	validate_party_accounts,
 )
 from erpnext.utilities.transaction_base import TransactionBase
@@ -136,48 +135,24 @@ class Supplier(TransactionBase):
 
 	def after_rename(self, olddn, newdn, merge=False):
 		if frappe.defaults.get_global_default("supp_master_name") == "Supplier Name":
-			frappe.db.set(self, "supplier_name", newdn)
-
-	def create_onboarding_docs(self, args):
-		company = frappe.defaults.get_defaults().get("company") or frappe.db.get_single_value(
-			"Global Defaults", "default_company"
-		)
-
-		for i in range(1, args.get("max_count")):
-			supplier = args.get("supplier_name_" + str(i))
-			if supplier:
-				try:
-					doc = frappe.get_doc(
-						{
-							"doctype": self.doctype,
-							"supplier_name": supplier,
-							"supplier_group": _("Local"),
-							"company": company,
-						}
-					).insert()
-
-					if args.get("supplier_email_" + str(i)):
-						from erpnext.selling.doctype.customer.customer import create_contact
-
-						create_contact(supplier, "Supplier", doc.name, args.get("supplier_email_" + str(i)))
-				except frappe.NameError:
-					pass
+			self.db_set("supplier_name", newdn)
 
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_supplier_primary_contact(doctype, txt, searchfield, start, page_len, filters):
 	supplier = filters.get("supplier")
-	return frappe.db.sql(
-		"""
-		SELECT
-			`tabContact`.name from `tabContact`,
-			`tabDynamic Link`
-		WHERE
-			`tabContact`.name = `tabDynamic Link`.parent
-			and `tabDynamic Link`.link_name = %(supplier)s
-			and `tabDynamic Link`.link_doctype = 'Supplier'
-			and `tabContact`.name like %(txt)s
-		""",
-		{"supplier": supplier, "txt": "%%%s%%" % txt},
-	)
+	contact = frappe.qb.DocType("Contact")
+	dynamic_link = frappe.qb.DocType("Dynamic Link")
+
+	return (
+		frappe.qb.from_(contact)
+		.join(dynamic_link)
+		.on(contact.name == dynamic_link.parent)
+		.select(contact.name, contact.email_id)
+		.where(
+			(dynamic_link.link_name == supplier)
+			& (dynamic_link.link_doctype == "Supplier")
+			& (contact.name.like(f"%{txt}%"))
+		)
+	).run(as_dict=False)

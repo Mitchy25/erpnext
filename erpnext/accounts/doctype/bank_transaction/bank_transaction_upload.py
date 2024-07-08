@@ -8,7 +8,6 @@ import frappe
 from frappe.utils import getdate
 from frappe.utils.dateutils import parse_date
 
-from six import iteritems
 
 
 @frappe.whitelist()
@@ -20,12 +19,12 @@ def upload_bank_statement():
 		fcontent = frappe.local.uploaded_file
 		fname = frappe.local.uploaded_filename
 
-	if frappe.safe_encode(fname).lower().endswith("csv".encode("utf-8")):
+	if frappe.safe_encode(fname).lower().endswith(b"csv"):
 		from frappe.utils.csvutils import read_csv_content
 
 		rows = read_csv_content(fcontent, False)
 
-	elif frappe.safe_encode(fname).lower().endswith("xlsx".encode("utf-8")):
+	elif frappe.safe_encode(fname).lower().endswith(b"xlsx"):
 		from frappe.utils.xlsxutils import read_xlsx_file_from_attached_file
 
 		rows = read_xlsx_file_from_attached_file(fcontent=fcontent)
@@ -46,7 +45,7 @@ def create_bank_entries(columns, data, bank_account):
 		if all(item is None for item in d) is True:
 			continue
 		fields = {}
-		for key, value in iteritems(header_map):
+		for key, value in header_map.items():
 			fields.update({key: d[int(value) - 1]})
 
 		try:
@@ -58,7 +57,7 @@ def create_bank_entries(columns, data, bank_account):
 			bank_transaction.submit()
 			success += 1
 		except Exception:
-			frappe.log_error(frappe.get_traceback())
+			bank_transaction.log_error("Bank entry creation failed")
 			errors += 1
 
 	return {"success": success, "errors": errors}

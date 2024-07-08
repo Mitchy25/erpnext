@@ -34,8 +34,8 @@ pricing_rule_fields = [
 other_fields = [
 	"min_qty",
 	"max_qty",
-	"min_amt",
-	"max_amt",
+	"min_amount",
+	"max_amount",
 	"priority",
 	"warehouse",
 	"threshold_percentage",
@@ -100,9 +100,7 @@ class PromotionalScheme(Document):
 		docnames = frappe.get_all("Pricing Rule", filters={"promotional_scheme": self.name})
 
 		for docname in docnames:
-			if frappe.db.exists(
-				"Pricing Rule Detail", {"pricing_rule": docname.name, "docstatus": ("<", 2)}
-			):
+			if frappe.db.exists("Pricing Rule Detail", {"pricing_rule": docname.name, "docstatus": ("<", 2)}):
 				raise_for_transaction_exists(self.name)
 
 		if docnames and not transaction_exists:
@@ -177,7 +175,7 @@ def _get_pricing_rules(doc, child_doc, discount_fields, rules=None):
 	args = get_args_for_pricing_rule(doc)
 	applicable_for = frappe.scrub(doc.get("applicable_for"))
 
-	for idx, d in enumerate(doc.get(child_doc)):
+	for _idx, d in enumerate(doc.get(child_doc)):
 		if d.name in rules:
 			if not args.get(applicable_for):
 				docname = get_pricing_rule_docname(d)
@@ -187,7 +185,14 @@ def _get_pricing_rules(doc, child_doc, discount_fields, rules=None):
 				for applicable_for_value in args.get(applicable_for):
 					docname = get_pricing_rule_docname(d, applicable_for, applicable_for_value)
 					pr = prepare_pricing_rule(
-						args, doc, child_doc, discount_fields, d, docname, applicable_for, applicable_for_value
+						args,
+						doc,
+						child_doc,
+						discount_fields,
+						d,
+						docname,
+						applicable_for,
+						applicable_for_value,
 					)
 					new_doc.append(pr)
 
@@ -213,7 +218,7 @@ def _get_pricing_rules(doc, child_doc, discount_fields, rules=None):
 
 
 def get_pricing_rule_docname(
-	row: dict, applicable_for: str = None, applicable_for_value: str = None
+	row: dict, applicable_for: str | None = None, applicable_for_value: str | None = None
 ) -> str:
 	fields = ["promotional_scheme_id", "name"]
 	filters = {"promotional_scheme_id": row.name}
@@ -246,7 +251,11 @@ def prepare_pricing_rule(
 def set_args(args, pr, doc, child_doc, discount_fields, child_doc_fields):
 	pr.update(args)
 	for field in other_fields + discount_fields:
-		pr.set(field, child_doc_fields.get(field))
+		target_field = field
+		if target_field in ["min_amount", "max_amount"]:
+			target_field = "min_amt" if field == "min_amount" else "max_amt"
+
+		pr.set(target_field, child_doc_fields.get(field))
 
 	pr.promotional_scheme_id = child_doc_fields.name
 	pr.promotional_scheme = doc.name

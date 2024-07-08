@@ -73,7 +73,9 @@ class TestGLEntry(unittest.TestCase):
 		)
 		self.assertTrue(all(entry.to_rename == 0 for entry in new_gl_entries))
 
-		self.assertTrue(all(new.name != old.name for new, old in zip(gl_entries, new_gl_entries)))
+		self.assertTrue(
+			all(new.name != old.name for new, old in zip(gl_entries, new_gl_entries, strict=False))
+		)
 
 		new_naming_series_current_value = frappe.db.sql(
 			"SELECT current from tabSeries where name = %s", naming_series

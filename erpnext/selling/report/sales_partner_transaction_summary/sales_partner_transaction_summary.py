@@ -2,6 +2,10 @@
 # For license information, please see license.txt
 
 
+import frappe
+from frappe import _, msgprint
+
+
 import frappe, erpnext
 from frappe import _, msgprint
 from frappe.utils import get_url
@@ -188,8 +192,9 @@ def get_columns(filters):
 			"fieldname": "currency",
 			"fieldtype": "Link",
 			"options": "Currency",
-			"width": 120
-		})
+			"width": 120,
+		},
+	]
 
 	return columns
 
@@ -251,13 +256,13 @@ def get_conditions(filters, date_field):
 
 	for field in ["company", "customer", "territory", "sales_partner"]:
 		if filters.get(field):
-			conditions += " and dt.{0} = %({1})s".format(field, field)
+			conditions += f" and dt.{field} = %({field})s"
 
 	if filters.get("from_date"):
-		conditions += " and dt.{0} >= %(from_date)s".format(date_field)
+		conditions += f" and dt.{date_field} >= %(from_date)s"
 
 	if filters.get("to_date"):
-		conditions += " and dt.{0} <= %(to_date)s".format(date_field)
+		conditions += f" and dt.{date_field} <= %(to_date)s"
 
 	if filters.get("currency"):
 		conditions += " and dt.currency = %(currency)s"

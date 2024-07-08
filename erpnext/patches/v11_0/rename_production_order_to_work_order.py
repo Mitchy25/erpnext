@@ -29,6 +29,4 @@ def execute():
 	frappe.rename_doc(
 		"Report", "Issued Items Against Production Order", "Issued Items Against Work Order", force=True
 	)
-	frappe.rename_doc(
-		"Report", "Production Order Stock Report", "Work Order Stock Report", force=True
-	)
+	frappe.rename_doc("Report", "Production Order Stock Report", "Work Order Stock Report", force=True)

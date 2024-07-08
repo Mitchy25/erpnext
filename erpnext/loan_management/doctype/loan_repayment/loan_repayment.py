@@ -5,7 +5,6 @@
 import frappe
 from frappe import _
 from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate
-from six import iteritems
 
 import erpnext
 from erpnext.accounts.general_ledger import make_gl_entries
@@ -42,7 +41,7 @@ class LoanRepayment(AccountsController):
 		self.check_future_accruals()
 		self.update_repayment_schedule(cancel=1)
 		self.mark_as_unpaid()
-		self.ignore_linked_doctypes = ["GL Entry"]
+		self.ignore_linked_doctypes = ["GL Entry", "Payment Ledger Entry"]
 		self.make_gl_entries(cancel=1)
 
 	def set_missing_values(self, amounts):
@@ -71,7 +70,9 @@ class LoanRepayment(AccountsController):
 
 		shortfall_amount = flt(
 			frappe.db.get_value(
-				"Loan Security Shortfall", {"loan": self.against_loan, "status": "Pending"}, "shortfall_amount"
+				"Loan Security Shortfall",
+				{"loan": self.against_loan, "status": "Pending"},
+				"shortfall_amount",
 			)
 		)
 
@@ -81,10 +82,11 @@ class LoanRepayment(AccountsController):
 		if amounts.get("due_date"):
 			self.due_date = amounts.get("due_date")
 
-		if self.repay_from_salary and not self.payroll_payable_account:
-			frappe.throw(_("Please set Payroll Payable Account in Loan Repayment"))
-		elif not self.repay_from_salary and self.payroll_payable_account:
-			self.repay_from_salary = 1
+		if hasattr(self, "repay_from_salary") and hasattr(self, "payroll_payable_account"):
+			if self.repay_from_salary and not self.payroll_payable_account:
+				frappe.throw(_("Please set Payroll Payable Account in Loan Repayment"))
+			elif not self.repay_from_salary and self.payroll_payable_account:
+				self.repay_from_salary = 1
 
 	def check_future_entries(self):
 		future_repayment_date = frappe.db.get_value(
@@ -94,10 +96,10 @@ class LoanRepayment(AccountsController):
 		)
 
 		if future_repayment_date:
-			frappe.throw("Repayment already made till date {0}".format(get_datetime(future_repayment_date)))
+			frappe.throw(f"Repayment already made till date {get_datetime(future_repayment_date)}")
 
 	def validate_amount(self):
-		precision = cint(frappe.db.get_default("currency_precision")) or 2
+		cint(frappe.db.get_default("currency_precision")) or 2
 
 		if not self.amount_paid:
 			frappe.throw(_("Amount paid cannot be zero"))
@@ -115,7 +117,9 @@ class LoanRepayment(AccountsController):
 				)
 
 				no_of_days = (
-					flt(flt(self.total_interest_paid - self.interest_payable, precision) / per_day_interest, 0)
+					flt(
+						flt(self.total_interest_paid - self.interest_payable, precision) / per_day_interest, 0
+					)
 					- 1
 				)
 
@@ -139,7 +143,9 @@ class LoanRepayment(AccountsController):
 						"repayment_details",
 						{
 							"loan_interest_accrual": lia.name,
-							"paid_interest_amount": flt(self.total_interest_paid - self.interest_payable, precision),
+							"paid_interest_amount": flt(
+								self.total_interest_paid - self.interest_payable, precision
+							),
 							"paid_principal_amount": 0.0,
 							"accrual_type": "Repayment",
 						},
@@ -155,9 +161,6 @@ class LoanRepayment(AccountsController):
 				"status",
 				"is_secured_loan",
 				"total_payment",
-				"debit_adjustment_amount",
-				"credit_adjustment_amount",
-				"refund_amount",
 				"loan_amount",
 				"disbursed_amount",
 				"total_interest_payable",
@@ -266,9 +269,7 @@ class LoanRepayment(AccountsController):
 
 		if future_accrual_date:
 			frappe.throw(
-				"Cannot cancel. Interest accruals already processed till {0}".format(
-					get_datetime(future_accrual_date)
-				)
+				f"Cannot cancel. Interest accruals already processed till {get_datetime(future_accrual_date)}"
 			)
 
 	def update_repayment_schedule(self, cancel=0):
@@ -310,7 +311,7 @@ class LoanRepayment(AccountsController):
 		idx = 1
 
 		if interest_paid > 0:
-			for lia, amounts in iteritems(repayment_details.get("pending_accrual_entries", [])):
+			for lia, amounts in repayment_details.get("pending_accrual_entries", []).items():
 				interest_amount = 0
 				if amounts["interest_amount"] <= interest_paid:
 					interest_amount = amounts["interest_amount"]
@@ -340,11 +341,9 @@ class LoanRepayment(AccountsController):
 
 		return interest_paid, updated_entries
 
-	def allocate_principal_amount_for_term_loans(
-		self, interest_paid, repayment_details, updated_entries
-	):
+	def allocate_principal_amount_for_term_loans(self, interest_paid, repayment_details, updated_entries):
 		if interest_paid > 0:
-			for lia, amounts in iteritems(repayment_details.get("pending_accrual_entries", [])):
+			for lia, amounts in repayment_details.get("pending_accrual_entries", []).items():
 				paid_principal = 0
 				if amounts["payable_principal_amount"] <= interest_paid:
 					paid_principal = amounts["payable_principal_amount"]
@@ -399,23 +398,31 @@ class LoanRepayment(AccountsController):
 	def make_gl_entries(self, cancel=0, adv_adj=0):
 		gle_map = []
 		if self.shortfall_amount and self.amount_paid > self.shortfall_amount:
-			remarks = "Shortfall repayment of {0}.<br>Repayment against loan {1}".format(
+			remarks = "Shortfall repayment of {}.<br>Repayment against loan {}".format(
 				self.shortfall_amount, self.against_loan
 			)
 		elif self.shortfall_amount:
-			remarks = "Shortfall repayment of {0} against loan {1}".format(
-				self.shortfall_amount, self.against_loan
-			)
+			remarks = f"Shortfall repayment of {self.shortfall_amount} against loan {self.against_loan}"
 		else:
 			remarks = "Repayment against loan " + self.against_loan
 
 		if self.reference_number:
-			remarks += " with reference no. {}".format(self.reference_number)
+			remarks += f"with reference no. {self.reference_number}"
 
-		if self.repay_from_salary:
+		if hasattr(self, "repay_from_salary") and self.repay_from_salary:
 			payment_account = self.payroll_payable_account
 		else:
 			payment_account = self.payment_account
+
+		payment_party_type = ""
+		payment_party = ""
+
+		if (
+			hasattr(self, "process_payroll_accounting_entry_based_on_employee")
+			and self.process_payroll_accounting_entry_based_on_employee
+		):
+			payment_party_type = "Employee"
+			payment_party = self.applicant
 
 		if self.total_penalty_paid:
 			gle_map.append(
@@ -464,6 +471,8 @@ class LoanRepayment(AccountsController):
 					"remarks": _(remarks),
 					"cost_center": self.cost_center,
 					"posting_date": getdate(self.posting_date),
+					"party_type": payment_party_type,
+					"party": payment_party,
 				}
 			)
 		)
@@ -502,8 +511,8 @@ def create_repayment_entry(
 	amount_paid,
 	penalty_amount=None,
 	payroll_payable_account=None,
+	process_payroll_accounting_entry_based_on_employee=0,
 ):
-
 	lr = frappe.get_doc(
 		{
 			"doctype": "Loan Repayment",
@@ -518,6 +527,7 @@ def create_repayment_entry(
 			"amount_paid": amount_paid,
 			"loan_type": loan_type,
 			"payroll_payable_account": payroll_payable_account,
+			"process_payroll_accounting_entry_based_on_employee": process_payroll_accounting_entry_based_on_employee,
 		}
 	).insert()
 
@@ -588,6 +598,8 @@ def regenerate_repayment_schedule(loan, cancel=0):
 	last_repayment_amount = None
 	last_balance_amount = None
 
+	original_repayment_schedule_len = len(loan_doc.get("repayment_schedule"))
+
 	for term in reversed(loan_doc.get("repayment_schedule")):
 		if not term.is_accrued:
 			next_accrual_date = term.payment_date
@@ -604,9 +616,7 @@ def regenerate_repayment_schedule(loan, cancel=0):
 	balance_amount = get_pending_principal_amount(loan_doc)
 
 	if loan_doc.repayment_method == "Repay Fixed Amount per Period":
-		monthly_repayment_amount = flt(
-			balance_amount / len(loan_doc.get("repayment_schedule")) - accrued_entries
-		)
+		monthly_repayment_amount = flt(balance_amount / (original_repayment_schedule_len - accrued_entries))
 	else:
 		repayment_period = loan_doc.repayment_periods - accrued_entries
 		if not cancel and repayment_period > 0:
@@ -705,7 +715,7 @@ def get_amounts(amounts, against_loan, posting_date):
 
 		if (
 			no_of_late_days > 0
-			and (not against_loan_doc.repay_from_salary)
+			and (not (hasattr(against_loan_doc, "repay_from_salary") and against_loan_doc.repay_from_salary))
 			and entry.accrual_type == "Regular"
 		):
 			penalty_amount += (
@@ -777,7 +787,6 @@ def calculate_amounts(against_loan, posting_date, payment_type=""):
 	if payment_type == "Loan Closure":
 		amounts["payable_principal_amount"] = amounts["pending_principal_amount"]
 		amounts["interest_amount"] += amounts["unaccrued_interest"]
-		amounts["payable_amount"] = amounts["payable_principal_amount"] + amounts["interest_amount"]
 		amounts["payable_amount"] = (
 			amounts["payable_principal_amount"] + amounts["interest_amount"] + amounts["penalty_amount"]
 		)

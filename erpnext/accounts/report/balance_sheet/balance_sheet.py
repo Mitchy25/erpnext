@@ -25,6 +25,8 @@ def execute(filters=None):
 		company=filters.company,
 	)
 
+	filters.period_start_date = period_list[0]["year_start_date"]
+
 	currency = filters.presentation_currency or frappe.get_cached_value(
 		"Company", filters.company, "default_currency"
 	)
@@ -95,11 +97,11 @@ def execute(filters=None):
 
 	chart = get_chart_data(filters, columns, asset, liability, equity)
 
-	report_summary = get_report_summary(
-		period_list, asset, liability, equity, provisional_profit_loss, total_credit, currency, filters
+	report_summary, primitive_summary = get_report_summary(
+		period_list, asset, liability, equity, provisional_profit_loss, currency, filters
 	)
 
-	return columns, data, message, chart, report_summary
+	return columns, data, message, chart, report_summary, primitive_summary
 
 
 def get_provisional_profit_loss(
@@ -174,12 +176,10 @@ def get_report_summary(
 	liability,
 	equity,
 	provisional_profit_loss,
-	total_credit,
 	currency,
 	filters,
 	consolidated=False,
 ):
-
 	net_asset, net_liability, net_equity, net_provisional_profit_loss = 0.0, 0.0, 0.0, 0.0
 
 	if filters.get("accumulated_values"):
@@ -201,22 +201,23 @@ def get_report_summary(
 			net_provisional_profit_loss += provisional_profit_loss.get(key)
 
 	return [
-		{"value": net_asset, "label": "Total Asset", "datatype": "Currency", "currency": currency},
+		{"value": net_asset, "label": _("Total Asset"), "datatype": "Currency", "currency": currency},
 		{
 			"value": net_liability,
-			"label": "Total Liability",
+			"label": _("Total Liability"),
 			"datatype": "Currency",
 			"currency": currency,
 		},
-		{"value": net_equity, "label": "Total Equity", "datatype": "Currency", "currency": currency},
+		{"value": net_equity, "label": _("Total Equity"), "datatype": "Currency", "currency": currency},
 		{
 			"value": net_provisional_profit_loss,
-			"label": "Provisional Profit / Loss (Credit)",
+			"label": _("Provisional Profit / Loss (Credit)"),
 			"indicator": "Green" if net_provisional_profit_loss > 0 else "Red",
 			"datatype": "Currency",
 			"currency": currency,
 		},
-	]
+	], (net_asset - net_liability + net_equity)
+
 
 
 def get_chart_data(filters, columns, asset, liability, equity):

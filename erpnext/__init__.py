@@ -1,10 +1,9 @@
+import functools
 import inspect
 
 import frappe
 
-from erpnext.hooks import regional_overrides
-
-__version__ = "13.55.2"
+__version__ = "14.70.8"
 
 
 def get_default_company(user=None):
@@ -14,7 +13,7 @@ def get_default_company(user=None):
 	if not user:
 		user = frappe.session.user
 
-	companies = get_user_default_as_list(user, "company")
+	companies = get_user_default_as_list("company", user)
 	if companies:
 		default_company = companies[0]
 	else:
@@ -37,10 +36,8 @@ def get_default_cost_center(company):
 
 	if not frappe.flags.company_cost_center:
 		frappe.flags.company_cost_center = {}
-	if not company in frappe.flags.company_cost_center:
-		frappe.flags.company_cost_center[company] = frappe.get_cached_value(
-			"Company", company, "cost_center"
-		)
+	if company not in frappe.flags.company_cost_center:
+		frappe.flags.company_cost_center[company] = frappe.get_cached_value("Company", company, "cost_center")
 	return frappe.flags.company_cost_center[company]
 
 
@@ -48,7 +45,7 @@ def get_company_currency(company):
 	"""Returns the default company currency"""
 	if not frappe.flags.company_currency:
 		frappe.flags.company_currency = {}
-	if not company in frappe.flags.company_currency:
+	if company not in frappe.flags.company_currency:
 		frappe.flags.company_currency[company] = frappe.db.get_value(
 			"Company", company, "default_currency", cache=True
 		)
@@ -82,7 +79,7 @@ def is_perpetual_inventory_enabled(company):
 	if not hasattr(frappe.local, "enable_perpetual_inventory"):
 		frappe.local.enable_perpetual_inventory = {}
 
-	if not company in frappe.local.enable_perpetual_inventory:
+	if company not in frappe.local.enable_perpetual_inventory:
 		frappe.local.enable_perpetual_inventory[company] = (
 			frappe.get_cached_value("Company", company, "enable_perpetual_inventory") or 0
 		)
@@ -97,7 +94,7 @@ def get_default_finance_book(company=None):
 	if not hasattr(frappe.local, "default_finance_book"):
 		frappe.local.default_finance_book = {}
 
-	if not company in frappe.local.default_finance_book:
+	if company not in frappe.local.default_finance_book:
 		frappe.local.default_finance_book[company] = frappe.get_cached_value(
 			"Company", company, "default_finance_book"
 		)
@@ -109,7 +106,7 @@ def get_party_account_type(party_type):
 	if not hasattr(frappe.local, "party_account_types"):
 		frappe.local.party_account_types = {}
 
-	if not party_type in frappe.local.party_account_types:
+	if party_type not in frappe.local.party_account_types:
 		frappe.local.party_account_types[party_type] = (
 			frappe.db.get_value("Party Type", party_type, "account_type") or ""
 		)
@@ -122,12 +119,14 @@ def get_region(company=None):
 
 	You can also set global company flag in `frappe.flags.company`
 	"""
-	if company or frappe.flags.company:
-		return frappe.get_cached_value("Company", company or frappe.flags.company, "country")
-	elif frappe.flags.country:
-		return frappe.flags.country
-	else:
-		return frappe.get_system_settings("country")
+
+	if not company:
+		company = frappe.local.flags.company
+
+	if company:
+		return frappe.get_cached_value("Company", company, "country")
+
+	return frappe.flags.country or frappe.get_system_settings("country")
 
 
 def allow_regional(fn):
@@ -138,27 +137,15 @@ def allow_regional(fn):
 	def myfunction():
 	  pass"""
 
+	@functools.wraps(fn)
 	def caller(*args, **kwargs):
-		region = get_region()
-		fn_name = inspect.getmodule(fn).__name__ + "." + fn.__name__
-		if region in regional_overrides and fn_name in regional_overrides[region]:
-			return frappe.get_attr(regional_overrides[region][fn_name])(*args, **kwargs)
-		else:
+		overrides = frappe.get_hooks("regional_overrides", {}).get(get_region())
+		function_path = f"{inspect.getmodule(fn).__name__}.{fn.__name__}"
+
+		if not overrides or function_path not in overrides:
 			return fn(*args, **kwargs)
 
+		# Priority given to last installed app
+		return frappe.get_attr(overrides[function_path][-1])(*args, **kwargs)
+
 	return caller
-
-
-@frappe.whitelist()
-def get_last_membership(member):
-	"""Returns last membership if exists"""
-	last_membership = frappe.get_all(
-		"Membership",
-		"name,to_date,membership_type",
-		dict(member=member, paid=1),
-		order_by="to_date desc",
-		limit=1,
-	)
-
-	if last_membership:
-		return last_membership[0]

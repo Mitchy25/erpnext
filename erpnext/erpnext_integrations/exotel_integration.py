@@ -1,6 +1,5 @@
 import frappe
 import requests
-from frappe import _
 
 # api/method/erpnext.erpnext_integrations.exotel_integration.handle_incoming_call
 # api/method/erpnext.erpnext_integrations.exotel_integration.handle_end_call
@@ -24,9 +23,9 @@ def handle_incoming_call(**kwargs):
 			create_call_log(call_payload)
 		else:
 			update_call_log(call_payload, call_log=call_log)
-	except Exception as e:
+	except Exception:
 		frappe.db.rollback()
-		frappe.log_error(title=_("Error in Exotel incoming call"))
+		exotel_settings.log_error("Error in Exotel incoming call")
 		frappe.db.commit()
 
 
@@ -87,7 +86,7 @@ def create_call_log(call_payload):
 
 @frappe.whitelist()
 def get_call_status(call_id):
-	endpoint = get_exotel_endpoint("Calls/{call_id}.json".format(call_id=call_id))
+	endpoint = get_exotel_endpoint(f"Calls/{call_id}.json")
 	response = requests.get(endpoint)
 	status = response.json().get("Call", {}).get("Status")
 	return status
@@ -96,9 +95,7 @@ def get_call_status(call_id):
 @frappe.whitelist()
 def make_a_call(from_number, to_number, caller_id):
 	endpoint = get_exotel_endpoint("Calls/connect.json?details=true")
-	response = requests.post(
-		endpoint, data={"From": from_number, "To": to_number, "CallerId": caller_id}
-	)
+	response = requests.post(endpoint, data={"From": from_number, "To": to_number, "CallerId": caller_id})
 
 	return response.json()
 

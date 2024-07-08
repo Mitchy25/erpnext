@@ -24,7 +24,7 @@ class Task(NestedSet):
 	nsm_parent_field = "parent_task"
 
 	def get_feed(self):
-		return "{0}: {1}".format(_(self.status), self.subject)
+		return f"{_(self.status)}: {self.subject}"
 
 	def get_customer_details(self):
 		cust = frappe.db.sql("select customer_name from `tabCustomer` where name=%s", self.customer)
@@ -97,7 +97,7 @@ class Task(NestedSet):
 				if frappe.db.get_value("Task", d.task, "status") not in ("Completed", "Cancelled"):
 					frappe.throw(
 						_(
-							"Cannot complete task {0} as its dependant task {1} are not ccompleted / cancelled."
+							"Cannot complete task {0} as its dependant task {1} are not completed / cancelled."
 						).format(frappe.bold(self.name), frappe.bold(d.task))
 					)
 
@@ -118,14 +118,14 @@ class Task(NestedSet):
 	def validate_parent_template_task(self):
 		if self.parent_task:
 			if not frappe.db.get_value("Task", self.parent_task, "is_template"):
-				parent_task_format = """<a href="#Form/Task/{0}">{0}</a>""".format(self.parent_task)
+				parent_task_format = f"""<a href="#Form/Task/{self.parent_task}">{self.parent_task}</a>"""
 				frappe.throw(_("Parent Task {0} is not a Template Task").format(parent_task_format))
 
 	def validate_depends_on_tasks(self):
 		if self.depends_on:
 			for task in self.depends_on:
 				if not frappe.db.get_value("Task", task.task, "is_template"):
-					dependent_task_format = """<a href="#Form/Task/{0}">{0}</a>""".format(task.task)
+					dependent_task_format = f"""<a href="#Form/Task/{task.task}">{task.task}</a>"""
 					frappe.throw(_("Dependent Task {0} is not a Template Task").format(dependent_task_format))
 
 	def validate_completed_on(self):
@@ -156,13 +156,6 @@ class Task(NestedSet):
 		if self.status == "Cancelled":
 			clear(self.doctype, self.name)
 
-	def update_total_expense_claim(self):
-		self.total_expense_claim = frappe.db.sql(
-			"""select sum(total_sanctioned_amount) from `tabExpense Claim`
-			where project = %s and task = %s and docstatus=1""",
-			(self.project, self.name),
-		)[0][0]
-
 	def update_time_and_costing(self):
 		tl = frappe.db.sql(
 			"""select min(from_time) as start_date, max(to_time) as end_date,
@@ -191,7 +184,7 @@ class Task(NestedSet):
 			task_list, count = [self.name], 0
 			while len(task_list) > count:
 				tasks = frappe.db.sql(
-					" select %s from `tabTask Depends On` where %s = %s " % (d[0], d[1], "%s"),
+					" select {} from `tabTask Depends On` where {} = {} ".format(d[0], d[1], "%s"),
 					cstr(task_list[count]),
 				)
 				count = count + 1
@@ -283,14 +276,12 @@ def get_project(doctype, txt, searchfield, start, page_len, filters):
 	search_cond = " or " + " or ".join(field + " like %(txt)s" for field in searchfields)
 
 	return frappe.db.sql(
-		""" select name {search_columns} from `tabProject`
+		f""" select name {search_columns} from `tabProject`
 		where %(key)s like %(txt)s
 			%(mcond)s
-			{search_condition}
+			{search_cond}
 		order by name
-		limit %(start)s, %(page_len)s""".format(
-			search_columns=search_columns, search_condition=search_cond
-		),
+		limit %(page_len)s offset %(start)s""",
 		{
 			"key": searchfield,
 			"txt": "%" + txt + "%",
@@ -350,7 +341,6 @@ def make_timesheet(source_name, target_doc=None, ignore_permissions=False):
 
 @frappe.whitelist()
 def get_children(doctype, parent, task=None, project=None, is_root=False):
-
 	filters = [["docstatus", "<", "2"]]
 
 	if task:

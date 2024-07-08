@@ -4,6 +4,7 @@
 import frappe
 from frappe import _, qb, query_builder
 from frappe.query_builder import Criterion, functions
+from frappe.utils.dateutils import getdate
 
 
 def get_columns():
@@ -81,9 +82,7 @@ def get_descendants_of(doctype, group_name):
 	).run()[0]
 
 	# get all children of group node
-	query = (
-		qb.from_(group_doc).select(group_doc.name).where((group_doc.lft >= lft) & (group_doc.rgt <= rgt))
-	)
+	query = qb.from_(group_doc).select(group_doc.name).where((group_doc.lft >= lft) & (group_doc.rgt <= rgt))
 
 	child_nodes = []
 	for x in query.run():
@@ -107,7 +106,9 @@ def get_customers_or_items(doctype, txt, searchfield, start, page_len, filters):
 					)
 			elif item[0] == "Item Group":
 				if item[3] != "":
-					filter_list.append([doctype, "item_group", "in", get_descendants_of("Item Group", item[3])])
+					filter_list.append(
+						[doctype, "item_group", "in", get_descendants_of("Item Group", item[3])]
+					)
 
 	if searchfield and txt:
 		filter_list.append([doctype, searchfield, "like", "%%%s%%" % txt])
@@ -131,9 +132,7 @@ def get_conditions(filters):
 
 	conditions.company = filters.company or frappe.defaults.get_user_default("company")
 	conditions.end_date = filters.period_end_date or frappe.utils.today()
-	conditions.start_date = filters.period_start_date or frappe.utils.add_months(
-		conditions.end_date, -1
-	)
+	conditions.start_date = filters.period_start_date or frappe.utils.add_months(conditions.end_date, -1)
 
 	return conditions
 
@@ -161,6 +160,12 @@ def build_filter_criterions(filters):
 
 	if filters.item:
 		qb_criterions.append(qb.DocType("Sales Order Item").item_code == filters.item)
+
+	if filters.from_due_date:
+		qb_criterions.append(qb.DocType("Payment Schedule").due_date.gte(filters.from_due_date))
+
+	if filters.to_due_date:
+		qb_criterions.append(qb.DocType("Payment Schedule").due_date.lte(filters.to_due_date))
 
 	return qb_criterions
 
@@ -202,7 +207,7 @@ def get_so_with_invoices(filters):
 		)
 		.where(
 			(so.docstatus == 1)
-			& (so.payment_terms_template != "NULL")
+			& (so.status.isin(["To Deliver and Bill", "To Bill"]))
 			& (so.company == conditions.company)
 			& (so.transaction_date[conditions.start_date : conditions.end_date])
 		)
@@ -279,10 +284,32 @@ def prepare_chart(s_orders):
 		return chart
 
 
+def filter_on_calculated_status(filters, sales_orders):
+	if filters.status and sales_orders:
+		return [x for x in sales_orders if x.status in filters.status]
+	return sales_orders
+
+
+def filter_for_immediate_upcoming_term(filters, sales_orders):
+	if filters.only_immediate_upcoming_term and sales_orders:
+		immediate_term_found = set()
+		filtered_data = []
+		for order in sales_orders:
+			if order.name not in immediate_term_found and order.due_date > getdate():
+				filtered_data.append(order)
+				immediate_term_found.add(order.name)
+		return filtered_data
+	return sales_orders
+
+
 def execute(filters=None):
 	columns = get_columns()
 	sales_orders, so_invoices = get_so_with_invoices(filters)
 	sales_orders, so_invoices = set_payment_terms_statuses(sales_orders, so_invoices, filters)
+
+	sales_orders = filter_on_calculated_status(filters, sales_orders)
+
+	sales_orders = filter_for_immediate_upcoming_term(filters, sales_orders)
 
 	prepare_chart(sales_orders)
 

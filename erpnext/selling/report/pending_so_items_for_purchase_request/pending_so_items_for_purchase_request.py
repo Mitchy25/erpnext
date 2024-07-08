@@ -65,7 +65,7 @@ def get_data():
 		WHERE
 			so.docstatus = 1
 			and so.name = so_item.parent
-			and so.status not in  ("Closed","Completed","Cancelled")
+			and so.status not in  ('Closed','Completed','Cancelled')
 		GROUP BY
 			so.name,so_item.item_code
 		""",
@@ -129,7 +129,9 @@ def get_data():
 						"description": item.description,
 						"sales_order_no": so.name,
 						"date": so.transaction_date,
-						"material_request": ",".join(material_requests_against_so.get("material_requests", [])),
+						"material_request": ",".join(
+							material_requests_against_so.get("material_requests", [])
+						),
 						"customer": so.customer,
 						"territory": so.territory,
 						"so_qty": item.qty,

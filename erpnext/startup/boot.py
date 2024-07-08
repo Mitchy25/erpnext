@@ -14,11 +14,8 @@ def boot_session(bootinfo):
 	if frappe.session["user"] != "Guest":
 		update_page_info(bootinfo)
 
-		load_country_and_currency(bootinfo)
 		bootinfo.sysdefaults.territory = frappe.db.get_single_value("Selling Settings", "territory")
-		bootinfo.sysdefaults.customer_group = frappe.db.get_single_value(
-			"Selling Settings", "customer_group"
-		)
+		bootinfo.sysdefaults.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group")
 		bootinfo.sysdefaults.allow_stale = cint(
 			frappe.db.get_single_value("Accounts Settings", "allow_stale")
 		)
@@ -27,13 +24,11 @@ def boot_session(bootinfo):
 		)
 
 		bootinfo.sysdefaults.quotation_valid_till = cint(
-			frappe.db.get_single_value("Selling Settings", "default_valid_till")
+			frappe.db.get_single_value("CRM Settings", "default_valid_till")
 		)
 
 		bootinfo.sysdefaults.allow_sales_order_creation_for_expired_quotation = cint(
-			frappe.db.get_single_value(
-				"Selling Settings", "allow_sales_order_creation_for_expired_quotation"
-			)
+			frappe.db.get_single_value("Selling Settings", "allow_sales_order_creation_for_expired_quotation")
 		)
 
 		# if no company, show a dialog box to create a new company
@@ -63,20 +58,6 @@ def boot_session(bootinfo):
 		bootinfo.party_account_types = frappe._dict(party_account_types)
 
 
-def load_country_and_currency(bootinfo):
-	country = frappe.db.get_default("country")
-	if country and frappe.db.exists("Country", country):
-		bootinfo.docs += [frappe.get_doc("Country", country)]
-
-	bootinfo.docs += frappe.db.sql(
-		"""select name, fraction, fraction_units,
-		number_format, smallest_currency_fraction_value, symbol from tabCurrency
-		where enabled=1""",
-		as_dict=1,
-		update={"doctype": ":Currency"},
-	)
-
-
 def update_page_info(bootinfo):
 	bootinfo.page_info.update(
 		{
@@ -88,3 +69,11 @@ def update_page_info(bootinfo):
 			"Sales Person Tree": {"title": "Sales Person Tree", "route": "Tree/Sales Person"},
 		}
 	)
+
+
+def bootinfo(bootinfo):
+	if bootinfo.get("user") and bootinfo["user"].get("name"):
+		bootinfo["user"]["employee"] = ""
+		employee = frappe.db.get_value("Employee", {"user_id": bootinfo["user"]["name"]}, "name")
+		if employee:
+			bootinfo["user"]["employee"] = employee

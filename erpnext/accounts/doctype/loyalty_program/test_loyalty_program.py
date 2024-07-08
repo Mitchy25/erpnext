@@ -128,9 +128,7 @@ class TestLoyaltyProgram(unittest.TestCase):
 
 	def test_cancel_sales_invoice(self):
 		"""cancelling the sales invoice should cancel the earned points"""
-		frappe.db.set_value(
-			"Customer", "Test Loyalty Customer", "loyalty_program", "Test Single Loyalty"
-		)
+		frappe.db.set_value("Customer", "Test Loyalty Customer", "loyalty_program", "Test Single Loyalty")
 		# create a new sales invoice
 		si = create_sales_invoice_record()
 		si.insert()
@@ -140,7 +138,7 @@ class TestLoyaltyProgram(unittest.TestCase):
 			"Loyalty Point Entry",
 			{"invoice_type": "Sales Invoice", "invoice": si.name, "customer": si.customer},
 		)
-		self.assertEqual(True, not (lpe is None))
+		self.assertEqual(True, lpe is not None)
 
 		# cancelling sales invoice
 		si.cancel()
@@ -346,9 +344,7 @@ def create_records():
 		).insert()
 
 	# create item price
-	if not frappe.db.exists(
-		"Item Price", {"price_list": "Standard Selling", "item_code": "Loyal Item"}
-	):
+	if not frappe.db.exists("Item Price", {"price_list": "Standard Selling", "item_code": "Loyal Item"}):
 		frappe.get_doc(
 			{
 				"doctype": "Item Price",

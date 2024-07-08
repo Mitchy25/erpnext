@@ -1,10 +1,9 @@
 import frappe
 
-from erpnext.setup.doctype.naming_series.naming_series import set_by_naming_series
+from erpnext.utilities.naming import set_by_naming_series
 
 
 def execute():
-
 	stock_settings = frappe.get_doc("Stock Settings")
 
 	set_by_naming_series(

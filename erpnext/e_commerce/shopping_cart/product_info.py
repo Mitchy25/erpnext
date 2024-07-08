@@ -1,6 +1,5 @@
-# Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
+# Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
-
 
 import frappe
 
@@ -30,9 +29,7 @@ def get_product_info_for_website(item_code, skip_quotation_creation=False):
 		cart_quotation = _get_cart_quotation()
 
 	selling_price_list = (
-		cart_quotation.get("selling_price_list")
-		if cart_quotation
-		else _set_price_list(cart_settings, None)
+		cart_quotation.get("selling_price_list") if cart_quotation else _set_price_list(cart_settings, None)
 	)
 
 	price = {}

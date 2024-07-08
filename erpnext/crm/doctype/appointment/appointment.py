@@ -9,7 +9,8 @@ import frappe.share
 from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.model.document import Document
-from frappe.utils import get_url, getdate
+from frappe.share import add_docshare
+from frappe.utils import get_url, getdate, now
 from frappe.utils.verified_command import get_signed_params
 
 
@@ -111,11 +112,22 @@ class Appointment(Document):
 				"doctype": "Lead",
 				"lead_name": self.customer_name,
 				"email_id": self.customer_email,
-				"notes": self.customer_details,
 				"phone": self.customer_phone_number,
 			}
 		)
+
+		if self.customer_details:
+			lead.append(
+				"notes",
+				{
+					"note": self.customer_details,
+					"added_by": frappe.session.user,
+					"added_on": now(),
+				},
+			)
+
 		lead.insert(ignore_permissions=True)
+
 		# Link lead
 		self.party = lead.name
 
@@ -166,7 +178,9 @@ class Appointment(Document):
 				"starts_on": self.scheduled_time,
 				"status": "Open",
 				"type": "Public",
-				"send_reminder": frappe.db.get_single_value("Appointment Booking Settings", "email_reminders"),
+				"send_reminder": frappe.db.get_single_value(
+					"Appointment Booking Settings", "email_reminders"
+				),
 				"event_participants": [
 					dict(reference_doctype=self.appointment_with, reference_docname=self.party)
 				],
@@ -188,7 +202,7 @@ class Appointment(Document):
 
 	def assign_agent(self, agent):
 		if not frappe.has_permission(doc=self, user=agent):
-			frappe.share.add(self.doctype, self.name, agent, flags={"ignore_share_permission": True})
+			add_docshare(self.doctype, self.name, agent, flags={"ignore_share_permission": True})
 
 		add_assignment({"doctype": self.doctype, "name": self.name, "assign_to": [agent]})
 
@@ -219,9 +233,7 @@ def _get_agent_list_as_strings():
 
 
 def _check_agent_availability(agent_email, scheduled_time):
-	appointemnts_at_scheduled_time = frappe.get_all(
-		"Appointment", filters={"scheduled_time": scheduled_time}
-	)
+	appointemnts_at_scheduled_time = frappe.get_all("Appointment", filters={"scheduled_time": scheduled_time})
 	for appointment in appointemnts_at_scheduled_time:
 		if appointment._assign == agent_email:
 			return False
@@ -229,8 +241,7 @@ def _check_agent_availability(agent_email, scheduled_time):
 
 
 def _get_employee_from_user(user):
-	employee_docname = frappe.db.exists({"doctype": "Employee", "user_id": user})
+	employee_docname = frappe.db.get_value("Employee", {"user_id": user})
 	if employee_docname:
-		# frappe.db.exists returns a tuple of a tuple
-		return frappe.get_doc("Employee", employee_docname[0][0])
+		return frappe.get_doc("Employee", employee_docname)
 	return None

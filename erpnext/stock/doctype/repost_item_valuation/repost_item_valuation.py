@@ -5,12 +5,14 @@ import frappe
 from frappe import _
 from frappe.exceptions import QueryDeadlockError, QueryTimeoutError
 from frappe.model.document import Document
-from frappe.query_builder.functions import Max
+from frappe.query_builder import DocType, Interval
+from frappe.query_builder.functions import Max, Now
 from frappe.utils import cint, get_link_to_form, get_weekday, getdate, now, nowtime
 from frappe.utils.user import get_users_with_role
 from rq.timeouts import JobTimeoutException
 
 import erpnext
+from erpnext.accounts.general_ledger import validate_accounting_period
 from erpnext.accounts.utils import get_future_stock_vouchers, repost_gle_for_stock_vouchers
 from erpnext.stock.stock_ledger import (
 	get_affected_transactions,
@@ -22,6 +24,18 @@ RecoverableErrors = (JobTimeoutException, QueryDeadlockError, QueryTimeoutError)
 
 
 class RepostItemValuation(Document):
+	@staticmethod
+	def clear_old_logs(days=None):
+		days = days or 90
+		table = DocType("Repost Item Valuation")
+		frappe.db.delete(
+			table,
+			filters=(
+				(table.modified < (Now() - Interval(days=days)))
+				& (table.status.isin(["Completed", "Skipped"]))
+			),
+		)
+
 	def validate(self):
 		self.validate_period_closing_voucher()
 		self.set_status(write=False)
@@ -30,30 +44,60 @@ class RepostItemValuation(Document):
 		self.validate_accounts_freeze()
 
 	def validate_period_closing_voucher(self):
-		year_end_date = self.get_max_year_end_date(self.company)
+		# Period Closing Voucher
+		year_end_date = self.get_max_period_closing_date(self.company)
 		if year_end_date and getdate(self.posting_date) <= getdate(year_end_date):
-			msg = f"Due to period closing, you cannot repost item valuation before {year_end_date}"
+			date = frappe.format(year_end_date, "Date")
+			msg = f"Due to period closing, you cannot repost item valuation before {date}"
 			frappe.throw(_(msg))
 
+		# Accounting Period
+		if self.voucher_type:
+			validate_accounting_period(
+				[
+					frappe._dict(
+						{
+							"posting_date": self.posting_date,
+							"company": self.company,
+							"voucher_type": self.voucher_type,
+						}
+					)
+				]
+			)
+
+		# Closing Stock Balance
+		closing_stock = self.get_closing_stock_balance()
+		if closing_stock and closing_stock[0].name:
+			name = get_link_to_form("Closing Stock Balance", closing_stock[0].name)
+			to_date = frappe.format(closing_stock[0].to_date, "Date")
+			msg = f"Due to closing stock balance {name}, you cannot repost item valuation before {to_date}"
+			frappe.throw(_(msg))
+
+	def get_closing_stock_balance(self):
+		filters = {
+			"company": self.company,
+			"status": "Completed",
+			"docstatus": 1,
+			"to_date": (">=", self.posting_date),
+		}
+
+		for field in ["warehouse", "item_code"]:
+			if self.get(field):
+				filters.update({field: ("in", ["", self.get(field)])})
+
+		return frappe.get_all("Closing Stock Balance", fields=["name", "to_date"], filters=filters)
+
 	@staticmethod
-	def get_max_year_end_date(company):
-		data = frappe.get_all(
-			"Period Closing Voucher", fields=["fiscal_year"], filters={"docstatus": 1, "company": company}
-		)
-
-		if not data:
-			return
-
-		fiscal_years = [d.fiscal_year for d in data]
-		table = frappe.qb.DocType("Fiscal Year")
+	def get_max_period_closing_date(company):
+		table = frappe.qb.DocType("Period Closing Voucher")
 
 		query = (
 			frappe.qb.from_(table)
-			.select(Max(table.year_end_date))
-			.where((table.name.isin(fiscal_years)) & (table.disabled == 0))
+			.select(Max(table.posting_date))
+			.where((table.company == company) & (table.docstatus == 1))
 		).run()
 
-		return query[0][0] if query else None
+		return query[0][0] if query and query[0][0] else None
 
 	def validate_accounts_freeze(self):
 		acc_settings = frappe.db.get_value(
@@ -65,15 +109,12 @@ class RepostItemValuation(Document):
 		if not acc_settings.acc_frozen_upto:
 			return
 		if getdate(self.posting_date) <= getdate(acc_settings.acc_frozen_upto):
-			if (
+			if acc_settings.frozen_accounts_modifier and frappe.session.user in get_users_with_role(
 				acc_settings.frozen_accounts_modifier
-				and frappe.session.user in get_users_with_role(acc_settings.frozen_accounts_modifier)
 			):
 				frappe.msgprint(_("Caution: This might alter frozen accounts."))
 				return
-			frappe.throw(
-				_("You cannot repost item valuation before {}").format(acc_settings.acc_frozen_upto)
-			)
+			frappe.throw(_("You cannot repost item valuation before {}").format(acc_settings.acc_frozen_upto))
 
 	def reset_field_values(self):
 		if self.based_on == "Transaction":
@@ -121,14 +162,9 @@ class RepostItemValuation(Document):
 		if self.status not in ("Queued", "In Progress"):
 			return
 
-		if not (self.voucher_no and self.voucher_no):
-			return
-
-		transaction_status = frappe.db.get_value(self.voucher_type, self.voucher_no, "docstatus")
-		if transaction_status == 2:
-			msg = _("Cannot cancel as processing of cancelled documents is  pending.")
-			msg += "<br>" + _("Please try again in an hour.")
-			frappe.throw(msg, title=_("Pending processing"))
+		msg = _("Cannot cancel as processing of cancelled documents is pending.")
+		msg += "<br>" + _("Please try again in an hour.")
+		frappe.throw(msg, title=_("Pending processing"))
 
 	@frappe.whitelist()
 	def restart_reposting(self):
@@ -174,6 +210,7 @@ def on_doctype_update():
 
 def repost(doc):
 	try:
+		frappe.flags.through_repost_item_valuation = True
 		if not frappe.db.exists("Repost Item Valuation", doc.name):
 			return
 
@@ -190,16 +227,25 @@ def repost(doc):
 		doc.set_status("Completed")
 
 	except Exception as e:
+		if frappe.flags.in_test:
+			# Don't silently fail in tests,
+			# there is no reason for reposts to fail in CI
+			raise
+
 		frappe.db.rollback()
-		traceback = frappe.get_traceback()
-		frappe.log_error(traceback)
+		traceback = frappe.get_traceback(with_context=True)
+		doc.log_error("Unable to repost item valuation")
 
 		message = frappe.message_log.pop() if frappe.message_log else ""
 		if traceback:
 			message += "<br>" + "Traceback: <br>" + traceback
 		frappe.db.set_value(doc.doctype, doc.name, "error_log", message)
 
-		if not isinstance(e, RecoverableErrors):
+		outgoing_email_account = frappe.get_cached_value(
+			"Email Account", {"default_outgoing": 1, "enable_outgoing": 1}, "name"
+		)
+
+		if outgoing_email_account and not isinstance(e, RecoverableErrors):
 			notify_error_to_stock_managers(doc, message)
 			doc.set_status("Failed")
 	finally:
@@ -210,11 +256,11 @@ def repost(doc):
 def repost_sl_entries(doc):
 	if doc.based_on == "Transaction":
 		repost_future_sle(
-			doc=doc,
 			voucher_type=doc.voucher_type,
 			voucher_no=doc.voucher_no,
 			allow_negative_stock=doc.allow_negative_stock,
 			via_landed_cost_voucher=doc.via_landed_cost_voucher,
+			doc=doc,
 		)
 	else:
 		repost_future_sle(
@@ -282,9 +328,7 @@ def _get_directly_dependent_vouchers(doc):
 
 
 def notify_error_to_stock_managers(doc, traceback):
-	recipients = get_users_with_role("Stock Manager")
-	if not recipients:
-		recipients = get_users_with_role("System Manager")
+	recipients = get_recipients()
 
 	subject = _("Error while reposting item valuation")
 	message = (
@@ -299,6 +343,17 @@ def notify_error_to_stock_managers(doc, traceback):
 		)
 	)
 	frappe.sendmail(recipients=recipients, subject=subject, message=message)
+
+
+def get_recipients():
+	role = (
+		frappe.db.get_single_value("Stock Reposting Settings", "notify_reposting_error_to_role")
+		or "Stock Manager"
+	)
+
+	recipients = get_users_with_role(role)
+
+	return recipients
 
 
 def repost_entries():
@@ -326,7 +381,7 @@ def get_repost_item_valuation_entries():
 	return frappe.db.sql(
 		""" SELECT name from `tabRepost Item Valuation`
 		WHERE status in ('Queued', 'In Progress') and creation <= %s and docstatus = 1
-		ORDER BY timestamp(posting_date, posting_time) asc, creation asc
+		ORDER BY timestamp(posting_date, posting_time) asc, creation asc, status asc
 	""",
 		now(),
 		as_dict=1,

@@ -1,9 +1,9 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import unittest
 
 import frappe
+from frappe.tests.utils import FrappeTestCase
 from frappe.utils.data import (
 	add_days,
 	add_months,
@@ -84,16 +84,18 @@ def create_parties():
 		customer = frappe.new_doc("Customer")
 		customer.customer_name = "_Test Subscription Customer"
 		customer.billing_currency = "USD"
-		customer.append(
-			"accounts", {"company": "_Test Company", "account": "_Test Receivable USD - _TC"}
-		)
+		customer.append("accounts", {"company": "_Test Company", "account": "_Test Receivable USD - _TC"})
 		customer.insert()
 
 
-class TestSubscription(unittest.TestCase):
+class TestSubscription(FrappeTestCase):
 	def setUp(self):
 		create_plan()
 		create_parties()
+		frappe.db.set_single_value("Accounts Settings", "acc_frozen_upto", None)
+
+	def tearDown(self):
+		frappe.db.rollback()
 
 	def test_create_subscription_with_trial_with_correct_period(self):
 		subscription = frappe.new_doc("Subscription")
@@ -353,9 +355,7 @@ class TestSubscription(unittest.TestCase):
 
 		invoice = subscription.get_current_invoice()
 		diff = flt(date_diff(nowdate(), subscription.current_invoice_start) + 1)
-		plan_days = flt(
-			date_diff(subscription.current_invoice_end, subscription.current_invoice_start) + 1
-		)
+		plan_days = flt(date_diff(subscription.current_invoice_end, subscription.current_invoice_start) + 1)
 		prorate_factor = flt(diff / plan_days)
 
 		self.assertEqual(

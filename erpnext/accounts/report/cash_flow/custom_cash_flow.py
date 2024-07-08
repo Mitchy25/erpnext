@@ -67,7 +67,7 @@ def setup_mappers(mappers):
 		mapping["finance_costs"] = []
 		mapping["finance_costs_adjustments"] = []
 		doc = frappe.get_doc("Cash Flow Mapper", mapping["name"])
-		mapping_names = [item.name for item in doc.accounts]
+		mapping_names = [item.mapping for item in doc.accounts]
 
 		if not mapping_names:
 			continue
@@ -131,7 +131,12 @@ def setup_mappers(mappers):
 
 		account_types_labels = sorted(
 			set(
-				(d["label"], d["is_working_capital"], d["is_income_tax_liability"], d["is_income_tax_expense"])
+				(
+					d["label"],
+					d["is_working_capital"],
+					d["is_income_tax_liability"],
+					d["is_income_tax_expense"],
+				)
 				for d in account_types
 			),
 			key=lambda x: x[1],
@@ -319,14 +324,10 @@ def add_data_for_operating_activities(
 			data.append(interest_paid)
 			section_data.append(interest_paid)
 
-	_add_total_row_account(
-		data, section_data, mapper["section_footer"], period_list, company_currency
-	)
+	_add_total_row_account(data, section_data, mapper["section_footer"], period_list, company_currency)
 
 
-def calculate_adjustment(
-	filters, non_expense_mapper, expense_mapper, use_accumulated_values, period_list
-):
+def calculate_adjustment(filters, non_expense_mapper, expense_mapper, use_accumulated_values, period_list):
 	liability_accounts = [d["names"] for d in non_expense_mapper]
 	expense_accounts = [d["names"] for d in expense_mapper]
 
@@ -388,9 +389,7 @@ def add_data_for_other_activities(
 				data.append(account_data)
 				section_data.append(account_data)
 
-		_add_total_row_account(
-			data, section_data, mapper["section_footer"], period_list, company_currency
-		)
+		_add_total_row_account(data, section_data, mapper["section_footer"], period_list, company_currency)
 
 
 def compute_data(filters, company_currency, profit_data, period_list, light_mappers, full_mapper):
@@ -477,10 +476,8 @@ def execute(filters=None):
 	return columns, data
 
 
-def _get_account_type_based_data(
-	filters, account_names, period_list, accumulated_values, opening_balances=0
-):
-	if not account_names or not account_names[0] or not type(account_names[0]) == str:
+def _get_account_type_based_data(filters, account_names, period_list, accumulated_values, opening_balances=0):
+	if not account_names or not account_names[0] or not isinstance(account_names[0], str):
 		# only proceed if account_names is a list of account names
 		return {}
 

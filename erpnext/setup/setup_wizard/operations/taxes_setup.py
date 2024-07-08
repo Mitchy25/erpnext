@@ -14,7 +14,7 @@ def setup_taxes_and_charges(company_name: str, country: str):
 		frappe.throw(_("Company {} does not exist yet. Taxes setup aborted.").format(company_name))
 
 	file_path = os.path.join(os.path.dirname(__file__), "..", "data", "country_wise_tax.json")
-	with open(file_path, "r") as json_file:
+	with open(file_path) as json_file:
 		tax_data = json.load(json_file)
 
 	country_wise_tax = tax_data.get(country)
@@ -54,7 +54,12 @@ def simple_to_detailed(templates):
 					{
 						"title": title,
 						"taxes": [
-							{"tax_type": {"account_name": data.get("account_name"), "tax_rate": data.get("tax_rate")}}
+							{
+								"tax_type": {
+									"account_name": data.get("account_name"),
+									"tax_rate": data.get("tax_rate"),
+								}
+							}
 						],
 					}
 					for title, data in templates.items()
@@ -91,7 +96,7 @@ def from_detailed_data(company_name, data):
 
 	if tax_categories:
 		for tax_category in tax_categories:
-			make_tax_catgory(tax_category)
+			make_tax_category(tax_category)
 
 	if sales_tax_templates:
 		for template in sales_tax_templates:
@@ -110,13 +115,11 @@ def update_regional_tax_settings(country, company):
 	path = frappe.get_app_path("erpnext", "regional", frappe.scrub(country))
 	if os.path.exists(path.encode("utf-8")):
 		try:
-			module_name = "erpnext.regional.{0}.setup.update_regional_tax_settings".format(
-				frappe.scrub(country)
-			)
+			module_name = f"erpnext.regional.{frappe.scrub(country)}.setup.update_regional_tax_settings"
 			frappe.get_attr(module_name)(country, company)
-		except Exception as e:
+		except Exception:
 			# Log error and ignore if failed to setup regional tax settings
-			frappe.log_error()
+			frappe.log_error("Unable to setup regional tax settings")
 			pass
 
 
@@ -140,7 +143,7 @@ def make_taxes_and_charges_template(company_name, doctype, template):
 
 		# if account_head is a dict, search or create the account and get it's name
 		if isinstance(account_data, dict):
-			tax_row_defaults["description"] = "{0} @ {1}".format(
+			tax_row_defaults["description"] = "{} @ {}".format(
 				account_data.get("account_name"), account_data.get("tax_rate")
 			)
 			tax_row_defaults["rate"] = account_data.get("tax_rate")
@@ -158,6 +161,7 @@ def make_taxes_and_charges_template(company_name, doctype, template):
 	# Ingone validations to make doctypes faster
 	doc.flags.ignore_links = True
 	doc.flags.ignore_validate = True
+	doc.flags.ignore_mandatory = True
 	doc.insert(ignore_permissions=True)
 	return doc
 
@@ -194,16 +198,6 @@ def make_item_tax_template(company_name, template):
 	doc.insert(ignore_permissions=True)
 	return doc
 
-
-def make_tax_category(tax_category):
-	"""Make tax category based on title if not already created"""
-	doctype = "Tax Category"
-	if not frappe.db.exists(doctype, tax_category["title"]):
-		tax_category["doctype"] = doctype
-		doc = frappe.get_doc(tax_category)
-		doc.flags.ignore_links = True
-		doc.flags.ignore_validate = True
-		doc.insert(ignore_permissions=True)
 
 
 def get_or_create_account(company_name, account):
@@ -299,7 +293,7 @@ def get_or_create_tax_group(company_name, root_type):
 	return tax_group_name
 
 
-def make_tax_catgory(tax_category):
+def make_tax_category(tax_category):
 	doctype = "Tax Category"
 	if isinstance(tax_category, str):
 		tax_category = {"title": tax_category}

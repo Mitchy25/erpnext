@@ -204,7 +204,7 @@ def _items_changed(old, new, doctype: str) -> bool:
 	new_sorted = sorted(new, key=sort_key)
 
 	# Once sorted by all relevant keys both tables should align if they are same.
-	for old_item, new_item in zip(old_sorted, new_sorted):
+	for old_item, new_item in zip(old_sorted, new_sorted, strict=False):
 		for key in compare_keys:
 			if old_item.get(key) != new_item.get(key):
 				return True
@@ -277,20 +277,18 @@ def show_unassigned_items_message(items_not_accomodated):
 
 	for entry in items_not_accomodated:
 		item_link = frappe.utils.get_link_to_form("Item", entry[0])
-		formatted_item_rows += """
-			<td>{0}</td>
-			<td>{1}</td>
-		</tr>""".format(
-			item_link, frappe.bold(entry[1])
-		)
+		formatted_item_rows += f"""
+			<td>{item_link}</td>
+			<td>{frappe.bold(entry[1])}</td>
+		</tr>"""
 
 	msg += """
 		<table class="table">
 			<thead>
-				<td>{0}</td>
-				<td>{1}</td>
+				<td>{}</td>
+				<td>{}</td>
 			</thead>
-			{2}
+			{}
 		</table>
 	""".format(
 		_("Item"), _("Unassigned Qty"), formatted_item_rows

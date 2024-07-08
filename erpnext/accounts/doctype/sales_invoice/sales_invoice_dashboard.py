@@ -14,8 +14,9 @@ def get_data():
 			# 'Backorder': 'backorder_references',
 			'Integration Request': ['reference_id_']
 		},
-		'internal_links': {
-			'Sales Order': ['items', 'sales_order']
+		"internal_links": {
+			"Sales Order": ["items", "sales_order"],
+			"Timesheet": ["timesheets", "time_sheet"],
 		},
 		'transactions': [
 			# {
