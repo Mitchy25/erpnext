@@ -271,7 +271,7 @@ def get_serial_no_for_item(args):
 
 
 def update_pricing_rule_uom(pricing_rule, args):
-	child_doc = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands"}.get(
+	child_doc = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands", "Batch No": "apply_rule_on_batch"}.get(
 		pricing_rule.apply_on
 	)
 
