@@ -275,6 +275,9 @@ def update_pricing_rule_uom(pricing_rule, args):
 		pricing_rule.apply_on
 	)
 
+	if not child_doc:
+		frappe.throw(f"Unable to find the "apply on" child table for this pricing rule. Please reach out to a member of the IT Team for help.<br><br><b>Pricing Rule:</b> {pricing_rule.name}<br><b>Fieldname:</b> {pricing_rule.apply_on}")
+
 	apply_on_field = frappe.scrub(pricing_rule.apply_on)
 
 	for row in pricing_rule.get(child_doc):
