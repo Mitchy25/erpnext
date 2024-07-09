@@ -5,7 +5,6 @@ import functools
 import re
 from collections import deque
 from operator import itemgetter
-from typing import Dict, List
 
 import frappe
 from frappe import _
@@ -33,9 +32,7 @@ class BOMTree:
 	# ref: https://docs.python.org/3/reference/datamodel.html#slots
 	__slots__ = ["name", "child_items", "is_bom", "item_code", "qty", "exploded_qty", "bom_qty"]
 
-	def __init__(
-		self, name: str, is_bom: bool = True, exploded_qty: float = 1.0, qty: float = 1
-	) -> None:
+	def __init__(self, name: str, is_bom: bool = True, exploded_qty: float = 1.0, qty: float = 1) -> None:
 		self.name = name  # name of node, BOM number if is_bom else item_code
 		self.child_items: list["BOMTree"] = []  # list of child items
 		self.is_bom = is_bom  # true if the node is a BOM and not a leaf item
@@ -884,37 +881,6 @@ class BOM(WebsiteGenerator):
 				if not d.batch_size or d.batch_size <= 0:
 					d.batch_size = 1
 
-	def validate_scrap_items(self):
-		for item in self.scrap_items:
-			msg = ""
-			if item.item_code == self.item and not item.is_process_loss:
-				msg = _(
-					"Scrap/Loss Item: {0} should have Is Process Loss checked as it is the same as the item to be manufactured or repacked."
-				).format(frappe.bold(item.item_code))
-			elif item.item_code != self.item and item.is_process_loss:
-				msg = _(
-					"Scrap/Loss Item: {0} should not have Is Process Loss checked as it is different from  the item to be manufactured or repacked"
-				).format(frappe.bold(item.item_code))
-
-			must_be_whole_number = frappe.get_value("UOM", item.stock_uom, "must_be_whole_number")
-			if item.is_process_loss and must_be_whole_number:
-				msg = _(
-					"Item: {0} with Stock UOM: {1} cannot be a Scrap/Loss Item as {1} is a whole UOM."
-				).format(frappe.bold(item.item_code), frappe.bold(item.stock_uom))
-
-			if item.is_process_loss and (item.stock_qty >= self.quantity):
-				msg = _("Scrap/Loss Item: {0} should have Qty less than finished goods Quantity.").format(
-					frappe.bold(item.item_code)
-				)
-
-			if item.is_process_loss and (item.rate > 0):
-				msg = _(
-					"Scrap/Loss Item: {0} should have Rate set to 0 because Is Process Loss is checked."
-				).format(frappe.bold(item.item_code))
-
-			if msg:
-				frappe.throw(msg, title=_("Note"))
-
 	def get_tree_representation(self) -> BOMTree:
 		"""Get a complete tree representation preserving order of child items."""
 		return BOMTree(self.name)
@@ -1125,9 +1091,7 @@ def get_bom_items_as_dict(
 
 @frappe.whitelist()
 def get_bom_items(bom, company, qty=1, fetch_exploded=1):
-	items = get_bom_items_as_dict(
-		bom, company, qty, fetch_exploded, include_non_stock_items=True
-	).values()
+	items = get_bom_items_as_dict(bom, company, qty, fetch_exploded, include_non_stock_items=True).values()
 	items = list(items)
 	items.sort(key=functools.cmp_to_key(lambda a, b: a.item_code > b.item_code and 1 or -1))
 	return items

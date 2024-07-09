@@ -81,9 +81,7 @@ def get_data():
 
 	bundled_item_map = get_packed_items(sales_orders)
 
-	item_with_product_bundle = get_items_with_product_bundle(
-		[row.item_code for row in sales_order_entry]
-	)
+	item_with_product_bundle = get_items_with_product_bundle([row.item_code for row in sales_order_entry])
 
 	materials_request_dict = {}
 

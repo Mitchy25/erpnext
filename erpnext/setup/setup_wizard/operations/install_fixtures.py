@@ -276,9 +276,7 @@ def install(country=None):
 		records += [{"doctype": doctype, title_field: title} for title in read_lines(filename)]
 
 	base_path = frappe.get_app_path("erpnext", "stock", "doctype")
-	response = frappe.read_file(
-		os.path.join(base_path, "delivery_trip/dispatch_notification_template.html")
-	)
+	response = frappe.read_file(os.path.join(base_path, "delivery_trip/dispatch_notification_template.html"))
 
 	records += [
 		{
@@ -303,7 +301,6 @@ def install(country=None):
 	update_global_search_doctypes()
 
 
-
 def update_selling_defaults():
 	selling_settings = frappe.get_doc("Selling Settings")
 	selling_settings.cust_master_name = "Customer Name"
@@ -322,7 +319,6 @@ def update_buying_defaults():
 	buying_settings.maintain_same_rate = 1
 	buying_settings.allow_multiple_items = 1
 	buying_settings.save()
-
 
 
 def update_item_variant_settings():

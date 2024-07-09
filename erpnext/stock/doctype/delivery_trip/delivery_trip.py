@@ -67,9 +67,7 @@ class DeliveryTrip(Document):
 		        delete (bool, optional): Defaults to `False`. `True` if driver details need to be emptied, else `False`.
 		"""
 
-		delivery_notes = list(
-			set(stop.delivery_note for stop in self.delivery_stops if stop.delivery_note)
-		)
+		delivery_notes = list(set(stop.delivery_note for stop in self.delivery_stops if stop.delivery_note))
 
 		update_fields = {
 			"driver": self.driver,

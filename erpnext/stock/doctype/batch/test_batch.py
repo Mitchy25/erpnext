@@ -81,9 +81,7 @@ class TestBatch(FrappeTestCase):
 		stock_entry.submit()
 
 		self.assertTrue(stock_entry.items[0].batch_no)
-		self.assertEqual(
-			get_batch_qty(stock_entry.items[0].batch_no, stock_entry.items[0].t_warehouse), 90
-		)
+		self.assertEqual(get_batch_qty(stock_entry.items[0].batch_no, stock_entry.items[0].t_warehouse), 90)
 
 	def test_delivery_note(self):
 		"""Test automatic batch selection for outgoing items"""

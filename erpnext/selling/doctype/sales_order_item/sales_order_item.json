@@ -23,7 +23,6 @@
   "quantity_and_rate",
   "qty",
   "stock_uom",
-  "picked_qty",
   "col_break2",
   "uom",
   "conversion_factor",
@@ -86,8 +85,8 @@
   "production_plan_qty",
   "column_break_69",
   "work_order_qty",
-  "produced_qty",
   "delivered_qty",
+  "produced_qty",
   "returned_qty",
   "picked_qty",
   "shopping_cart_section",
@@ -717,8 +716,10 @@
    "width": "50px"
   },
   {
+   "description": "For Production",
    "fieldname": "produced_qty",
    "fieldtype": "Float",
+   "hidden": 1,
    "label": "Produced Quantity",
    "oldfieldname": "produced_qty",
    "oldfieldtype": "Currency",

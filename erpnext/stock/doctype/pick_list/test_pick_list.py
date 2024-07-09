@@ -416,9 +416,7 @@ class TestPickList(FrappeTestCase):
 
 		self.assertEqual(pick_list.locations[0].qty, delivery_note.items[0].qty)
 		self.assertEqual(pick_list.locations[1].qty, delivery_note.items[1].qty)
-		self.assertEqual(
-			sales_order.items[0].conversion_factor, delivery_note.items[0].conversion_factor
-		)
+		self.assertEqual(sales_order.items[0].conversion_factor, delivery_note.items[0].conversion_factor)
 
 		pick_list.cancel()
 		sales_order.cancel()

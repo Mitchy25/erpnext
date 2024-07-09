@@ -36,10 +36,6 @@ frappe.ui.form.on("Bank Reconciliation Tool", {
 		}
 	},
 
-	onload: function (frm) {
-		frm.trigger('bank_account');
-	},
-
 	refresh: function (frm) {
 		frm.disable_save();
 		frappe.require("bank-reconciliation-tool.bundle.js", () => frm.trigger("make_reconciliation_tool"));

@@ -237,10 +237,7 @@ def get_disbursal_amount(loan, on_current_security_price=0):
 
 	disbursal_amount = flt(security_value) - flt(pending_principal_amount)
 
-	if (
-		loan_details.is_term_loan
-		and (disbursal_amount + loan_details.loan_amount) > loan_details.loan_amount
-	):
+	if loan_details.is_term_loan and (disbursal_amount + loan_details.loan_amount) > loan_details.loan_amount:
 		disbursal_amount = loan_details.loan_amount - loan_details.disbursed_amount
 
 	return disbursal_amount

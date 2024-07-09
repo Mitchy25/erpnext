@@ -72,9 +72,7 @@ class Company(NestedSet):
 		if not self.abbr.strip():
 			frappe.throw(_("Abbreviation is mandatory"))
 
-		if frappe.db.sql(
-			"select abbr from tabCompany where name!=%s and abbr=%s", (self.name, self.abbr)
-		):
+		if frappe.db.sql("select abbr from tabCompany where name!=%s and abbr=%s", (self.name, self.abbr)):
 			frappe.throw(_("Abbreviation already used for another company"))
 
 	@frappe.whitelist()
@@ -648,9 +646,7 @@ def update_company_monthly_sales(company):
 
 def update_transactions_annual_history(company, commit=False):
 	transactions_history = get_all_transactions_annual_history(company)
-	frappe.db.set_value(
-		"Company", company, "transactions_annual_history", json.dumps(transactions_history)
-	)
+	frappe.db.set_value("Company", company, "transactions_annual_history", json.dumps(transactions_history))
 
 	if commit:
 		frappe.db.commit()

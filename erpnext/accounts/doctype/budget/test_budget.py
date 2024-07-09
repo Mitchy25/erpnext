@@ -41,9 +41,7 @@ class TestBudget(unittest.TestCase):
 
 		budget = make_budget(budget_against="Cost Center")
 
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 
 		jv = make_journal_entry(
 			"_Test Account Cost for Goods Sold - _TC",
@@ -63,9 +61,7 @@ class TestBudget(unittest.TestCase):
 
 		budget = make_budget(budget_against="Cost Center")
 
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 
 		jv = make_journal_entry(
 			"_Test Account Cost for Goods Sold - _TC",
@@ -97,9 +93,7 @@ class TestBudget(unittest.TestCase):
 		)
 
 		fiscal_year = get_fiscal_year(nowdate())[0]
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 		frappe.db.set_value("Budget", budget.name, "fiscal_year", fiscal_year)
 
 		mr = frappe.get_doc(
@@ -138,9 +132,7 @@ class TestBudget(unittest.TestCase):
 		)
 
 		fiscal_year = get_fiscal_year(nowdate())[0]
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 		frappe.db.set_value("Budget", budget.name, "fiscal_year", fiscal_year)
 
 		po = create_purchase_order(transaction_date=nowdate(), do_not_submit=True)
@@ -158,9 +150,7 @@ class TestBudget(unittest.TestCase):
 
 		budget = make_budget(budget_against="Project")
 
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 
 		project = frappe.get_value("Project", {"project_name": "_Test Project"})
 
@@ -237,9 +227,7 @@ class TestBudget(unittest.TestCase):
 				frappe.db.get_value("GL Entry", {"voucher_type": "Journal Entry", "voucher_no": jv.name})
 			)
 
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 
 		self.assertRaises(BudgetError, jv.cancel)
 
@@ -270,9 +258,7 @@ class TestBudget(unittest.TestCase):
 				frappe.db.get_value("GL Entry", {"voucher_type": "Journal Entry", "voucher_no": jv.name})
 			)
 
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 
 		self.assertRaises(BudgetError, jv.cancel)
 
@@ -284,9 +270,7 @@ class TestBudget(unittest.TestCase):
 		set_total_expense_zero(nowdate(), "cost_center", "_Test Cost Center 2 - _TC")
 
 		budget = make_budget(budget_against="Cost Center", cost_center="_Test Company - _TC")
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 
 		jv = make_journal_entry(
 			"_Test Account Cost for Goods Sold - _TC",
@@ -316,9 +300,7 @@ class TestBudget(unittest.TestCase):
 			).insert(ignore_permissions=True)
 
 		budget = make_budget(budget_against="Cost Center", cost_center=cost_center)
-		frappe.db.set_value(
-			"Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop"
-		)
+		frappe.db.set_value("Budget", budget.name, "action_if_accumulated_monthly_budget_exceeded", "Stop")
 
 		jv = make_journal_entry(
 			"_Test Account Cost for Goods Sold - _TC",

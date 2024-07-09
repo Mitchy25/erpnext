@@ -376,12 +376,6 @@ frappe.ui.form.on('Stock Entry', {
 		})
 	},
 
-	before_save: function(frm) {
-		frm.doc.items.forEach((item) => {
-			item.uom = item.uom || item.stock_uom;
-		})
-	},
-
 	stock_entry_type: function(frm){
 		frm.remove_custom_button('Bill of Materials', "Get Items From");
 		frm.events.show_bom_custom_button(frm);
@@ -965,7 +959,7 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 
 	set_default_account(callback) {
 		var me = this;
-		return
+
 		if(this.frm.doc.company && erpnext.is_perpetual_inventory_enabled(this.frm.doc.company)) {
 			return this.frm.call({
 				method: "erpnext.accounts.utils.get_company_default",

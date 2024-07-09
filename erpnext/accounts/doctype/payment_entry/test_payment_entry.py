@@ -946,9 +946,7 @@ class TestPaymentEntry(FrappeTestCase):
 		si = create_sales_invoice_against_cost_center(cost_center=cost_center, debit_to="Debtors - _TC")
 
 		account_balance = get_balance_on(account="_Test Bank - _TC", cost_center=si.cost_center)
-		party_balance = get_balance_on(
-			party_type="Customer", party=si.customer, cost_center=si.cost_center
-		)
+		party_balance = get_balance_on(party_type="Customer", party=si.customer, cost_center=si.cost_center)
 		party_account_balance = get_balance_on(si.debit_to, cost_center=si.cost_center)
 
 		pe = get_payment_entry("Sales Invoice", si.name, bank_account="_Test Bank - _TC")

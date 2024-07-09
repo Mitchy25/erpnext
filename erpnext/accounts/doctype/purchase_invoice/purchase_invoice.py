@@ -1073,9 +1073,7 @@ class PurchaseInvoice(BuyingController):
 				},
 			)
 
-	def make_stock_adjustment_entry(
-		self, gl_entries, item, voucher_wise_stock_value, account_currency
-	):
+	def make_stock_adjustment_entry(self, gl_entries, item, voucher_wise_stock_value, account_currency):
 		net_amt_precision = item.precision("base_net_amount")
 		val_rate_db_precision = 6 if cint(item.precision("valuation_rate")) <= 6 else 9
 
@@ -1743,7 +1741,6 @@ def make_inter_company_sales_invoice(source_name, target_doc=None):
 	from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_inter_company_transaction
 
 	return make_inter_company_transaction("Purchase Invoice", source_name, target_doc)
-
 
 
 @frappe.whitelist()

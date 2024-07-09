@@ -42,24 +42,6 @@ frappe.ui.form.on("Supplier", {
 				},
 			};
 		});
-
-		frm.set_query("supplier_primary_contact", function(doc) {
-			return {
-				query: "erpnext.buying.doctype.supplier.supplier.get_supplier_primary_contact",
-				filters: {
-					"supplier": doc.name
-				}
-			};
-		});
-
-		frm.set_query("supplier_primary_address", function(doc) {
-			return {
-				filters: {
-					"link_doctype": "Supplier",
-					"link_name": doc.name
-				}
-			};
-		});
 	},
 
 	refresh: function (frm) {
@@ -134,12 +116,6 @@ frappe.ui.form.on("Supplier", {
 					},
 					__("Actions")
 				);
-			}
-
-			if (cint(frappe.defaults.get_default("enable_common_party_accounting"))) {
-				frm.add_custom_button(__('Link with Customer'), function () {
-					frm.trigger('show_party_link_dialog');
-				}, __('Actions'));
 			}
 
 			// indicators

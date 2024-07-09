@@ -100,7 +100,6 @@
   "sales_uom",
   "grant_commission",
   "is_sales_item",
-  "grant_commission",
   "column_break3",
   "max_discount",
   "customer_details",
@@ -282,7 +281,6 @@
   {
    "fieldname": "brand",
    "fieldtype": "Link",
-   "in_preview": 1,
    "label": "Brand",
    "oldfieldname": "brand",
    "oldfieldtype": "Link",
@@ -292,6 +290,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
+   "in_preview": 1,
    "label": "Description",
    "oldfieldname": "description",
    "oldfieldtype": "Text"

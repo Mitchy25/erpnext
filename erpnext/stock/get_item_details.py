@@ -76,10 +76,6 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 	out = get_basic_details(args, item, overwrite_warehouse)
 
-	if doc.get("doctype") == "Purchase Invoice":
-		args["bill_date"] = doc.get("bill_date")
-
-	out = get_basic_details(args, item, overwrite_warehouse)
 	get_item_tax_template(args, item, out)
 	out["item_tax_rate"] = get_item_tax_map(
 		args.company,
@@ -1257,9 +1253,7 @@ def get_serial_no_details(item_code, warehouse, stock_qty, serial_no):
 
 
 @frappe.whitelist()
-def get_bin_details_and_serial_nos(
-	item_code, warehouse, has_batch_no=None, stock_qty=None, serial_no=None
-):
+def get_bin_details_and_serial_nos(item_code, warehouse, has_batch_no=None, stock_qty=None, serial_no=None):
 	bin_details_and_serial_nos = {}
 	bin_details_and_serial_nos.update(get_bin_details(item_code, warehouse))
 	if flt(stock_qty) > 0:

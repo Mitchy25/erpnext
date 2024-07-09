@@ -141,9 +141,7 @@ class TestQuotation(FrappeTestCase):
 		self.assertEqual(quotation.payment_schedule[0].payment_amount, 8906.00)
 		self.assertEqual(quotation.payment_schedule[0].due_date, quotation.transaction_date)
 		self.assertEqual(quotation.payment_schedule[1].payment_amount, 8906.00)
-		self.assertEqual(
-			quotation.payment_schedule[1].due_date, add_days(quotation.transaction_date, 30)
-		)
+		self.assertEqual(quotation.payment_schedule[1].due_date, add_days(quotation.transaction_date, 30))
 
 		sales_order = make_sales_order(quotation.name)
 

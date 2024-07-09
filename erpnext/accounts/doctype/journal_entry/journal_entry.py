@@ -137,10 +137,7 @@ class JournalEntry(AccountsController):
 				frappe.get_doc(voucher_type, voucher_no).set_total_advance_paid()
 
 	def validate_inter_company_accounts(self):
-		if (
-			self.voucher_type == "Inter Company Journal Entry"
-			and self.inter_company_journal_entry_reference
-		):
+		if self.voucher_type == "Inter Company Journal Entry" and self.inter_company_journal_entry_reference:
 			doc = frappe.get_doc("Journal Entry", self.inter_company_journal_entry_reference)
 			account_currency = frappe.get_cached_value("Company", self.company, "default_currency")
 			previous_account_currency = frappe.get_cached_value("Company", doc.company, "default_currency")
@@ -910,9 +907,7 @@ class JournalEntry(AccountsController):
 		self.set_total_amount(total_amount, currency)
 
 	def set_total_amount(self, amt, currency):
-		# override the amt
-		self.total_amount = self.total_credit
-		# self.total_amount = amt
+		self.total_amount = amt
 		self.total_amount_currency = currency
 		from frappe.utils import money_in_words
 
@@ -1085,7 +1080,7 @@ class JournalEntry(AccountsController):
 
 
 @frappe.whitelist()
-def get_default_bank_cash_account(company, account_type=None, mode_of_payment=None, account=None, currency=None):
+def get_default_bank_cash_account(company, account_type=None, mode_of_payment=None, account=None):
 	from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
 
 	if mode_of_payment:
@@ -1257,9 +1252,7 @@ def get_payment_entry(ref_doc, args):
 	bank_row = je.append("accounts")
 
 	# Make it bank_details
-	bank_account = get_default_bank_cash_account(
-		ref_doc.company, "Bank", account=args.get("bank_account")
-	)
+	bank_account = get_default_bank_cash_account(ref_doc.company, "Bank", account=args.get("bank_account"))
 	if bank_account:
 		bank_row.update(bank_account)
 		# Modified to include the posting date for which the exchange rate is required.
@@ -1360,9 +1353,7 @@ def get_outstanding(args):
 
 		due_date = invoice.get("due_date")
 
-		exchange_rate = (
-			invoice.conversion_rate if (args.get("account_currency") != company_currency) else 1
-		)
+		exchange_rate = invoice.conversion_rate if (args.get("account_currency") != company_currency) else 1
 
 		if args["doctype"] == "Sales Invoice":
 			amount_field = (
@@ -1406,9 +1397,7 @@ def get_account_details_and_party_type(account, date, company, debit=None, credi
 		frappe.msgprint(_("No Permission"), raise_exception=1)
 
 	company_currency = erpnext.get_company_currency(company)
-	account_details = frappe.db.get_value(
-		"Account", account, ["account_type", "account_currency"], as_dict=1
-	)
+	account_details = frappe.db.get_value("Account", account, ["account_type", "account_currency"], as_dict=1)
 
 	if not account_details:
 		return

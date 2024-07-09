@@ -2,7 +2,6 @@
 # For license information, please see license.txt
 
 import frappe
-import stripe
 from frappe import _
 from frappe.integrations.utils import create_request_log
 

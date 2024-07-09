@@ -735,8 +735,6 @@ def make_sales_invoice(source_name, target_doc=None, args=None):
 	if automatically_fetch_payment_terms:
 		doc.set_payment_schedule()
 
-	doc.set_onload("ignore_price_list", True)
-
 	return doc
 
 
@@ -1077,7 +1075,3 @@ def make_inter_company_transaction(doctype, source_name, target_doc=None):
 	)
 
 	return doclist
-
-
-def on_doctype_update():
-	frappe.db.add_index("Delivery Note", ["customer", "is_return", "return_against"])

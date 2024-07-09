@@ -150,9 +150,7 @@ def _get_party_details(
 		party_details["taxes_and_charges"] = tax_template
 
 	if cint(fetch_payment_terms_template):
-		party_details["payment_terms_template"] = get_payment_terms_template(
-			party.name, party_type, company
-		)
+		party_details["payment_terms_template"] = get_payment_terms_template(party.name, party_type, company)
 
 	if not party_details.get("currency"):
 		party_details["currency"] = currency
@@ -170,9 +168,7 @@ def _get_party_details(
 
 	# supplier tax withholding category
 	if party_type == "Supplier" and party:
-		party_details["supplier_tds"] = frappe.get_value(
-			party_type, party.name, "tax_withholding_category"
-		)
+		party_details["supplier_tds"] = frappe.get_value(party_type, party.name, "tax_withholding_category")
 
 	if not party_details.get("tax_category") and pos_profile:
 		party_details["tax_category"] = frappe.get_value("POS Profile", pos_profile, "tax_category")
@@ -364,7 +360,6 @@ def set_price_list(party_details, party, party_type, given_price_list, pos=None)
 	else:
 		price_list = get_default_price_list(party) or given_price_list
 
-	# pdb.set_trace()
 	if price_list:
 		party_details.price_list_currency = frappe.db.get_value(
 			"Price List", price_list, "currency", cache=True
@@ -373,9 +368,7 @@ def set_price_list(party_details, party, party_type, given_price_list, pos=None)
 	party_details["selling_price_list" if party.doctype == "Customer" else "buying_price_list"] = price_list
 
 
-def set_account_and_due_date(
-	party, account, party_type, company, posting_date, bill_date, doctype
-):
+def set_account_and_due_date(party, account, party_type, company, posting_date, bill_date, doctype):
 	if doctype not in ["POS Invoice", "Sales Invoice", "Purchase Invoice"]:
 		# not an invoice
 		return {party_type.lower(): party}
@@ -562,9 +555,7 @@ def get_due_date(posting_date, party_type, party, company=None, bill_date=None):
 		template_name = get_payment_terms_template(party, party_type, company)
 
 		if template_name:
-			due_date = get_due_date_from_template(template_name, posting_date, bill_date).strftime(
-				"%Y-%m-%d"
-			)
+			due_date = get_due_date_from_template(template_name, posting_date, bill_date).strftime("%Y-%m-%d")
 		else:
 			if party_type == "Supplier":
 				supplier_group = frappe.get_cached_value(party_type, party, "supplier_group")

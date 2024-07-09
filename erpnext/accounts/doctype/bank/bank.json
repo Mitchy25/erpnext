@@ -101,7 +101,7 @@
   }
  ],
  "links": [],
- "modified": "2023-11-29 08:28:27.666027",
+ "modified": "2020-07-17 14:00:13.105433",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank",
@@ -116,18 +116,6 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Accounts User",
    "share": 1,
    "write": 1
   }

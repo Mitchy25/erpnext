@@ -4,8 +4,6 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-import frappe
-
 from .quality_procedure import add_node
 
 

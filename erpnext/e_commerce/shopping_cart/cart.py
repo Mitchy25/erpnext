@@ -272,9 +272,7 @@ def update_cart_address(address_type, address_name):
 		quotation.shipping_address_name = address_name
 		quotation.shipping_address = address_display
 		quotation.customer_address = quotation.customer_address or address_name
-		address_doc = next(
-			(doc for doc in get_shipping_addresses() if doc["name"] == address_name), None
-		)
+		address_doc = next((doc for doc in get_shipping_addresses() if doc["name"] == address_name), None)
 	apply_cart_settings(quotation=quotation)
 
 	quotation.flags.ignore_permissions = True

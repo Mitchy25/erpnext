@@ -22,17 +22,6 @@ from erpnext.loan_management.doctype.loan_security_price.loan_security_price imp
 )
 
 
-from erpnext.loan_management.doctype.loan.loan import (
-	get_monthly_repayment_amount,
-	get_sanctioned_amount_limit,
-	get_total_loan_amount,
-	validate_repayment_method,
-)
-from erpnext.loan_management.doctype.loan_security_price.loan_security_price import (
-	get_loan_security_price,
-)
-
-
 class LoanApplication(Document):
 	def validate(self):
 		self.set_pledge_amount()
@@ -64,9 +53,7 @@ class LoanApplication(Document):
 
 		maximum_loan_limit = frappe.db.get_value("Loan Type", self.loan_type, "maximum_loan_amount")
 		if maximum_loan_limit and self.loan_amount > maximum_loan_limit:
-			frappe.throw(
-				_("Loan Amount cannot exceed Maximum Loan Amount of {0}").format(maximum_loan_limit)
-			)
+			frappe.throw(_("Loan Amount cannot exceed Maximum Loan Amount of {0}").format(maximum_loan_limit))
 
 		if self.maximum_loan_amount and self.loan_amount > self.maximum_loan_amount:
 			frappe.throw(

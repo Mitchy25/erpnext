@@ -109,9 +109,7 @@ def apply_putaway_rule(doctype, items, company, sync=None, purpose=None):
 			updated_table = add_row(item, pending_qty, source_warehouse or item.warehouse, updated_table)
 			continue
 
-		at_capacity, rules = get_ordered_putaway_rules(
-			item_code, company, source_warehouse=source_warehouse
-		)
+		at_capacity, rules = get_ordered_putaway_rules(item_code, company, source_warehouse=source_warehouse)
 
 		if not rules:
 			warehouse = source_warehouse or item.get("warehouse")
@@ -253,9 +251,7 @@ def add_row(item, to_allocate, warehouse, updated_table, rule=None, serial_nos=N
 
 	if item.doctype == "Stock Entry Detail":
 		new_updated_table_row.t_warehouse = warehouse
-		new_updated_table_row.transfer_qty = flt(to_allocate) * flt(
-			new_updated_table_row.conversion_factor
-		)
+		new_updated_table_row.transfer_qty = flt(to_allocate) * flt(new_updated_table_row.conversion_factor)
 	else:
 		new_updated_table_row.stock_qty = flt(to_allocate) * flt(new_updated_table_row.conversion_factor)
 		new_updated_table_row.warehouse = warehouse
@@ -290,9 +286,7 @@ def show_unassigned_items_message(items_not_accomodated):
 			</thead>
 			{}
 		</table>
-	""".format(
-		_("Item"), _("Unassigned Qty"), formatted_item_rows
-	)
+	""".format(_("Item"), _("Unassigned Qty"), formatted_item_rows)
 
 	frappe.msgprint(msg, title=_("Insufficient Capacity"), is_minimizable=True, wide=True)
 

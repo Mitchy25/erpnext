@@ -71,9 +71,7 @@ class TestPutawayRule(FrappeTestCase):
 		rule_2 = create_putaway_rule(item_code="_Rice", warehouse=self.warehouse_2, capacity=500, uom="Kg")
 
 		# out of 500 kg capacity, occupy 100 kg in warehouse_1
-		stock_receipt = make_stock_entry(
-			item_code="_Rice", target=self.warehouse_1, qty=100, basic_rate=50
-		)
+		stock_receipt = make_stock_entry(item_code="_Rice", target=self.warehouse_1, qty=100, basic_rate=50)
 
 		pr = make_purchase_receipt(item_code="_Rice", qty=700, apply_putaway_rule=1, do_not_submit=1)
 		self.assertEqual(len(pr.items), 2)
@@ -119,9 +117,7 @@ class TestPutawayRule(FrappeTestCase):
 		self.assertEqual(rule_2.stock_capacity, 4000)
 
 		# populate 'Rack 1' with 1 Bag, making the free space 2 Bags
-		stock_receipt = make_stock_entry(
-			item_code="_Rice", target=self.warehouse_1, qty=1000, basic_rate=50
-		)
+		stock_receipt = make_stock_entry(item_code="_Rice", target=self.warehouse_1, qty=1000, basic_rate=50)
 
 		pr = make_purchase_receipt(
 			item_code="_Rice",

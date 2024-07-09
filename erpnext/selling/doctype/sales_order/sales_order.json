@@ -1702,7 +1702,6 @@
    "write": 1
   }
  ],
- "read_only": 1,
  "search_fields": "status,transaction_date,customer,customer_name, territory,order_type,company",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

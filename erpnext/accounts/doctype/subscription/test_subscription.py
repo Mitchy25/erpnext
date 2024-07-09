@@ -412,9 +412,7 @@ class TestSubscription(FrappeTestCase):
 
 		invoice = subscription.get_current_invoice()
 		diff = flt(date_diff(nowdate(), subscription.current_invoice_start) + 1)
-		plan_days = flt(
-			date_diff(subscription.current_invoice_end, subscription.current_invoice_start) + 1
-		)
+		plan_days = flt(date_diff(subscription.current_invoice_end, subscription.current_invoice_start) + 1)
 		prorate_factor = flt(diff / plan_days)
 
 		self.assertEqual(flt(invoice.grand_total, 2), flt(prorate_factor * 900, 2))

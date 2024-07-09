@@ -104,9 +104,7 @@ class TestItemAlternative(FrappeTestCase):
 			"reserved_qty_for_sub_contract",
 		)
 
-		self.assertEqual(
-			after_transfer_reserved_qty_for_sub_contract, flt(reserved_qty_for_sub_contract - 5)
-		)
+		self.assertEqual(after_transfer_reserved_qty_for_sub_contract, flt(reserved_qty_for_sub_contract - 5))
 
 		scr = make_subcontracting_receipt(sco.name)
 		scr.save()
@@ -157,9 +155,7 @@ class TestItemAlternative(FrappeTestCase):
 			"reserved_qty_for_production",
 		)
 
-		self.assertEqual(
-			reserved_qty_for_production_after_transfer, flt(reserved_qty_for_production - 5)
-		)
+		self.assertEqual(reserved_qty_for_production_after_transfer, flt(reserved_qty_for_production - 5))
 		ste1 = frappe.get_doc(make_stock_entry(pro_order.name, "Manufacture", 5))
 
 		status = False

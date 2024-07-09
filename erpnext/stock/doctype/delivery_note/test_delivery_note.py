@@ -71,9 +71,7 @@ class TestDeliveryNote(FrappeTestCase):
 
 		dn = create_delivery_note()
 
-		sle = frappe.get_doc(
-			"Stock Ledger Entry", {"voucher_type": "Delivery Note", "voucher_no": dn.name}
-		)
+		sle = frappe.get_doc("Stock Ledger Entry", {"voucher_type": "Delivery Note", "voucher_no": dn.name})
 
 		self.assertEqual(sle.stock_value_difference, flt(-1 * stock_queue[0][1], 2))
 
@@ -159,9 +157,7 @@ class TestDeliveryNote(FrappeTestCase):
 		serial_no = get_serial_nos(se.get("items")[0].serial_no)
 		serial_no = "\n".join(serial_no)
 
-		dn = create_delivery_note(
-			item_code="_Test Serialized Item With Series", qty=2, serial_no=serial_no
-		)
+		dn = create_delivery_note(item_code="_Test Serialized Item With Series", qty=2, serial_no=serial_no)
 
 		si = make_sales_invoice(dn.name)
 		si.items[0].qty = 1
@@ -997,9 +993,7 @@ class TestDeliveryNote(FrappeTestCase):
 			},
 		)
 		make_product_bundle(parent=batched_bundle.name, items=[batched_item.name])
-		make_stock_entry(
-			item_code=batched_item.name, target="_Test Warehouse - _TC", qty=10, basic_rate=42
-		)
+		make_stock_entry(item_code=batched_item.name, target="_Test Warehouse - _TC", qty=10, basic_rate=42)
 
 		try:
 			dn = create_delivery_note(item_code=batched_bundle.name, qty=1)
@@ -1008,9 +1002,7 @@ class TestDeliveryNote(FrappeTestCase):
 				self.fail("Batch numbers not getting added to bundled items in DN.")
 			raise e
 
-		self.assertTrue(
-			"TESTBATCH" in dn.packed_items[0].batch_no, "Batch number not added in packed item"
-		)
+		self.assertTrue("TESTBATCH" in dn.packed_items[0].batch_no, "Batch number not added in packed item")
 
 	def test_payment_terms_are_fetched_when_creating_sales_invoice(self):
 		from erpnext.accounts.doctype.payment_entry.test_payment_entry import (

@@ -30,9 +30,7 @@ class TestProject(FrappeTestCase):
 				priority="High",
 			)
 
-		template = make_project_template(
-			"Test Project Template - No Parent and Dependend Tasks", [task1]
-		)
+		template = make_project_template("Test Project Template - No Parent and Dependend Tasks", [task1])
 		project = get_project(project_name, template)
 		tasks = frappe.get_all(
 			"Task",

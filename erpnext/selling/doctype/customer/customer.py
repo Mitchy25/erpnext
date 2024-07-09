@@ -262,23 +262,6 @@ class Customer(TransactionBase):
 		if past_credit_limits == current_credit_limits:
 			return
 
-		past_credit_limits = [
-			d.credit_limit
-			for d in frappe.db.get_all(
-				"Customer Credit Limit",
-				filters={"parent": self.name},
-				fields=["credit_limit"],
-				order_by="company",
-			)
-		]
-
-		current_credit_limits = [
-			d.credit_limit for d in sorted(self.credit_limits, key=lambda k: k.company)
-		]
-
-		if past_credit_limits == current_credit_limits:
-			return
-
 		company_record = []
 		for limit in self.credit_limits:
 			if limit.company in company_record:
@@ -345,90 +328,6 @@ def create_contact(contact, party_type, party, email):
 	doc.append("email_ids", dict(email_id=email, is_primary=1))
 	doc.append("links", dict(link_doctype=party_type, link_name=party))
 	return doc.insert()
-
-
-
-@frappe.whitelist()
-def make_quotation(source_name, target_doc=None):
-	def set_missing_values(source, target):
-		_set_missing_values(source, target)
-
-	target_doc = get_mapped_doc(
-		"Customer",
-		source_name,
-		{"Customer": {"doctype": "Quotation", "field_map": {"name": "party_name"}}},
-		target_doc,
-		set_missing_values,
-	)
-
-	target_doc.quotation_to = "Customer"
-	target_doc.run_method("set_missing_values")
-	target_doc.run_method("set_other_charges")
-	target_doc.run_method("calculate_taxes_and_totals")
-
-	price_list, currency = frappe.db.get_value(
-		"Customer", {"name": source_name}, ["default_price_list", "default_currency"]
-	)
-	if price_list:
-		target_doc.selling_price_list = price_list
-	if currency:
-		target_doc.currency = currency
-
-	return target_doc
-
-
-@frappe.whitelist()
-def make_opportunity(source_name, target_doc=None):
-	def set_missing_values(source, target):
-		_set_missing_values(source, target)
-
-	target_doc = get_mapped_doc(
-		"Customer",
-		source_name,
-		{
-			"Customer": {
-				"doctype": "Opportunity",
-				"field_map": {
-					"name": "party_name",
-					"doctype": "opportunity_from",
-				},
-			}
-		},
-		target_doc,
-		set_missing_values,
-	)
-
-	return target_doc
-
-
-def _set_missing_values(source, target):
-	address = frappe.get_all(
-		"Dynamic Link",
-		{
-			"link_doctype": source.doctype,
-			"link_name": source.name,
-			"parenttype": "Address",
-		},
-		["parent"],
-		limit=1,
-	)
-
-	contact = frappe.get_all(
-		"Dynamic Link",
-		{
-			"link_doctype": source.doctype,
-			"link_name": source.name,
-			"parenttype": "Contact",
-		},
-		["parent"],
-		limit=1,
-	)
-
-	if address:
-		target.customer_address = address[0].parent
-
-	if contact:
-		target.contact_person = contact[0].parent
 
 
 @frappe.whitelist()
@@ -668,10 +567,7 @@ def send_emails(args):
 	frappe.sendmail(recipients=args.get("credit_controller_users_list"), subject=subject, message=message)
 
 
-
-def get_customer_outstanding(
-	customer, company, ignore_outstanding_sales_order=False, cost_center=None
-):
+def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=False, cost_center=None):
 	# Outstanding based on GL Entries
 
 	cond = ""

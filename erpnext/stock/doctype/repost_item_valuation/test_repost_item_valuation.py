@@ -373,6 +373,7 @@ class TestRepostItemValuation(FrappeTestCase, StockTestMixin):
 		accounts_settings.save()
 
 		self.assertRaises(frappe.ValidationError, riv.save)
+
 		accounts_settings.acc_frozen_upto = ""
 		accounts_settings.save()
 

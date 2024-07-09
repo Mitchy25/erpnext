@@ -130,9 +130,7 @@ def get_fiscal_years(
 			else:
 				return ((fy.name, fy.year_start_date, fy.year_end_date),)
 
-	error_msg = _("""{0} {1} is not in any active Fiscal Year""").format(
-		label, formatdate(transaction_date)
-	)
+	error_msg = _("""{0} {1} is not in any active Fiscal Year""").format(label, formatdate(transaction_date))
 	if company:
 		error_msg = _("""{0} for {1}""").format(error_msg, frappe.bold(company))
 
@@ -1006,9 +1004,7 @@ def get_outstanding_invoices(
 	precision = frappe.get_precision("Sales Invoice", "outstanding_amount") or 2
 
 	if account:
-		root_type, account_type = frappe.get_cached_value(
-			"Account", account, ["root_type", "account_type"]
-		)
+		root_type, account_type = frappe.get_cached_value("Account", account, ["root_type", "account_type"])
 		party_account_type = "Receivable" if root_type == "Asset" else "Payable"
 		party_account_type = account_type or party_account_type
 	else:
@@ -1066,9 +1062,7 @@ def get_outstanding_invoices(
 	return outstanding_invoices
 
 
-def get_account_name(
-	account_type=None, root_type=None, is_group=None, account_currency=None, company=None
-):
+def get_account_name(account_type=None, root_type=None, is_group=None, account_currency=None, company=None):
 	"""return account based on matching conditions"""
 	return frappe.db.get_value(
 		"Account",

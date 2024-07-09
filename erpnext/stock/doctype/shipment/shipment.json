@@ -431,7 +431,6 @@
    "options": "User"
   }
  ],
- "in_create": 1,
  "is_submittable": 1,
  "links": [],
  "modified": "2022-11-17 17:23:27.025802",
@@ -470,7 +469,6 @@
    "write": 1
   }
  ],
- "read_only": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

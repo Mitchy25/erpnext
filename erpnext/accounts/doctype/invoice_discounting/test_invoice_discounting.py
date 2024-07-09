@@ -260,13 +260,9 @@ class TestInvoiceDiscounting(unittest.TestCase):
 		je_on_payment.submit()
 
 		self.assertEqual(je_on_payment.accounts[0].account, self.ar_discounted)
-		self.assertEqual(
-			je_on_payment.accounts[0].credit_in_account_currency, flt(inv.outstanding_amount)
-		)
+		self.assertEqual(je_on_payment.accounts[0].credit_in_account_currency, flt(inv.outstanding_amount))
 		self.assertEqual(je_on_payment.accounts[1].account, self.bank_account)
-		self.assertEqual(
-			je_on_payment.accounts[1].debit_in_account_currency, flt(inv.outstanding_amount)
-		)
+		self.assertEqual(je_on_payment.accounts[1].debit_in_account_currency, flt(inv.outstanding_amount))
 
 		inv.reload()
 		self.assertEqual(inv.outstanding_amount, 0)
@@ -302,13 +298,9 @@ class TestInvoiceDiscounting(unittest.TestCase):
 		je_on_payment.submit()
 
 		self.assertEqual(je_on_payment.accounts[0].account, self.ar_unpaid)
-		self.assertEqual(
-			je_on_payment.accounts[0].credit_in_account_currency, flt(inv.outstanding_amount)
-		)
+		self.assertEqual(je_on_payment.accounts[0].credit_in_account_currency, flt(inv.outstanding_amount))
 		self.assertEqual(je_on_payment.accounts[1].account, self.bank_account)
-		self.assertEqual(
-			je_on_payment.accounts[1].debit_in_account_currency, flt(inv.outstanding_amount)
-		)
+		self.assertEqual(je_on_payment.accounts[1].debit_in_account_currency, flt(inv.outstanding_amount))
 
 		inv.reload()
 		self.assertEqual(inv.outstanding_amount, 0)

@@ -250,9 +250,7 @@ def get_bin_list(filters):
 		query = query.where(bin.item_code == filters.item_code)
 
 	if filters.warehouse:
-		warehouse_details = frappe.db.get_value(
-			"Warehouse", filters.warehouse, ["lft", "rgt"], as_dict=1
-		)
+		warehouse_details = frappe.db.get_value("Warehouse", filters.warehouse, ["lft", "rgt"], as_dict=1)
 
 		if warehouse_details:
 			wh = frappe.qb.DocType("Warehouse")

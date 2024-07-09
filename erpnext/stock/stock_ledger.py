@@ -21,18 +21,6 @@ from erpnext.stock.utils import (
 )
 from erpnext.stock.valuation import FIFOValuation, LIFOValuation, round_off_if_near_zero
 
-import erpnext
-from erpnext.stock.doctype.bin.bin import update_qty as update_bin_qty
-from erpnext.stock.utils import (
-	get_incoming_outgoing_rate_for_cancel,
-	get_or_make_bin,
-	get_valuation_method,
-)
-
-
-class NegativeStockError(frappe.ValidationError):
-	pass
-
 
 class NegativeStockError(frappe.ValidationError):
 	pass
@@ -59,6 +47,7 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 
 		args = get_args_for_future_sle(sl_entries[0])
 		future_sle_exists(args, sl_entries)
+
 		for sle in sl_entries:
 			if cancel:
 				sle["actual_qty"] = -flt(sle.get("actual_qty"))
@@ -475,9 +464,7 @@ class update_entries_after:
 
 		if not dependant_sle:
 			return entries_to_fix
-		elif (
-			dependant_sle.item_code == self.item_code and dependant_sle.warehouse == self.args.warehouse
-		):
+		elif dependant_sle.item_code == self.item_code and dependant_sle.warehouse == self.args.warehouse:
 			return entries_to_fix
 		elif dependant_sle.item_code != self.item_code:
 			self.update_distinct_item_warehouses(dependant_sle)
@@ -929,9 +916,7 @@ class update_entries_after:
 				self.wh_data.valuation_rate = new_stock_value / new_stock_qty
 
 		if not self.wh_data.valuation_rate and sle.voucher_detail_no:
-			allow_zero_rate = self.check_if_allow_zero_valuation_rate(
-				sle.voucher_type, sle.voucher_detail_no
-			)
+			allow_zero_rate = self.check_if_allow_zero_valuation_rate(sle.voucher_type, sle.voucher_detail_no)
 			if not allow_zero_rate:
 				self.wh_data.valuation_rate = self.get_fallback_rate(sle)
 
@@ -1497,6 +1482,7 @@ def update_qty_in_future_sle(args, allow_negative_stock=False):
 		args,
 	)
 
+	validate_negative_qty_in_future_sle(args, allow_negative_stock)
 
 
 def get_stock_reco_qty_shift(args):

@@ -165,9 +165,7 @@ class Batch(Document):
 
 
 @frappe.whitelist()
-def get_batch_qty(
-	batch_no=None, warehouse=None, item_code=None, posting_date=None, posting_time=None
-):
+def get_batch_qty(batch_no=None, warehouse=None, item_code=None, posting_date=None, posting_time=None):
 	"""Returns batch actual qty if warehouse is passed,
 	        or returns dict of qty by warehouse if warehouse is None
 

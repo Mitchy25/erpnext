@@ -3,7 +3,6 @@
 
 
 import json
-from typing import List, Optional, Union
 
 import frappe
 from frappe import ValidationError, _
@@ -494,9 +493,7 @@ def validate_serial_no(sle, item_det):
 
 
 def check_serial_no_validity_on_cancel(serial_no, sle):
-	sr = frappe.db.get_value(
-		"Serial No", serial_no, ["name", "warehouse", "company", "status"], as_dict=1
-	)
+	sr = frappe.db.get_value("Serial No", serial_no, ["name", "warehouse", "company", "status"], as_dict=1)
 	sr_link = frappe.utils.get_link_to_form("Serial No", serial_no)
 	doc_link = frappe.utils.get_link_to_form(sle.voucher_type, sle.voucher_no)
 	actual_qty = cint(sle.actual_qty)

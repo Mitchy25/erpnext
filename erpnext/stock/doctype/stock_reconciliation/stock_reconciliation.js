@@ -253,11 +253,6 @@ frappe.ui.form.on("Stock Reconciliation Item", {
 			frappe.model.set_value(cdt, cdn, "batch_no", "");
 		}
 
-		if (child.serial_no) {
-			frappe.model.set_value(cdt, cdn, "serial_no", "");
-			frappe.model.set_value(cdt, cdn, "current_serial_no", "");
-		}
-
 		frm.events.set_valuation_rate_and_qty(frm, cdt, cdn);
 	},
 

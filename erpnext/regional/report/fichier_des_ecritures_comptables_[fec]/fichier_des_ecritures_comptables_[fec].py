@@ -232,9 +232,7 @@ def get_result(company, fiscal_year):
 
 		EcritureDate = format_datetime(d.get("GlPostDate"), "yyyyMMdd")
 
-		account_number = [
-			account.account_number for account in accounts if account.name == d.get("account")
-		]
+		account_number = [account.account_number for account in accounts if account.name == d.get("account")]
 		if account_number[0] is not None:
 			CompteNum = account_number[0]
 		else:

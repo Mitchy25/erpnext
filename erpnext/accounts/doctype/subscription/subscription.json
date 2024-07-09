@@ -173,8 +173,7 @@
    "fieldname": "invoices",
    "fieldtype": "Table",
    "label": "Invoices",
-   "options": "Subscription Invoice",
-   "read_only": 1
+   "options": "Subscription Invoice"
   },
   {
    "collapsible": 1,

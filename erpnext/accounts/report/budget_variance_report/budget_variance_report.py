@@ -7,9 +7,9 @@ import datetime
 import frappe
 from frappe import _
 from frappe.utils import flt, formatdate
-from six import iteritems
 
 from erpnext.controllers.trends import get_period_date_ranges, get_period_month_ranges
+
 
 def execute(filters=None):
 	if not filters:
@@ -112,7 +112,9 @@ def get_columns(filters):
 				]:
 					if group_months:
 						label = label % (
-							formatdate(from_date, format_string="MMM") + "-" + formatdate(to_date, format_string="MMM")
+							formatdate(from_date, format_string="MMM")
+							+ "-"
+							+ formatdate(to_date, format_string="MMM")
 						)
 					else:
 						label = label % formatdate(from_date, format_string="MMM")
@@ -303,7 +305,9 @@ def get_dimension_account_month_map(filters):
 
 			tav_dict = cam_map[ccd.budget_against][ccd.account][ccd.fiscal_year][month]
 			month_percentage = (
-				tdd.get(ccd.monthly_distribution, {}).get(month, 0) if ccd.monthly_distribution else 100.0 / 12
+				tdd.get(ccd.monthly_distribution, {}).get(month, 0)
+				if ccd.monthly_distribution
+				else 100.0 / 12
 			)
 
 			tav_dict.target = flt(ccd.budget_amount) * month_percentage / 100

@@ -99,9 +99,7 @@ class TestTaxWithholdingCategory(FrappeTestCase):
 
 	def test_tax_withholding_category_checks(self):
 		invoices = []
-		frappe.db.set_value(
-			"Supplier", "Test TDS Supplier3", "tax_withholding_category", "New TDS Category"
-		)
+		frappe.db.set_value("Supplier", "Test TDS Supplier3", "tax_withholding_category", "New TDS Category")
 
 		# First Invoice with no tds check
 		pi = create_purchase_invoice(supplier="Test TDS Supplier3", rate=20000, do_not_save=True)

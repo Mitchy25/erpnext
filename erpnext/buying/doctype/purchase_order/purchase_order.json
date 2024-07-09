@@ -383,7 +383,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "allow_on_submit": 1,
    "fieldname": "shipping_address",
    "fieldtype": "Link",
    "label": "Shipping Address",
@@ -391,7 +390,6 @@
    "print_hide": 1
   },
   {
-   "allow_on_submit": 1,
    "fieldname": "shipping_address_display",
    "fieldtype": "Small Text",
    "label": "Shipping Address Details",
@@ -1320,12 +1318,6 @@
    "read": 1,
    "role": "Purchase Manager",
    "write": 1
-  },
-  {
-   "email": 1,
-   "print": 1,
-   "read": 1,
-   "role": "Accounts User"
   }
  ],
  "search_fields": "status, transaction_date, supplier, grand_total",

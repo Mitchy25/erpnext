@@ -10,8 +10,7 @@ from frappe.utils import getdate, nowdate
 
 class Contract(Document):
 	def autoname(self):
-		if frappe.db.get_single_value("Selling Settings", "contract_naming_by") == "Naming Series":
-			set_name_by_naming_series(self)
+		name = self.party_name
 
 		if self.contract_template:
 			name += f" - {self.contract_template} Agreement"
@@ -21,17 +20,7 @@ class Contract(Document):
 			count = len(frappe.get_all("Contract", filters={"name": ["like", f"%{name}%"]}))
 			name = f"{name} - {count}"
 
-			# If identical, append contract name with the next number in the iteration
-			if frappe.db.exists("Contract", name):
-				count = frappe.db.count(
-					"Contract",
-					filters={
-						"name": ("like", f"%{name}%"),
-					},
-				)
-				name = f"{name} - {count}"
-
-			self.name = _(name)
+		self.name = _(name)
 
 	def validate(self):
 		self.validate_dates()

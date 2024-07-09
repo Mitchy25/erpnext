@@ -174,7 +174,6 @@ def get_columns(invoice_list, additional_table_columns, include_payments=False):
 			"fieldname": "voucher_type",
 			"width": 120,
 		},
-		{"label": _("Posting Date"), "fieldname": "posting_date", "fieldtype": "Date", "width": 80},
 		{
 			"label": _("Voucher"),
 			"fieldname": "voucher_no",
@@ -411,7 +410,6 @@ def get_account_columns(invoice_list, include_payments):
 	accounts = [income_accounts, unrealized_profit_loss_accounts, tax_accounts]
 
 	return columns, accounts
-
 
 
 def get_invoices(filters, additional_query_columns):

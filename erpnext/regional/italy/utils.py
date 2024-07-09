@@ -473,9 +473,7 @@ def get_progressive_name_and_number(doc, replace=False):
 			filename = attachment.file_name.split(".xml")[0]
 			return filename, filename.split("_")[1]
 
-	company_tax_id = (
-		doc.company_tax_id if doc.company_tax_id.startswith("IT") else "IT" + doc.company_tax_id
-	)
+	company_tax_id = doc.company_tax_id if doc.company_tax_id.startswith("IT") else "IT" + doc.company_tax_id
 	progressive_name = frappe.model.naming.make_autoname(company_tax_id + "_.#####")
 	progressive_number = progressive_name.split("_")[1]
 

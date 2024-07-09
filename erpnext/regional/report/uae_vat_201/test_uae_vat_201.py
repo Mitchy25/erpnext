@@ -123,7 +123,6 @@ def make_customer():
 		customer.insert()
 
 
-
 def make_supplier():
 	if not frappe.db.exists("Supplier", "_Test UAE Supplier"):
 		frappe.get_doc(

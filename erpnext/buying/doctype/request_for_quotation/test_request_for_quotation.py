@@ -19,6 +19,7 @@ from erpnext.crm.doctype.opportunity.test_opportunity import make_opportunity
 from erpnext.stock.doctype.item.test_item import make_item
 from erpnext.templates.pages.rfq import check_supplier_has_docname_access
 
+
 class TestRequestforQuotation(FrappeTestCase):
 	def test_quote_status(self):
 		rfq = make_request_for_quotation()
@@ -63,9 +64,7 @@ class TestRequestforQuotation(FrappeTestCase):
 
 		rfq = make_request_for_quotation(supplier_data=supplier_wt_appos)
 
-		sq = make_supplier_quotation_from_rfq(
-			rfq.name, for_supplier=supplier_wt_appos[0].get("supplier")
-		)
+		sq = make_supplier_quotation_from_rfq(rfq.name, for_supplier=supplier_wt_appos[0].get("supplier"))
 		sq.submit()
 
 		frappe.form_dict.name = rfq.name

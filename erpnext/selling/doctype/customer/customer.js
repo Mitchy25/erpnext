@@ -166,12 +166,6 @@ frappe.ui.form.on("Customer", {
 				);
 			}
 
-			if (cint(frappe.defaults.get_default("enable_common_party_accounting"))) {
-				frm.add_custom_button(__('Link with Supplier'), function () {
-					frm.trigger('show_party_link_dialog');
-				}, __('Actions'));
-			}
-
 			// indicator
 			erpnext.utils.set_party_dashboard_indicators(frm);
 		} else {

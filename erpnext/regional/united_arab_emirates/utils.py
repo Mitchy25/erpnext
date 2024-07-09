@@ -6,7 +6,6 @@ import erpnext
 from erpnext.controllers.taxes_and_totals import get_itemised_tax
 
 
-
 def update_itemised_tax_data(doc):
 	# maybe this should be a standard function rather than a regional one
 	if not doc.taxes:
@@ -118,9 +117,7 @@ def update_totals(vat_tax, base_vat_tax, doc):
 			doc.outstanding_amount = doc.rounded_total or doc.grand_total
 
 	doc.in_words = money_in_words(doc.grand_total, doc.currency)
-	doc.base_in_words = money_in_words(
-		doc.base_grand_total, erpnext.get_company_currency(doc.company)
-	)
+	doc.base_in_words = money_in_words(doc.base_grand_total, erpnext.get_company_currency(doc.company))
 	doc.set_payment_schedule()
 
 

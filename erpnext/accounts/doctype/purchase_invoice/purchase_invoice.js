@@ -32,9 +32,6 @@ erpnext.accounts.PurchaseInvoice = class PurchaseInvoice extends erpnext.buying.
 		// Ignore linked advances
 		this.frm.ignore_doctypes_on_cancel_all = ['Journal Entry', 'Payment Entry', 'Purchase Invoice', "Repost Payment Ledger", "Repost Accounting Ledger", "Unreconcile Payment", "Unreconcile Payment Entries", "Bank Transaction"];
 
-		// Ignore linked advances
-		this.frm.ignore_doctypes_on_cancel_all = ['Journal Entry', 'Payment Entry', 'Purchase Invoice'];
-
 		if(!this.frm.doc.__islocal) {
 			// show credit_to in print format
 			if(!this.frm.doc.supplier && this.frm.doc.credit_to) {
@@ -636,12 +633,6 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	make_purchase_receipt: function(frm) {
-		frappe.route_hooks.after_load = () => {
-			for (let index = 0; index < cur_frm.doc.items.length; index++) {
-				const element = cur_frm.doc.items[index];
-				frappe.model.trigger('qty', undefined, element, false)
-			}
-		}
 		frappe.model.open_mapped_doc({
 			method: "erpnext.accounts.doctype.purchase_invoice.purchase_invoice.make_purchase_receipt",
 			frm: frm,

@@ -11,9 +11,6 @@ from erpnext.accounts.doctype.accounting_period.accounting_period import (
 	OverlapError,
 )
 from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
-from erpnext.accounts.general_ledger import ClosedAccountingPeriod
-
-test_dependencies = ["Item"]
 
 test_dependencies = ["Item"]
 
