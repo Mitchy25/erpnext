@@ -693,9 +693,6 @@ erpnext.utils.map_current_doc = function(opts) {
 
 				})
 			}
-			$.each(cur_frm.doc.items, function(i, d) {
-				frappe.model.trigger('qty', undefined, d, false)
-			})
 		}
 
 		return frappe.call({
