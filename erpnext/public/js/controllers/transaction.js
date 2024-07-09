@@ -1294,11 +1294,53 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			this.frm.doc.doctype === 'Delivery Note') {
 			show_batch_dialog = 1;
 		}
-		
 		if(item.item_code || item.barcode || item.serial_no) {
 			if(!this.validate_company_and_party()) {
 				this.frm.fields_dict["items"].grid.grid_rows[item.idx - 1].remove();
 			} else {
+				if (this.frm.doc.get_basic_details_only) {
+					return this.frm.call({
+						method: "erpnext.stock.get_item_details.get_basic_details_si",
+						child: item,
+						async:true,
+						args: {
+							doc: me.frm.doc,
+							args: {
+								item_code:item.item_code,
+								warehouse:item.warehouse,
+								customer:me.frm.doc.customer || me.frm.doc.party_name,
+								supplier:me.frm.doc.supplier,
+								currency:me.frm.doc.currency,
+								is_pos: false,
+								price_list_uom_dependant: true,
+								update_stock:update_stock,
+								conversion_rate:me.frm.doc.conversion_rate,
+								price_list:me.frm.doc.selling_price_list || me.frm.doc.buying_price_list,
+								price_list_currency:me.frm.doc.price_list_currency,
+								plc_conversion_rate:me.frm.doc.plc_conversion_rate,
+								company:me.frm.doc.company,
+								order_type:me.frm.doc.order_type,
+								is_pos:cint(me.frm.doc.is_pos),
+								is_subcontracted:me.frm.doc.is_subcontracted,
+								transaction_date:me.frm.doc.transaction_date || me.frm.doc.posting_date,
+								ignore_pricing_rule:me.frm.doc.ignore_pricing_rule || item.ignore_pricing_rules,
+								doctype:me.frm.doc.doctype,
+								name:me.frm.doc.name,
+								project:item.project || me.frm.doc.project,
+								qty:item.qty || 1,
+								stock_qty:item.stock_qty,
+								conversion_factor:item.conversion_factor,
+								variant_of: false
+							 },
+							item: item.item_code
+						},
+						callback: function(r) {
+							locals[cdt][cdn] = Object.assign(locals[cdt][cdn], r.message)
+							frappe.show_alert({"message":"Finished Generating Basic Item Data", "indicator":"green"},3)
+							me.frm.refresh_field('items')
+						}
+					})
+				}
 				return this.frm.call({
 					method: "erpnext.stock.get_item_details.get_item_details",
 					child: item,

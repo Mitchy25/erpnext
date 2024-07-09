@@ -249,6 +249,14 @@ def validate_item_details(args, item):
 		if args.get("is_subcontracted") == "Yes" and item.is_sub_contracted_item != 1:
 			throw(_("Item {0} must be a Sub-contracted Item").format(item.name))
 
+@frappe.whitelist()
+def get_basic_details_si(args, item):
+	item = frappe.get_doc("Item", item)
+	args = process_args(args)
+	out = get_basic_details(args, item)
+	out.update(get_price_list_rate(args, item))
+	out.rate = out.price_list_rate
+	return out
 
 def get_basic_details(args, item, overwrite_warehouse=True):
 	"""
