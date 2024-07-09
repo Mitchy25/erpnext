@@ -1056,7 +1056,8 @@ class ReceivablePayableReport:
 			self.add_column(label=_("Payment Term"), fieldname="payment_term", fieldtype="Data")
 			self.add_column(label=_("Invoice Grand Total"), fieldname="invoice_grand_total")
 
-		self.add_column(_("Invoiced Amount"), fieldname="invoiced")
+		self.add_column(_("Invoiced Amount in Base Currency"), fieldname="invoiced", width=150)
+		self.add_column(_("Invoiced Amount in Payment Currency"), fieldname="invoiced_in_account_currency", width=150)
 		self.add_column(_("Paid Amount"), fieldname="paid")
 		if self.account_type == "Receivable":
 			self.add_column(_("Credit Note"), fieldname="credit_note")

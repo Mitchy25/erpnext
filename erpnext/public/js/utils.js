@@ -814,7 +814,6 @@ erpnext.utils.map_current_doc = function (opts) {
 					}
 				});
 			}
-
 		}
 
 		return frappe.call({

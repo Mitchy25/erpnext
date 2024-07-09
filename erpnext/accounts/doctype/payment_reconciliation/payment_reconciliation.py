@@ -100,6 +100,14 @@ class PaymentReconciliation(Document):
 			dr_or_cr_notes = []
 
 		non_reconciled_payments = payment_entries + journal_entries + dr_or_cr_notes
+
+		for payment in non_reconciled_payments:
+			#Temp set outstadning to 'Amount' for dr_or_cr_notes until V14 introduces the Payment Ledger
+			if payment.get('outstanding_amount'):
+				payment['outstanding_amount'] = abs(payment.get('outstanding_amount'))
+			else:
+				payment['outstanding_amount'] = abs(payment.get('amount'))
+				
 		if self.payment_limit:
 			non_reconciled_payments = non_reconciled_payments[: self.payment_limit]
 

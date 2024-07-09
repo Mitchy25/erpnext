@@ -502,6 +502,8 @@ def get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args):
 	for field in ["items", "backorder_items"]:
 		if items and doc.get(field):
 			for row in doc.get(field):
+				if args.child_docname == row.name:
+					row.batch_no = args.batch_no
 				if (row.get(apply_on)) not in items or row.is_free_item:
 					continue
 				if (row.pricing_rules and pr_doc.name not in row.pricing_rules):
