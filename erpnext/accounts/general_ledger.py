@@ -175,7 +175,7 @@ def process_gl_map(gl_map, merge_entries=True, precision=None):
 
 	gl_map = toggle_debit_credit_if_negative(gl_map)
 
-		update_net_values(entry)
+	update_net_values(entry)
 
 	return gl_map
 

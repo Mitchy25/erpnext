@@ -364,15 +364,6 @@ doc_events = {
 			"erpnext.regional.italy.utils.set_state_code",
 		],
 	},
-	"Supplier": {"validate": "erpnext.regional.india.utils.validate_pan_for_india"},
-	(
-		"Sales Invoice",
-		"Sales Order",
-		"Delivery Note",
-		"Purchase Invoice",
-		"Purchase Order",
-		"Purchase Receipt",
-	): {"validate": ["erpnext.regional.india.utils.set_place_of_supply"]},
 	"Contact": {
 		"on_trash": "erpnext.support.doctype.issue.issue.update_issue",
 		"after_insert": "erpnext.telephony.doctype.call_log.call_log.link_existing_conversations",
@@ -469,8 +460,6 @@ scheduler_events = {
 		"erpnext.crm.utils.open_leads_opportunities_based_on_todays_event",
 		"erpnext.assets.doctype.asset.depreciation.post_depreciation_entries",
 	],
-	"weekly": ["erpnext.hr.doctype.employee.employee_reminders.send_reminders_in_advance_weekly"],
-	"monthly": ["erpnext.hr.doctype.employee.employee_reminders.send_reminders_in_advance_monthly"],
 	"monthly_long": [
 		"erpnext.accounts.deferred_revenue.process_deferred_accounting",
 		"erpnext.loan_management.doctype.process_loan_interest_accrual.process_loan_interest_accrual.process_loan_interest_accrual_for_demand_loans",

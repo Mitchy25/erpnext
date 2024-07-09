@@ -76,8 +76,8 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 	out = get_basic_details(args, item, overwrite_warehouse)
 
-		if doc.get("doctype") == "Purchase Invoice":
-			args["bill_date"] = doc.get("bill_date")
+	if doc.get("doctype") == "Purchase Invoice":
+		args["bill_date"] = doc.get("bill_date")
 
 	out = get_basic_details(args, item, overwrite_warehouse)
 	get_item_tax_template(args, item, out)
