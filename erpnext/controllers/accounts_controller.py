@@ -2530,40 +2530,40 @@ def validate_and_delete_children(parent, data) -> bool:
 
 	return bool(deleted_children)
 
-def validate_and_delete_children(parent, data):
-	deleted_children = []
-	updated_item_names = [d.get("docname") for d in data]
-	for item in parent.items:
-		if item.name not in updated_item_names:
-			deleted_children.append(item)
+# def validate_and_delete_children(parent, data):
+# deleted_children = []
+# updated_item_names = [d.get("docname") for d in data]
+# for item in parent.items:
+# 	if item.name not in updated_item_names:
+# 		deleted_children.append(item)
 
-	for d in deleted_children:
-		if parent.doctype == "Sales Order":
-			if flt(d.delivered_qty):
-				frappe.throw(_("Row #{0}: Cannot delete item {1} which has already been delivered").format(d.idx, d.item_code))
-			if flt(d.work_order_qty):
-				frappe.throw(_("Row #{0}: Cannot delete item {1} which has work order assigned to it.").format(d.idx, d.item_code))
-			if flt(d.ordered_qty):
-				frappe.throw(_("Row #{0}: Cannot delete item {1} which is assigned to customer's purchase order.").format(d.idx, d.item_code))
+# for d in deleted_children:
+# 	if parent.doctype == "Sales Order":
+# 		if flt(d.delivered_qty):
+# 			frappe.throw(_("Row #{0}: Cannot delete item {1} which has already been delivered").format(d.idx, d.item_code))
+# 		if flt(d.work_order_qty):
+# 			frappe.throw(_("Row #{0}: Cannot delete item {1} which has work order assigned to it.").format(d.idx, d.item_code))
+# 		if flt(d.ordered_qty):
+# 			frappe.throw(_("Row #{0}: Cannot delete item {1} which is assigned to customer's purchase order.").format(d.idx, d.item_code))
 
-		if parent.doctype == "Purchase Order" and flt(d.received_qty):
-			frappe.throw(_("Row #{0}: Cannot delete item {1} which has already been received").format(d.idx, d.item_code))
+# 	if parent.doctype == "Purchase Order" and flt(d.received_qty):
+# 		frappe.throw(_("Row #{0}: Cannot delete item {1} which has already been received").format(d.idx, d.item_code))
 
-		if flt(d.billed_amt):
-			frappe.throw(_("Row #{0}: Cannot delete item {1} which has already been billed.").format(d.idx, d.item_code))
+# 	if flt(d.billed_amt):
+# 		frappe.throw(_("Row #{0}: Cannot delete item {1} which has already been billed.").format(d.idx, d.item_code))
 
-		d.cancel()
-		d.delete()
+# 	d.cancel()
+# 	d.delete()
 
-		from erpnext.stock.stock_balance import update_bin_qty, get_ordered_qty, get_reserved_qty
-		if parent.doctype == "Sales Order":
-			update_bin_qty(d.item_code, d.warehouse, {
-				"reserved_qty": get_reserved_qty(d.item_code, d.warehouse)
-			}) 
-		else:
-			update_bin_qty(d.item_code, d.warehouse, {
-				"ordered_qty": get_ordered_qty(d.item_code, d.warehouse)
-			}) 
+# 	from erpnext.stock.stock_balance import update_bin_qty, get_ordered_qty, get_reserved_qty
+# 	if parent.doctype == "Sales Order":
+# 		update_bin_qty(d.item_code, d.warehouse, {
+# 			"reserved_qty": get_reserved_qty(d.item_code, d.warehouse)
+# 		}) 
+# 	else:
+# 		update_bin_qty(d.item_code, d.warehouse, {
+# 			"ordered_qty": get_ordered_qty(d.item_code, d.warehouse)
+# 		}) 
 
 @frappe.whitelist()
 def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, child_docname="items"):
