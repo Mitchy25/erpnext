@@ -76,9 +76,7 @@ class LandedCostVoucher(Document):
 		for d in self.get("purchase_receipts"):
 			docstatus = frappe.db.get_value(d.receipt_document_type, d.receipt_document, "docstatus")
 			if docstatus != 1:
-				msg = (
-					f"Row {d.idx}: {d.receipt_document_type} {frappe.bold(d.receipt_document)} must be submitted"
-				)
+				msg = f"Row {d.idx}: {d.receipt_document_type} {frappe.bold(d.receipt_document)} must be submitted"
 				frappe.throw(_(msg), title=_("Invalid Document"))
 
 			if d.receipt_document_type == "Purchase Invoice":

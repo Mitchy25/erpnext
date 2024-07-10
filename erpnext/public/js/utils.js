@@ -370,7 +370,7 @@ $.extend(erpnext.utils, {
 			for (let i = 0; i < cl.length; i++) {
 				cl[i][fieldname] = doc[parent_fieldname];
 			}
-			refresh_field(table_fieldname);
+			frappe.refresh_field(table_fieldname);
 		}
 	},
 	create_new_doc: function (doctype, update_fields) {
@@ -757,7 +757,6 @@ erpnext.utils.update_child_items = function (opts) {
 			});
 			this.hide();
 			refresh_field("items");
-			
 		},
 		primary_action_label: __("Update"),
 	}).show();
@@ -815,9 +814,6 @@ erpnext.utils.map_current_doc = function (opts) {
 					}
 				});
 			}
-			$.each(cur_frm.doc.items, function(i, d) {
-				frappe.model.trigger('qty', undefined, d, false)
-			})
 		}
 
 		return frappe.call({

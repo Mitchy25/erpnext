@@ -21,6 +21,9 @@
  "roles": [
   {
    "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
   }
  ]
 }

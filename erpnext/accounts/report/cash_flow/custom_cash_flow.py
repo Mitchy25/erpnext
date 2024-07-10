@@ -464,14 +464,10 @@ def execute(filters=None):
 
 	company_currency = frappe.get_cached_value("Company", filters.company, "default_currency")
 
-	data = compute_data(
-		filters, company_currency, net_profit_loss, period_list, mappers, cash_flow_accounts
-	)
+	data = compute_data(filters, company_currency, net_profit_loss, period_list, mappers, cash_flow_accounts)
 
 	_add_total_row_account(data, data, _("Net Change in Cash"), period_list, company_currency)
-	columns = get_columns(
-		filters.periodicity, period_list, filters.accumulated_values, filters.company
-	)
+	columns = get_columns(filters.periodicity, period_list, filters.accumulated_values, filters.company)
 
 	return columns, data
 

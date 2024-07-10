@@ -742,8 +742,6 @@ def make_delivery_note(source_name, target_doc=None, skip_item_mapping=False):
 
 	target_doc = get_mapped_doc("Sales Order", source_name, mapper, target_doc, set_missing_values)
 
-	target_doc.set_onload("ignore_price_list", True)
-
 	return target_doc
 
 
@@ -831,8 +829,6 @@ def make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 	)
 	if automatically_fetch_payment_terms:
 		doclist.set_payment_schedule()
-
-	doclist.set_onload("ignore_price_list", True)
 
 	return doclist
 
@@ -998,9 +994,7 @@ def make_purchase_order_for_default_supplier(source_name, selected_items=None, t
 	items_to_map = list(set(items_to_map))
 
 	if not suppliers:
-		frappe.throw(
-			_("Please set a Supplier against the Items to be considered in the Purchase Order.")
-		)
+		frappe.throw(_("Please set a Supplier against the Items to be considered in the Purchase Order."))
 
 	purchase_orders = []
 	for supplier in suppliers:
@@ -1257,9 +1251,7 @@ def make_raw_material_request(items, company, sales_order, project=None):
 
 	raw_materials = get_items_for_material_requests(items)
 	if not raw_materials:
-		frappe.msgprint(
-			_("Material Request not created, as quantity for Raw Materials already available.")
-		)
+		frappe.msgprint(_("Material Request not created, as quantity for Raw Materials already available."))
 		return
 
 	material_request = frappe.new_doc("Material Request")

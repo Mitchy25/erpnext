@@ -86,9 +86,7 @@ class Asset(AccountsController):
 				)
 
 		if self.is_existing_asset and self.purchase_invoice:
-			frappe.throw(
-				_("Purchase Invoice cannot be made against an existing asset {0}").format(self.name)
-			)
+			frappe.throw(_("Purchase Invoice cannot be made against an existing asset {0}").format(self.name))
 
 	def prepare_depreciation_data(
 		self,
@@ -1140,7 +1138,8 @@ class Asset(AccountsController):
 		else:
 			total_days = get_total_days(original_schedule_date or to_date, row.frequency_of_depreciation)
 
-		return (depreciation_amount * flt(days)) / flt(total_days), days, months
+		return (depreciation_amount * (flt(months) / 12)), days, months
+		# return (depreciation_amount * flt(days)) / flt(total_days), days, months
 
 
 def update_maintenance_status():
@@ -1150,13 +1149,9 @@ def update_maintenance_status():
 
 	for asset in assets:
 		asset = frappe.get_doc("Asset", asset.name)
-		if frappe.db.exists(
-			"Asset Repair", {"asset_name": asset.name, "repair_status": "Pending", "docstatus": 0}
-		):
+		if frappe.db.exists("Asset Repair", {"asset_name": asset.name, "repair_status": "Pending"}):
 			asset.set_status("Out of Order")
-		elif frappe.db.exists(
-			"Asset Maintenance Task", {"parent": asset.name, "next_due_date": today()}
-		):
+		elif frappe.db.exists("Asset Maintenance Task", {"parent": asset.name, "next_due_date": today()}):
 			asset.set_status("In Maintenance")
 		else:
 			asset.set_status()

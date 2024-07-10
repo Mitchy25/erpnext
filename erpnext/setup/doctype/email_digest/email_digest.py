@@ -722,14 +722,10 @@ class EmailDigest(Document):
 			"posting_date" if doc_type in ["Sales Invoice", "Purchase Invoice"] else "transaction_date"
 		)
 
-		value = flt(
-			self.get_total_on(doc_type, self.future_from_date, self.future_to_date)[0].grand_total
-		)
+		value = flt(self.get_total_on(doc_type, self.future_from_date, self.future_to_date)[0].grand_total)
 		count = self.get_total_on(doc_type, self.future_from_date, self.future_to_date)[0].count
 
-		last_value = flt(
-			self.get_total_on(doc_type, self.past_from_date, self.past_to_date)[0].grand_total
-		)
+		last_value = flt(self.get_total_on(doc_type, self.past_from_date, self.past_to_date)[0].grand_total)
 
 		filters = {
 			date_field: [[">=", self.future_from_date], ["<=", self.future_to_date]],

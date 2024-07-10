@@ -11,8 +11,6 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
 from pyyoutube import Api
-from six import string_types
-
 
 
 class Video(Document):
@@ -94,9 +92,7 @@ def get_id_from_url(url):
 	if not isinstance(url, str):
 		frappe.throw(_("URL can only be a string"), title=_("Invalid URL"))
 
-	pattern = re.compile(
-		r'[a-z\:\//\.]+(youtube|youtu)\.(com|be)/(watch\?v=|embed/|.+\?v=)?([^"&?\s]{11})?'
-	)
+	pattern = re.compile(r'[a-z\:\//\.]+(youtube|youtu)\.(com|be)/(watch\?v=|embed/|.+\?v=)?([^"&?\s]{11})?')
 	id = pattern.match(url)
 	return id.groups()[-1]
 

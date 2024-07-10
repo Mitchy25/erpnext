@@ -331,7 +331,6 @@
    "label": "Expected Delivery Date"
   },
   {
-   "collapsible": 1,
    "fieldname": "operations_section",
    "fieldtype": "Section Break",
    "label": "Operations",

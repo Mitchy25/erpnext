@@ -306,16 +306,12 @@ class SalesInvoice(SellingController):
 			and not self.dont_create_loyalty_points
 		):
 			self.make_loyalty_point_entry()
-		elif (
-			self.is_return and self.return_against and not self.is_consolidated and self.loyalty_program
-		):
+		elif self.is_return and self.return_against and not self.is_consolidated and self.loyalty_program:
 			against_si_doc = frappe.get_doc("Sales Invoice", self.return_against)
 			against_si_doc.delete_loyalty_point_entry()
 			against_si_doc.make_loyalty_point_entry()
 		if self.redeem_loyalty_points and not self.is_consolidated and self.loyalty_points:
 			self.apply_loyalty_points()
-
-		self.process_common_party_accounting()
 
 		self.process_common_party_accounting()
 
@@ -396,9 +392,7 @@ class SalesInvoice(SellingController):
 			self.update_project()
 		if not self.is_return and not self.is_consolidated and self.loyalty_program:
 			self.delete_loyalty_point_entry()
-		elif (
-			self.is_return and self.return_against and not self.is_consolidated and self.loyalty_program
-		):
+		elif self.is_return and self.return_against and not self.is_consolidated and self.loyalty_program:
 			against_si_doc = frappe.get_doc("Sales Invoice", self.return_against)
 			against_si_doc.delete_loyalty_point_entry()
 			against_si_doc.make_loyalty_point_entry()
@@ -605,9 +599,6 @@ class SalesInvoice(SellingController):
 			update_multi_mode_option(self, pos)
 
 		if pos:
-			if not for_validate:
-				self.tax_category = pos.get("tax_category")
-
 			if not for_validate:
 				self.tax_category = pos.get("tax_category")
 
@@ -1109,7 +1100,7 @@ class SalesInvoice(SellingController):
 		)
 
 		for tax in self.get("taxes"):
-			amount, base_amount = self.get_tax_amounts(tax, self.enable_discount_accounting)
+			amount, base_amount = self.get_tax_amounts(tax, enable_discount_accounting)
 
 			if flt(tax.base_tax_amount_after_discount_amount):
 				account_currency = get_account_currency(tax.account_head)
@@ -1252,35 +1243,6 @@ class SalesInvoice(SellingController):
 		if not hasattr(self, "_enable_discount_accounting"):
 			self._enable_discount_accounting = cint(
 				frappe.db.get_single_value("Selling Settings", "enable_discount_accounting")
-			)
-
-		return self._enable_discount_accounting
-
-	def get_asset(self, item):
-		if item.get("asset"):
-			asset = frappe.get_doc("Asset", item.asset)
-		else:
-			frappe.throw(
-				_("Row #{0}: You must select an Asset for Item {1}.").format(item.idx, item.item_name),
-				title=_("Missing Asset"),
-			)
-
-		self.check_finance_books(item, asset)
-		return asset
-
-	def check_finance_books(self, item, asset):
-		if (
-			len(asset.finance_books) > 1 and not item.finance_book and asset.finance_books[0].finance_book
-		):
-			frappe.throw(
-				_("Select finance book for the item {0} at row {1}").format(item.item_code, item.idx)
-			)
-
-	@property
-	def enable_discount_accounting(self):
-		if not hasattr(self, "_enable_discount_accounting"):
-			self._enable_discount_accounting = cint(
-				frappe.db.get_single_value("Accounts Settings", "enable_discount_accounting")
 			)
 
 		return self._enable_discount_accounting
@@ -1995,7 +1957,6 @@ def make_delivery_note(source_name, target_doc=None):
 		set_missing_values,
 	)
 
-	doclist.set_onload("ignore_price_list", True)
 	return doclist
 
 

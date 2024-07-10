@@ -132,8 +132,6 @@ def get_dates_from_timegrain(from_date, to_date, timegrain):
 
 	dates = [get_period_ending(from_date, timegrain)]
 	while getdate(dates[-1]) < getdate(to_date):
-		date = get_period_ending(
-			add_to_date(dates[-1], years=years, months=months, days=days), timegrain
-		)
+		date = get_period_ending(add_to_date(dates[-1], years=years, months=months, days=days), timegrain)
 		dates.append(date)
 	return dates

@@ -427,6 +427,10 @@ erpnext.PointOfSale.Payment = class {
 			this[`${mode}_control`].toggle_label(false);
 			this[`${mode}_control`].set_value(p.amount);
 		});
+
+		this.render_loyalty_points_payment_mode();
+
+		this.attach_cash_shortcuts(doc);
 	}
 
 	focus_on_default_mop() {

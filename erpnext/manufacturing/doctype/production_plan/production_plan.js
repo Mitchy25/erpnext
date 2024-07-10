@@ -244,7 +244,6 @@ frappe.ui.form.on("Production Plan", {
 	get_sales_orders(frm) {
 		frappe.call({
 			method: "get_open_sales_orders",
-			freeze: true,
 			doc: frm.doc,
 			callback: function (r) {
 				refresh_field("sales_orders");
@@ -255,7 +254,6 @@ frappe.ui.form.on("Production Plan", {
 	get_material_request(frm) {
 		frappe.call({
 			method: "get_pending_material_requests",
-			freeze: true,
 			doc: frm.doc,
 			callback: function () {
 				refresh_field("material_requests");

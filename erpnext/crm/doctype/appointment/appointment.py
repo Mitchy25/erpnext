@@ -5,7 +5,6 @@
 from collections import Counter
 
 import frappe
-import frappe.share
 from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.model.document import Document
@@ -107,6 +106,7 @@ class Appointment(Document):
 		# Return if already linked
 		if self.party:
 			return
+
 		lead = frappe.get_doc(
 			{
 				"doctype": "Lead",

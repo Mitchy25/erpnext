@@ -1,6 +1,5 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors and contributors
 # For license information, please see license.txt
-import collections
 
 
 import collections
@@ -14,23 +13,6 @@ from erpnext.accounts.doctype.loyalty_program.loyalty_program import validate_lo
 from erpnext.accounts.doctype.payment_request.payment_request import make_payment_request
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import (
 	SalesInvoice,
-	get_mode_of_payment_info,
-	update_multi_mode_option,
-)
-from erpnext.accounts.party import get_due_date, get_party_account
-from erpnext.stock.doctype.batch.batch import get_batch_qty, get_pos_reserved_batch_qty
-from erpnext.stock.doctype.serial_no.serial_no import (
-	get_delivered_serial_nos,
-	get_pos_reserved_serial_nos,
-	get_serial_nos,
-)
-
-
-from erpnext.accounts.doctype.loyalty_program.loyalty_program import validate_loyalty_points
-from erpnext.accounts.doctype.payment_request.payment_request import make_payment_request
-from erpnext.accounts.doctype.sales_invoice.sales_invoice import (
-	SalesInvoice,
-	get_bank_cash_account,
 	get_mode_of_payment_info,
 	update_multi_mode_option,
 )
@@ -62,7 +44,6 @@ class POSInvoice(SalesInvoice):
 		self.validate_debit_to_acc()
 		self.validate_write_off_account()
 		self.validate_change_amount()
-		self.validate_duplicate_serial_and_batch_no()
 		self.validate_change_account()
 		self.validate_item_cost_centers()
 		self.validate_warehouse()
@@ -614,7 +595,6 @@ class POSInvoice(SalesInvoice):
 				pay_req = self.get_existing_payment_request(pay)
 				if not pay_req:
 					pay_req = self.get_new_payment_request(pay)
-					pay_req.insert()
 					pay_req.submit()
 				else:
 					pay_req.request_phone_payment()
@@ -730,7 +710,6 @@ def get_pos_reserved_qty(item_code, warehouse):
 	).run(as_dict=True)
 
 	return flt(reserved_qty[0].stock_qty) if reserved_qty else 0
-
 
 
 @frappe.whitelist()

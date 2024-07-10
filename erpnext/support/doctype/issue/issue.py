@@ -130,6 +130,10 @@ class Issue(Document):
 
 		return replicated_issue.name
 
+	def reset_issue_metrics(self):
+		self.db_set("resolution_time", None)
+		self.db_set("user_resolution_time", None)
+
 
 def get_list_context(context=None):
 	return {
@@ -176,11 +180,9 @@ def set_multiple_status(names, status):
 		frappe.db.set_value("Issue", name, "status", status)
 
 
-
 @frappe.whitelist()
 def set_status(name, status):
 	frappe.db.set_value("Issue", name, "status", status)
-
 
 
 def auto_close_tickets():
@@ -217,7 +219,6 @@ def has_website_permission(doc, ptype, user, verbose=False):
 def update_issue(contact, method):
 	"""Called when Contact is deleted"""
 	frappe.db.sql("""UPDATE `tabIssue` set contact='' where contact=%s""", contact.name)
-
 
 
 @frappe.whitelist()

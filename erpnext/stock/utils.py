@@ -85,7 +85,6 @@ def get_stock_value_on(
 	return query.run(as_list=True)[0][0]
 
 
-
 @frappe.whitelist()
 def get_stock_balance(
 	item_code,
@@ -140,9 +139,7 @@ def get_stock_balance(
 				else (0.0, 0.0, None)
 			)
 		else:
-			return (
-				(last_entry.qty_after_transaction, last_entry.valuation_rate) if last_entry else (0.0, 0.0)
-			)
+			return (last_entry.qty_after_transaction, last_entry.valuation_rate) if last_entry else (0.0, 0.0)
 	else:
 		return last_entry.qty_after_transaction if last_entry else 0.0
 
@@ -258,7 +255,6 @@ def _create_bin(item_code, warehouse):
 		bin_obj = frappe.get_last_doc("Bin", {"item_code": item_code, "warehouse": warehouse})
 
 	return bin_obj
-
 
 
 @frappe.whitelist()

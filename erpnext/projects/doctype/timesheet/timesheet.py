@@ -455,9 +455,7 @@ def get_events(start, end, filters=None):
 	)
 
 
-def get_timesheets_list(
-	doctype, txt, filters, limit_start, limit_page_length=20, order_by="modified"
-):
+def get_timesheets_list(doctype, txt, filters, limit_start, limit_page_length=20, order_by="modified"):
 	user = frappe.session.user
 	# find customer name from contact.
 	customer = ""

@@ -268,9 +268,7 @@ class TestLandedCostVoucher(FrappeTestCase):
 			as_dict=1,
 		)
 
-		self.assertEqual(
-			last_sle.qty_after_transaction, last_sle_after_landed_cost.qty_after_transaction
-		)
+		self.assertEqual(last_sle.qty_after_transaction, last_sle_after_landed_cost.qty_after_transaction)
 
 		self.assertEqual(last_sle_after_landed_cost.stock_value - last_sle.stock_value, 50.0)
 
@@ -553,46 +551,6 @@ class TestLandedCostVoucher(FrappeTestCase):
 		# tear down
 		lcv.cancel()
 		pr.cancel()
-
-
-def make_landed_cost_voucher(**args):
-	args = frappe._dict(args)
-	ref_doc = frappe.get_doc(args.receipt_document_type, args.receipt_document)
-
-	lcv = frappe.new_doc("Landed Cost Voucher")
-	lcv.company = args.company or "_Test Company"
-	lcv.distribute_charges_based_on = args.distribute_charges_based_on or "Amount"
-
-	lcv.set(
-		"purchase_receipts",
-		[
-			{
-				"receipt_document_type": args.receipt_document_type,
-				"receipt_document": args.receipt_document,
-				"supplier": ref_doc.supplier,
-				"posting_date": ref_doc.posting_date,
-				"grand_total": ref_doc.grand_total,
-			}
-		],
-	)
-
-	lcv.set(
-		"taxes",
-		[
-			{
-				"description": "Shipping Charges",
-				"expense_account": args.expense_account or "Expenses Included In Valuation - TCP1",
-				"amount": args.charges,
-			}
-		],
-	)
-
-	if not args.do_not_save:
-		lcv.insert()
-		if not args.do_not_submit:
-			lcv.submit()
-
-	return lcv
 
 
 def make_landed_cost_voucher(**args):

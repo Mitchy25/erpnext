@@ -760,6 +760,11 @@ class AccountsController(TransactionBase):
 					if ret.get("pricing_rules"):
 						self.apply_pricing_rule_on_items(item, ret)
 						self.set_pricing_rule_details(item, ret)
+
+					if ret.get("serial_no"):
+						selected_serial_nos_map.setdefault(item.get("item_code"), []).extend(
+							ret.get("serial_no").split("\n")
+						)
 				else:
 					# Transactions line item without item code
 
@@ -774,11 +779,6 @@ class AccountsController(TransactionBase):
 						or item.get("conversion_factor")
 						or 1
 					)
-
-					if ret.get("serial_no"):
-						selected_serial_nos_map.setdefault(item.get("item_code"), []).extend(
-							ret.get("serial_no").split("\n")
-						)
 
 			if self.doctype == "Purchase Invoice":
 				self.set_expense_account(for_validate)
@@ -1104,9 +1104,7 @@ class AccountsController(TransactionBase):
 		return res
 
 	def is_inclusive_tax(self):
-		is_inclusive = cint(
-			frappe.db.get_single_value("Accounts Settings", "show_inclusive_tax_in_print")
-		)
+		is_inclusive = cint(frappe.db.get_single_value("Accounts Settings", "show_inclusive_tax_in_print"))
 
 		if is_inclusive:
 			is_inclusive = 0
@@ -1851,9 +1849,7 @@ class AccountsController(TransactionBase):
 
 	def raise_missing_debit_credit_account_error(self, party_type, party):
 		"""Raise an error if debit to/credit to account does not exist."""
-		db_or_cr = (
-			frappe.bold("Debit To") if self.doctype == "Sales Invoice" else frappe.bold("Credit To")
-		)
+		db_or_cr = frappe.bold("Debit To") if self.doctype == "Sales Invoice" else frappe.bold("Credit To")
 		rec_or_pay = "Receivable" if self.doctype == "Sales Invoice" else "Payable"
 
 		link_to_party = frappe.utils.get_link_to_form(party_type, party)
@@ -2644,13 +2640,9 @@ def get_advance_payment_entries(
 	per = qb.DocType("Payment Entry Reference")
 
 	party_account_field = "paid_from" if party_type == "Customer" else "paid_to"
-	currency_field = (
-		"paid_from_account_currency" if party_type == "Customer" else "paid_to_account_currency"
-	)
+	currency_field = "paid_from_account_currency" if party_type == "Customer" else "paid_to_account_currency"
 	payment_type = "Receive" if party_type == "Customer" else "Pay"
-	exchange_rate_field = (
-		"source_exchange_rate" if payment_type == "Receive" else "target_exchange_rate"
-	)
+	exchange_rate_field = "source_exchange_rate" if payment_type == "Receive" else "target_exchange_rate"
 
 	payment_entries_against_order, unallocated_payment_entries = [], []
 
@@ -2796,9 +2788,7 @@ def get_payment_terms(
 
 	schedule = []
 	for d in terms_doc.get("terms"):
-		term_details = get_payment_term_details(
-			d, posting_date, grand_total, base_grand_total, bill_date
-		)
+		term_details = get_payment_term_details(d, posting_date, grand_total, base_grand_total, bill_date)
 		schedule.append(term_details)
 
 	return schedule
@@ -3079,9 +3069,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 	def get_new_child_item(item_row):
 		child_doctype = "Sales Order Item" if parent_doctype == "Sales Order" else "Purchase Order Item"
-		return set_order_defaults(
-			parent_doctype, parent_doctype_name, child_doctype, child_docname, item_row
-		)
+		return set_order_defaults(parent_doctype, parent_doctype_name, child_doctype, child_docname, item_row)
 
 	def validate_quantity(child_item, new_data):
 		if not flt(new_data.get("qty")):

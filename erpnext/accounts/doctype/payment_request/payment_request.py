@@ -6,7 +6,6 @@ import json
 
 import frappe
 from frappe import _
-from frappe.integrations.utils import get_payment_gateway_controller
 from frappe.model.document import Document
 from frappe.utils import flt, get_url, nowdate
 from frappe.utils.background_jobs import enqueue
@@ -242,9 +241,7 @@ class PaymentRequest(Document):
 		else:
 			party_account = get_party_account("Customer", ref_doc.get("customer"), ref_doc.company)
 
-		party_account_currency = ref_doc.get("party_account_currency") or get_account_currency(
-			party_account
-		)
+		party_account_currency = ref_doc.get("party_account_currency") or get_account_currency(party_account)
 
 		bank_amount = self.grand_total
 		if party_account_currency == ref_doc.company_currency and party_account_currency != self.currency:
@@ -472,8 +469,8 @@ def make_payment_request(**args):
 		if args.order_type == "Shopping Cart" or args.mute_email:
 			pr.flags.mute_email = True
 
+		pr.insert(ignore_permissions=True)
 		if args.submit_doc:
-			pr.insert(ignore_permissions=True)
 			pr.submit()
 
 	if args.order_type == "Shopping Cart":

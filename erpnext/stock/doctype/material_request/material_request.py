@@ -210,34 +210,6 @@ class MaterialRequest(BuyingController):
 
 		return mr_items_ordered_qty
 
-	def get_mr_items_ordered_qty(self, mr_items):
-		mr_items_ordered_qty = {}
-		mr_items = [d.name for d in self.get("items") if d.name in mr_items]
-
-		doctype = qty_field = None
-		if self.material_request_type in ("Material Issue", "Material Transfer", "Customer Provided"):
-			doctype = frappe.qb.DocType("Stock Entry Detail")
-			qty_field = doctype.transfer_qty
-		elif self.material_request_type == "Manufacture":
-			doctype = frappe.qb.DocType("Work Order")
-			qty_field = doctype.qty
-
-		if doctype and qty_field:
-			query = (
-				frappe.qb.from_(doctype)
-				.select(doctype.material_request_item, Sum(qty_field))
-				.where(
-					(doctype.material_request == self.name)
-					& (doctype.material_request_item.isin(mr_items))
-					& (doctype.docstatus == 1)
-				)
-				.groupby(doctype.material_request_item)
-			)
-
-			mr_items_ordered_qty = frappe._dict(query.run())
-
-		return mr_items_ordered_qty
-
 	def update_completed_qty(self, mr_items=None, update_modified=True):
 		if self.material_request_type == "Purchase":
 			return
@@ -716,9 +688,7 @@ def raise_work_orders(material_request):
 	mr = frappe.get_doc("Material Request", material_request)
 	errors = []
 	work_orders = []
-	default_wip_warehouse = frappe.db.get_single_value(
-		"Manufacturing Settings", "default_wip_warehouse"
-	)
+	default_wip_warehouse = frappe.db.get_single_value("Manufacturing Settings", "default_wip_warehouse")
 
 	for d in mr.items:
 		if (d.stock_qty - d.ordered_qty) > 0:

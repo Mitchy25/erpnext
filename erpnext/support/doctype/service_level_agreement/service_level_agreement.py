@@ -301,7 +301,6 @@ def check_agreement_status():
 			frappe.db.set_value("Service Level Agreement", service_level_agreement.name, "enabled", 0)
 
 
-
 def get_active_service_level_agreement_for(doc):
 	if not frappe.db.get_single_value("Support Settings", "track_service_level_agreement"):
 		return
@@ -382,7 +381,6 @@ def get_customer_group(customer):
 	return customer_groups
 
 
-
 def get_customer_territory(customer):
 	customer_territories = []
 	customer_territory = frappe.db.get_value("Customer", customer, "territory") if customer else None
@@ -391,7 +389,6 @@ def get_customer_territory(customer):
 		customer_territories = [customer_territory, *ancestors]
 
 	return customer_territories
-
 
 
 @frappe.whitelist()

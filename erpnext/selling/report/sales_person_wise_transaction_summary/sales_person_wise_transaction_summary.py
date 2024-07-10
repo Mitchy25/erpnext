@@ -126,7 +126,6 @@ def get_columns(filters):
 			"fieldtype": "Float",
 			"width": 140,
 		},
-		{"label": _("Contribution %"), "fieldname": "contribution", "fieldtype": "Float", "width": 140},
 		{
 			"label": _("Contribution Amount"),
 			"options": "currency",

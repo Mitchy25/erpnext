@@ -102,9 +102,7 @@ def calculate_accrual_amount_for_demand_loans(loan, posting_date, process_loan_i
 
 	pending_principal_amount = get_pending_principal_amount(loan)
 
-	interest_per_day = get_per_day_interest(
-		pending_principal_amount, loan.rate_of_interest, posting_date
-	)
+	interest_per_day = get_per_day_interest(pending_principal_amount, loan.rate_of_interest, posting_date)
 	payable_interest = interest_per_day * no_of_days
 
 	pending_amounts = calculate_amounts(loan.name, posting_date, payment_type="Loan Closure")
@@ -168,9 +166,7 @@ def make_accrual_interest_entry_for_demand_loans(
 		)
 
 	for loan in open_loans:
-		calculate_accrual_amount_for_demand_loans(
-			loan, posting_date, process_loan_interest, accrual_type
-		)
+		calculate_accrual_amount_for_demand_loans(loan, posting_date, process_loan_interest, accrual_type)
 
 
 def make_accrual_interest_entry_for_term_loans(
@@ -252,9 +248,7 @@ def make_loan_interest_accrual_entry(args):
 	loan_interest_accrual.loan_account = args.loan_account
 	loan_interest_accrual.pending_principal_amount = flt(args.pending_principal_amount, precision)
 	loan_interest_accrual.interest_amount = flt(args.interest_amount, precision)
-	loan_interest_accrual.total_pending_interest_amount = flt(
-		args.total_pending_interest_amount, precision
-	)
+	loan_interest_accrual.total_pending_interest_amount = flt(args.total_pending_interest_amount, precision)
 	loan_interest_accrual.penalty_amount = flt(args.penalty_amount, precision)
 	loan_interest_accrual.posting_date = args.posting_date or nowdate()
 	loan_interest_accrual.process_loan_interest_accrual = args.process_loan_interest

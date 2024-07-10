@@ -8,12 +8,12 @@ def get_data():
 			"This is based on transactions against this Supplier. See timeline below for details"
 		),
 		"fieldname": "supplier",
-		"non_standard_fieldnames": {"Payment Entry": "party", "Bank Account": "party"},
+		"non_standard_fieldnames": {"Payment Entry": "party", "Bank Account": "party", "Journal Entry": "party"},
 		"dynamic_links": {"party": ["Supplier", "party_type"]},
 		"transactions": [
 			{"label": _("Procurement"), "items": ["Request for Quotation", "Supplier Quotation"]},
 			{"label": _("Orders"), "items": ["Purchase Order", "Purchase Receipt", "Purchase Invoice"]},
-			{"label": _("Payments"), "items": ["Payment Entry", "Bank Account"]},
+			{"label": _("Payments"), "items": ["Payment Entry", "Bank Account", "Journal Entry"]},
 			{"label": _("Pricing"), "items": ["Pricing Rule"]},
 		],
 	}

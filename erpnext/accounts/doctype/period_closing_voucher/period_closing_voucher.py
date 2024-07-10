@@ -90,9 +90,7 @@ class PeriodClosingVoucher(AccountsController):
 			self.posting_date, self.fiscal_year, self.company, label=_("Posting Date"), doc=self
 		)
 
-		self.year_start_date = get_fiscal_year(
-			self.posting_date, self.fiscal_year, company=self.company
-		)[1]
+		self.year_start_date = get_fiscal_year(self.posting_date, self.fiscal_year, company=self.company)[1]
 
 		self.check_if_previous_year_closed()
 

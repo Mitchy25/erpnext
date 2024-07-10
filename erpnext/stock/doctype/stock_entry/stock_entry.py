@@ -524,7 +524,7 @@ class StockEntry(StockController):
 
 			if self.purpose == "Manufacture":
 				if validate_for_manufacture:
-					if d.is_finished_item or d.is_scrap_item or d.is_process_loss:
+					if d.is_finished_item or d.is_scrap_item:
 						d.s_warehouse = None
 						if not d.t_warehouse:
 							frappe.throw(_("Target warehouse is mandatory for row {0}").format(d.idx))
@@ -699,12 +699,8 @@ class StockEntry(StockController):
 		Set rate for outgoing, scrapped and finished items
 		"""
 		# Set rate for outgoing items
-		outgoing_items_cost = self.set_rate_for_outgoing_items(
-			reset_outgoing_rate, raise_error_if_no_rate
-		)
-		finished_item_qty = sum(
-			d.transfer_qty for d in self.items if d.is_finished_item or d.is_process_loss
-		)
+		outgoing_items_cost = self.set_rate_for_outgoing_items(reset_outgoing_rate, raise_error_if_no_rate)
+		finished_item_qty = sum(d.transfer_qty for d in self.items if d.is_finished_item)
 
 		items = []
 		# Set basic rate for incoming items
@@ -1587,7 +1583,6 @@ class StockEntry(StockController):
 
 		self.set_scrap_items()
 		self.set_actual_qty()
-		self.update_items_for_process_loss()
 		self.validate_customer_provided_item()
 		self.calculate_rate_and_amount(raise_error_if_no_rate=False)
 
@@ -2752,9 +2747,7 @@ def get_supplied_items(
 		else:
 			supplied_item.supplied_qty += row.transfer_qty
 
-		supplied_item.total_supplied_qty = flt(supplied_item.supplied_qty) - flt(
-			supplied_item.returned_qty
-		)
+		supplied_item.total_supplied_qty = flt(supplied_item.supplied_qty) - flt(supplied_item.returned_qty)
 
 	return supplied_item_details
 

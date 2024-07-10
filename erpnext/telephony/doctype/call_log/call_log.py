@@ -42,9 +42,7 @@ class CallLog(Document):
 	def on_update(self):
 		def _is_call_missed(doc_before_save, doc_after_save):
 			# FIXME: This works for Exotel but not for all telepony providers
-			return (
-				doc_before_save.to != doc_after_save.to and doc_after_save.status not in END_CALL_STATUSES
-			)
+			return doc_before_save.to != doc_after_save.to and doc_after_save.status not in END_CALL_STATUSES
 
 		def _is_call_ended(doc_before_save, doc_after_save):
 			return doc_before_save.status not in END_CALL_STATUSES and self.status in END_CALL_STATUSES

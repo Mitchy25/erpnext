@@ -307,10 +307,7 @@ def get_interest_accruals(loans, filters):
 
 
 def get_penal_interest_rate_map():
-	return frappe._dict(
-		frappe.get_all("Loan Type", fields=["name", "penalty_interest_rate"], as_list=1)
-	)
-
+	return frappe._dict(frappe.get_all("Loan Type", fields=["name", "penalty_interest_rate"], as_list=1))
 
 
 def get_loan_wise_pledges(filters):

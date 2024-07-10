@@ -313,9 +313,7 @@ class TestSalesOrder(AccountsTestMixin, FrappeTestCase):
 
 	def test_reserved_qty_for_partial_delivery_with_packing_list(self):
 		make_stock_entry(target="_Test Warehouse - _TC", qty=10, rate=100)
-		make_stock_entry(
-			item="_Test Item Home Desktop 100", target="_Test Warehouse - _TC", qty=10, rate=100
-		)
+		make_stock_entry(item="_Test Item Home Desktop 100", target="_Test Warehouse - _TC", qty=10, rate=100)
 
 		existing_reserved_qty_item1 = get_reserved_qty("_Test Item")
 		existing_reserved_qty_item2 = get_reserved_qty("_Test Item Home Desktop 100")
@@ -362,9 +360,7 @@ class TestSalesOrder(AccountsTestMixin, FrappeTestCase):
 
 	def test_reserved_qty_for_over_delivery_with_packing_list(self):
 		make_stock_entry(target="_Test Warehouse - _TC", qty=10, rate=100)
-		make_stock_entry(
-			item="_Test Item Home Desktop 100", target="_Test Warehouse - _TC", qty=10, rate=100
-		)
+		make_stock_entry(item="_Test Item Home Desktop 100", target="_Test Warehouse - _TC", qty=10, rate=100)
 
 		# set over-delivery allowance
 		frappe.db.set_value("Item", "_Test Product Bundle Item", "over_delivery_receipt_allowance", 50)
@@ -803,9 +799,7 @@ class TestSalesOrder(AccountsTestMixin, FrappeTestCase):
 
 		frappe.set_user("Administrator")
 		frappe.permissions.remove_user_permission("Warehouse", "_Test Warehouse 1 - _TC", test_user.name)
-		frappe.permissions.remove_user_permission(
-			"Warehouse", "_Test Warehouse 2 - _TC1", test_user_2.name
-		)
+		frappe.permissions.remove_user_permission("Warehouse", "_Test Warehouse 2 - _TC1", test_user_2.name)
 		frappe.permissions.remove_user_permission("Company", "_Test Company 1", test_user_2.name)
 
 	def test_block_delivery_note_against_cancelled_sales_order(self):
@@ -924,9 +918,7 @@ class TestSalesOrder(AccountsTestMixin, FrappeTestCase):
 		from erpnext.selling.doctype.sales_order.sales_order import update_status as so_update_status
 
 		# make items
-		po_item = make_item(
-			"_Test Item for Drop Shipping", {"is_stock_item": 1, "delivered_by_supplier": 1}
-		)
+		po_item = make_item("_Test Item for Drop Shipping", {"is_stock_item": 1, "delivered_by_supplier": 1})
 		dn_item = make_item("_Test Regular Item", {"is_stock_item": 1})
 
 		so_items = [

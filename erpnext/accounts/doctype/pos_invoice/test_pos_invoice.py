@@ -666,9 +666,7 @@ class TestPOSInvoice(unittest.TestCase):
 		consolidate_pos_invoices()
 
 		pos_inv.load_from_db()
-		rounded_total = frappe.db.get_value(
-			"Sales Invoice", pos_inv.consolidated_invoice, "rounded_total"
-		)
+		rounded_total = frappe.db.get_value("Sales Invoice", pos_inv.consolidated_invoice, "rounded_total")
 		self.assertEqual(rounded_total, 3470)
 
 	def test_merging_into_sales_invoice_with_discount_and_inclusive_tax(self):
@@ -715,9 +713,7 @@ class TestPOSInvoice(unittest.TestCase):
 		consolidate_pos_invoices()
 
 		pos_inv.load_from_db()
-		rounded_total = frappe.db.get_value(
-			"Sales Invoice", pos_inv.consolidated_invoice, "rounded_total"
-		)
+		rounded_total = frappe.db.get_value("Sales Invoice", pos_inv.consolidated_invoice, "rounded_total")
 		self.assertEqual(rounded_total, 840)
 
 	def test_merging_with_validate_selling_price(self):
@@ -769,9 +765,7 @@ class TestPOSInvoice(unittest.TestCase):
 		consolidate_pos_invoices()
 
 		pos_inv2.load_from_db()
-		rounded_total = frappe.db.get_value(
-			"Sales Invoice", pos_inv2.consolidated_invoice, "rounded_total"
-		)
+		rounded_total = frappe.db.get_value("Sales Invoice", pos_inv2.consolidated_invoice, "rounded_total")
 		self.assertEqual(rounded_total, 400)
 
 	def test_pos_batch_item_qty_validation(self):

@@ -169,9 +169,7 @@ def prepare_data(
 
 	for d in sales_users_data:
 		key = (d.parent, d.item_group)
-		dist_data = get_periodwise_distribution_data(
-			d.distribution_id, period_list, filters.get("period")
-		)
+		dist_data = get_periodwise_distribution_data(d.distribution_id, period_list, filters.get("period"))
 
 		if key not in rows:
 			rows.setdefault(key, {"total_target": 0, "total_achieved": 0, "total_variance": 0})

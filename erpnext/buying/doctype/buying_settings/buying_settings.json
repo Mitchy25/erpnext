@@ -116,41 +116,6 @@
    "options": "Role"
   },
   {
-   "fieldname": "column_break_3",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "po_required",
-   "fieldtype": "Select",
-   "label": "Is Purchase Order Required for Purchase Invoice & Receipt Creation?",
-   "options": "No\nYes"
-  },
-  {
-   "fieldname": "pr_required",
-   "fieldtype": "Select",
-   "label": "Is Purchase Receipt Required for Purchase Invoice Creation?",
-   "options": "No\nYes"
-  },
-  {
-   "default": "0",
-   "description": "Percentage you are allowed to order more against the Blanket Order Quantity. For example: If you have a Blanket Order of Quantity 100 units. and your Allowance is 10% then you are allowed to order 110 units.",
-   "fieldname": "over_order_allowance",
-   "fieldtype": "Float",
-   "label": "Over Order Allowance (%)"
-  },
-  {
-   "default": "0",
-   "fieldname": "maintain_same_rate",
-   "fieldtype": "Check",
-   "label": "Maintain Same Rate Throughout the Purchase Cycle"
-  },
-  {
-   "default": "0",
-   "fieldname": "allow_multiple_items",
-   "fieldtype": "Check",
-   "label": "Allow Item To Be Added Multiple Times in a Transaction"
-  },
-  {
    "default": "1",
    "description": "If checked, Rejected Quantity will be included while making Purchase Invoice from Purchase Receipt.",
    "fieldname": "bill_for_rejected_quantity_in_purchase_invoice",

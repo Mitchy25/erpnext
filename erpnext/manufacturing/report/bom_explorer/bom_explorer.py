@@ -64,11 +64,4 @@ def get_columns():
 			"fieldname": "description",
 			"width": 150,
 		},
-		{"label": "Item Name", "fieldtype": "data", "fieldname": "item_name", "width": 100},
-		{"label": "BOM", "fieldtype": "Link", "fieldname": "bom", "width": 150, "options": "BOM"},
-		{"label": "Qty", "fieldtype": "data", "fieldname": "qty", "width": 100},
-		{"label": "UOM", "fieldtype": "data", "fieldname": "uom", "width": 100},
-		{"label": "BOM Level", "fieldtype": "Int", "fieldname": "bom_level", "width": 100},
-		{"label": "Standard Description", "fieldtype": "data", "fieldname": "description", "width": 150},
-		{"label": "Scrap", "fieldtype": "data", "fieldname": "scrap", "width": 100},
 	]

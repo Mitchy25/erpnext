@@ -76,10 +76,6 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 	out = get_basic_details(args, item, overwrite_warehouse)
 
-		if doc.get("doctype") == "Purchase Invoice":
-			args["bill_date"] = doc.get("bill_date")
-
-	out = get_basic_details(args, item, overwrite_warehouse)
 	get_item_tax_template(args, item, out)
 	out["item_tax_rate"] = get_item_tax_map(
 		args.company,
@@ -161,7 +157,8 @@ def update_stock(args, out):
 		out["ignore_serial_nos"] = args.get("ignore_serial_nos")
 
 		if out.has_batch_no and not args.get("batch_no"):
-			out.batch_no = get_batch_no(out.item_code, out.warehouse, out.qty).get("batch_no", None)
+			out.batch_no = get_batch_no(out.item_code, out.warehouse, out.qty)
+			
 			actual_batch_qty = get_batch_qty(out.batch_no, out.warehouse, out.item_code)
 			if actual_batch_qty:
 				out.update(actual_batch_qty)
@@ -271,6 +268,14 @@ def validate_item_details(args, item):
 				if item.is_stock_item:
 					throw(_("Item {0} must be a Non-Stock Item").format(item.name))
 
+@frappe.whitelist()
+def get_basic_details_si(args, item):
+	item = frappe.get_doc("Item", item)
+	args = process_args(args)
+	out = get_basic_details(args, item)
+	out.update(get_price_list_rate(args, item))
+	out.rate = out.price_list_rate
+	return out
 
 def get_basic_details(args, item, overwrite_warehouse=True):
 	"""
@@ -1257,9 +1262,7 @@ def get_serial_no_details(item_code, warehouse, stock_qty, serial_no):
 
 
 @frappe.whitelist()
-def get_bin_details_and_serial_nos(
-	item_code, warehouse, has_batch_no=None, stock_qty=None, serial_no=None
-):
+def get_bin_details_and_serial_nos(item_code, warehouse, has_batch_no=None, stock_qty=None, serial_no=None):
 	bin_details_and_serial_nos = {}
 	bin_details_and_serial_nos.update(get_bin_details(item_code, warehouse))
 	if flt(stock_qty) > 0:

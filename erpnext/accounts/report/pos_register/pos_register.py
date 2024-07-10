@@ -128,9 +128,7 @@ def validate_filters(filters):
 
 
 def get_conditions(filters):
-	conditions = (
-		"company = %(company)s AND posting_date >= %(from_date)s AND posting_date <= %(to_date)s"
-	)
+	conditions = "company = %(company)s AND posting_date >= %(from_date)s AND posting_date <= %(to_date)s"
 
 	if filters.get("pos_profile"):
 		conditions += " AND pos_profile = %(pos_profile)s"
@@ -228,7 +226,6 @@ def get_columns(filters):
 			"options": "Company",
 			"width": 120,
 		},
-		{"label": _("Is Return"), "fieldname": "is_return", "fieldtype": "Data", "width": 80},
 	]
 
 	return columns

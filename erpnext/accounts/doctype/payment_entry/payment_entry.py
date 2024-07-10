@@ -95,7 +95,6 @@ class PaymentEntry(AccountsController):
 		if self.difference_amount:
 			frappe.throw(_("Difference Amount must be zero"))
 		self.make_gl_entries()
-		self.update_expense_claim()
 		self.update_outstanding_amounts()
 		self.update_advance_paid()
 		self.update_payment_schedule()
@@ -115,7 +114,6 @@ class PaymentEntry(AccountsController):
 		)
 		super().on_cancel()
 		self.make_gl_entries(cancel=1)
-		self.update_expense_claim()
 		self.update_outstanding_amounts()
 		self.update_advance_paid()
 		self.delink_advance_entry_references()
@@ -281,30 +279,7 @@ class PaymentEntry(AccountsController):
 		for reference in self.references:
 			if reference.reference_doctype in ("Sales Invoice", "Purchase Invoice"):
 				doc = frappe.get_doc(reference.reference_doctype, reference.reference_name)
-
-				repost_required = False
-				for adv_reference in doc.get("advances"):
-					if adv_reference.exchange_gain_loss != 0:
-						repost_required = True
-						break
-				if repost_required:
-					for item in doc.get("items"):
-						if item.get("enable_deferred_revenue") or item.get("enable_deferred_expense"):
-							frappe.msgprint(
-								_(
-									"Linked Invoice {0} has Exchange Gain/Loss GL entries due to this Payment. Submit a Journal manually to reverse its effects."
-								).format(get_link_to_form(doc.doctype, doc.name))
-							)
-							repost_required = False
-
 				doc.delink_advance_entries(self.name)
-
-				if repost_required:
-					doc.reload()
-					doc.docstatus = 2
-					doc.make_gl_entries()
-					doc.docstatus = 1
-					doc.make_gl_entries()
 
 	def set_missing_values(self):
 		if self.payment_type == "Internal Transfer":
@@ -682,66 +657,7 @@ class PaymentEntry(AccountsController):
 
 		return allocated_amount
 
-	def get_allocated_amount_in_transaction_currency(
-		self, allocated_amount, reference_doctype, reference_docname
-	):
-		"""
-		Payment Entry could be in base currency while reference's payment schedule
-		is always in transaction currency.
-		E.g.
-		* SI with base=INR and currency=USD
-		* SI with payment schedule in USD
-		* PE in INR (accounting done in base currency)
-		"""
-		ref_currency, ref_exchange_rate = frappe.db.get_value(
-			reference_doctype, reference_docname, ["currency", "conversion_rate"]
-		)
-		is_single_currency = self.paid_from_account_currency == self.paid_to_account_currency
-		# PE in different currency
-		reference_is_multi_currency = self.paid_from_account_currency != ref_currency
-
-		if not (is_single_currency and reference_is_multi_currency):
-			return allocated_amount
-
-		allocated_amount = flt(
-			allocated_amount / ref_exchange_rate, self.precision("total_allocated_amount")
-		)
-
-		return allocated_amount
-
-	def update_payment_schedule(self, cancel=0):
-		invoice_payment_amount_map = {}
-		invoice_paid_amount_map = {}
-
-		for reference in self.get('references'):
-			if reference.payment_term and reference.reference_name:
-				key = (reference.payment_term, reference.reference_name)
-				invoice_payment_amount_map.setdefault(key, 0.0)
-				invoice_payment_amount_map[key] += reference.allocated_amount
-
-				if not invoice_paid_amount_map.get(key):
-					payment_schedule = frappe.get_all('Payment Schedule', filters={'parent': reference.reference_name},
-						fields=['paid_amount', 'payment_amount', 'payment_term'])
-					for term in payment_schedule:
-						invoice_key = (term.payment_term, reference.reference_name)
-						invoice_paid_amount_map.setdefault(invoice_key, {})
-						invoice_paid_amount_map[invoice_key]['outstanding'] = term.payment_amount - term.paid_amount
-
-		for key, amount in iteritems(invoice_payment_amount_map):
-			if cancel:
-				frappe.db.sql(""" UPDATE `tabPayment Schedule` SET paid_amount = `paid_amount` - %s
-					WHERE parent = %s and payment_term = %s""", (amount, key[1], key[0]))
-			else:
-				outstanding = flt(invoice_paid_amount_map.get(key, {}).get('outstanding'))
-
-				if amount > outstanding:
-					frappe.throw(_('Cannot allocate more than {0} against payment term {1}').format(outstanding, key[0]))
-
-				if amount and outstanding:
-					frappe.db.sql(""" UPDATE `tabPayment Schedule` SET paid_amount = `paid_amount` + %s
-							WHERE parent = %s and payment_term = %s""", (amount, key[1], key[0]))
-
-	def set_status(self, update=False):
+	def set_status(self):
 		if self.docstatus == 2:
 			self.status = "Cancelled"
 		elif self.docstatus == 1:
@@ -941,8 +857,6 @@ class PaymentEntry(AccountsController):
 
 		self.total_allocated_amount = abs(total_allocated_amount)
 		self.base_total_allocated_amount = abs(base_total_allocated_amount)
-		# self.total_allocated_amount = total_allocated_amount
-		# self.base_total_allocated_amount = base_total_allocated_amount
 
 	def set_unallocated_amount(self):
 		self.unallocated_amount = 0
@@ -2011,9 +1925,7 @@ def get_reference_details(
 	total_amount = outstanding_amount = exchange_rate = None
 
 	ref_doc = frappe.get_doc(reference_doctype, reference_name)
-	company_currency = ref_doc.get("company_currency") or erpnext.get_company_currency(
-		ref_doc.company
-	)
+	company_currency = ref_doc.get("company_currency") or erpnext.get_company_currency(ref_doc.company)
 
 	if reference_doctype == "Dunning":
 		total_amount = outstanding_amount = ref_doc.get("dunning_amount")
@@ -2021,9 +1933,7 @@ def get_reference_details(
 
 	elif reference_doctype == "Journal Entry" and ref_doc.docstatus == 1:
 		if ref_doc.multi_currency:
-			exchange_rate = get_exchange_rate(
-				party_account_currency, company_currency, ref_doc.posting_date
-			)
+			exchange_rate = get_exchange_rate(party_account_currency, company_currency, ref_doc.posting_date)
 		else:
 			exchange_rate = 1
 			outstanding_amount, total_amount = get_outstanding_on_journal_entry(

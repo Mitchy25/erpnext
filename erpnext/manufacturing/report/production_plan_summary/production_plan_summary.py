@@ -56,9 +56,7 @@ def get_production_plan_item_details(filters, data, order_details):
 			}
 		)
 
-		get_production_plan_sub_assembly_item_details(
-			filters, row, production_plan_doc, data, order_details
-		)
+		get_production_plan_sub_assembly_item_details(filters, row, production_plan_doc, data, order_details)
 
 
 def get_production_plan_sub_assembly_item_details(filters, row, production_plan_doc, data, order_details):

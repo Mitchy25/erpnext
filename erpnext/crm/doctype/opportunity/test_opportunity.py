@@ -87,23 +87,6 @@ def make_opportunity_from_lead():
 	return opp_doc
 
 
-	def test_render_template_for_to_discuss(self):
-		doc = make_opportunity(with_items=0, opportunity_from="Lead")
-		doc.contact_by = "test@example.com"
-		doc.contact_date = add_days(today(), days=2)
-		doc.to_discuss = "{{ doc.name }} test data"
-		doc.save()
-
-		event = frappe.get_all(
-			"Event Participants",
-			fields=["parent"],
-			filters={"reference_doctype": doc.doctype, "reference_docname": doc.name},
-		)
-
-		event_description = frappe.db.get_value("Event", event[0].parent, "description")
-		self.assertTrue(doc.name in event_description)
-
-
 def make_opportunity(**args):
 	args = frappe._dict(args)
 

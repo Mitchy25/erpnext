@@ -61,11 +61,11 @@ frappe.query_reports["Item-wise Sales Register"] = {
 			options: "Item Group",
 		},
 		{
-			label: __("Group By"),
-			fieldname: "group_by",
-			fieldtype: "Select",
-			options: ["Customer Group", "Customer", "Item Group", "Item", "Territory", "Invoice"],
-		},
+			"label": __("Group By"),
+			"fieldname": "group_by",
+			"fieldtype": "Select",
+			"options": ["Customer Group", "Customer", "Item Group", "Item", "Territory", "Invoice"]
+		}
 	],
 	formatter: function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
@@ -73,5 +73,5 @@ frappe.query_reports["Item-wise Sales Register"] = {
 			value = value.bold();
 		}
 		return value;
-	},
-};
+	}
+}

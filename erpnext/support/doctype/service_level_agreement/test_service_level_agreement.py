@@ -13,7 +13,6 @@ from erpnext.support.doctype.service_level_agreement.service_level_agreement imp
 )
 
 
-
 class TestServiceLevelAgreement(unittest.TestCase):
 	def setUp(self):
 		self.create_company()
@@ -52,9 +51,7 @@ class TestServiceLevelAgreement(unittest.TestCase):
 			resolution_time=21600,
 		)
 
-		get_default_service_level_agreement = get_service_level_agreement(
-			default_service_level_agreement=1
-		)
+		get_default_service_level_agreement = get_service_level_agreement(default_service_level_agreement=1)
 
 		self.assertEqual(
 			create_default_service_level_agreement.name, get_default_service_level_agreement.name

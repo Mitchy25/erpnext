@@ -178,10 +178,6 @@ frappe.ui.form.on("Asset", {
 				frm.trigger("set_depr_posting_failure_alert");
 			}
 
-			if (frm.doc.depr_entry_posting_status === "Failed") {
-				frm.trigger("set_depr_posting_failure_alert");
-			}
-
 			frm.trigger("setup_chart");
 		}
 

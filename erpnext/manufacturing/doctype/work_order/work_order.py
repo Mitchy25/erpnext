@@ -787,9 +787,7 @@ class WorkOrder(Document):
 
 	def set_actual_dates(self):
 		if self.get("operations"):
-			actual_start_dates = [
-				d.actual_start_time for d in self.get("operations") if d.actual_start_time
-			]
+			actual_start_dates = [d.actual_start_time for d in self.get("operations") if d.actual_start_time]
 			if actual_start_dates:
 				self.actual_start_date = min(actual_start_dates)
 
@@ -1454,13 +1452,7 @@ def create_job_card(work_order, row, enable_capacity_planning=False, auto_create
 			doc.schedule_time_logs(row)
 
 		doc.insert()
-		frappe.msgprint(
-			_("Job card {0} created").format(get_link_to_form("Job Card", doc.name)), alert=True
-		)
-
-	if enable_capacity_planning:
-		# automatically added scheduling rows shouldn't change status to WIP
-		doc.db_set("status", "Open")
+		frappe.msgprint(_("Job card {0} created").format(get_link_to_form("Job Card", doc.name)), alert=True)
 
 	if enable_capacity_planning:
 		# automatically added scheduling rows shouldn't change status to WIP

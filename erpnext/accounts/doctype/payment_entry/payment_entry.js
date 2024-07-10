@@ -685,15 +685,6 @@ frappe.ui.form.on('Payment Entry', {
 			btn_text = "Get Outstanding Orders";
 		}
 
-		let btn_text = "";
-
-		if (get_outstanding_invoices) {
-			btn_text = "Get Outstanding Invoices";
-		}
-		else if (get_orders_to_be_billed) {
-			btn_text = "Get Outstanding Orders";
-		}
-
 		frappe.prompt(fields, function(filters){
 			frappe.flags.allocate_payment_amount = true;
 			frm.events.validate_filters_data(frm, filters);
@@ -935,8 +926,6 @@ frappe.ui.form.on('Payment Entry', {
 
 		frm.set_value("total_allocated_amount", Math.abs(total_allocated_amount));
 		frm.set_value("base_total_allocated_amount", Math.abs(base_total_allocated_amount));
-		// frm.set_value("total_allocated_amount", total_allocated_amount);
-		// frm.set_value("base_total_allocated_amount", base_total_allocated_amount);
 
 		frm.events.set_unallocated_amount(frm);
 	},

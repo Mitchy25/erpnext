@@ -302,9 +302,7 @@ class TestLoan(unittest.TestCase):
 
 		process_loan_interest_accrual_for_demand_loans(posting_date=last_date)
 
-		repayment_entry = create_repayment_entry(
-			loan.name, self.applicant2, add_days(last_date, 10), 111119
-		)
+		repayment_entry = create_repayment_entry(loan.name, self.applicant2, add_days(last_date, 10), 111119)
 		repayment_entry.save()
 		repayment_entry.submit()
 
@@ -400,15 +398,11 @@ class TestLoan(unittest.TestCase):
 
 		loan.submit()
 
-		make_loan_disbursement_entry(
-			loan.name, loan.loan_amount, disbursement_date=add_months(nowdate(), -1)
-		)
+		make_loan_disbursement_entry(loan.name, loan.loan_amount, disbursement_date=add_months(nowdate(), -1))
 
 		process_loan_interest_accrual_for_term_loans(posting_date=nowdate())
 
-		repayment_entry = create_repayment_entry(
-			loan.name, self.applicant2, add_days(nowdate(), 5), 89768.75
-		)
+		repayment_entry = create_repayment_entry(loan.name, self.applicant2, add_days(nowdate(), 5), 89768.75)
 
 		repayment_entry.submit()
 
@@ -566,9 +560,7 @@ class TestLoan(unittest.TestCase):
 		make_loan_disbursement_entry(loan.name, loan.loan_amount, disbursement_date=first_date)
 		process_loan_interest_accrual_for_demand_loans(posting_date=last_date)
 
-		repayment_entry = create_repayment_entry(
-			loan.name, self.applicant2, add_days(last_date, 5), 600000
-		)
+		repayment_entry = create_repayment_entry(loan.name, self.applicant2, add_days(last_date, 5), 600000)
 		repayment_entry.submit()
 
 		unpledge_map = {"Test Security 2": 2000}

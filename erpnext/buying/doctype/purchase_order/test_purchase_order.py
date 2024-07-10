@@ -463,9 +463,7 @@ class TestPurchaseOrder(FrappeTestCase):
 			make_purchase_receipt as make_purchase_receipt_return,
 		)
 
-		pr1 = make_purchase_receipt_return(
-			is_return=1, return_against=pr.name, qty=-3, do_not_submit=True
-		)
+		pr1 = make_purchase_receipt_return(is_return=1, return_against=pr.name, qty=-3, do_not_submit=True)
 		pr1.items[0].purchase_order = po.name
 		pr1.items[0].purchase_order_item = po.items[0].name
 		pr1.submit()
@@ -546,9 +544,7 @@ class TestPurchaseOrder(FrappeTestCase):
 		self.assertEqual(po.payment_schedule[0].payment_amount, 2500.0)
 		self.assertEqual(getdate(po.payment_schedule[0].due_date), getdate(po.transaction_date))
 		self.assertEqual(po.payment_schedule[1].payment_amount, 2500.0)
-		self.assertEqual(
-			getdate(po.payment_schedule[1].due_date), add_days(getdate(po.transaction_date), 30)
-		)
+		self.assertEqual(getdate(po.payment_schedule[1].due_date), add_days(getdate(po.transaction_date), 30))
 		pi = make_pi_from_po(po.name)
 		pi.save()
 
@@ -558,9 +554,7 @@ class TestPurchaseOrder(FrappeTestCase):
 		self.assertEqual(pi.payment_schedule[0].payment_amount, 2500.0)
 		self.assertEqual(getdate(pi.payment_schedule[0].due_date), getdate(po.transaction_date))
 		self.assertEqual(pi.payment_schedule[1].payment_amount, 2500.0)
-		self.assertEqual(
-			getdate(pi.payment_schedule[1].due_date), add_days(getdate(po.transaction_date), 30)
-		)
+		self.assertEqual(getdate(pi.payment_schedule[1].due_date), add_days(getdate(po.transaction_date), 30))
 		automatically_fetch_payment_terms(enable=0)
 
 	def test_warehouse_company_validation(self):
@@ -1024,7 +1018,6 @@ def make_pr_against_po(po, received_qty=0):
 	pr.insert()
 	pr.submit()
 	return pr
-
 
 
 def get_same_items():

@@ -1004,9 +1004,7 @@ def make_purchase_invoice(source_name, target_doc=None, args=None):
 
 	def update_item(source_doc, target_doc, source_parent):
 		target_doc.qty, returned_qty = get_pending_qty(source_doc)
-		if frappe.db.get_single_value(
-			"Buying Settings", "bill_for_rejected_quantity_in_purchase_invoice"
-		):
+		if frappe.db.get_single_value("Buying Settings", "bill_for_rejected_quantity_in_purchase_invoice"):
 			target_doc.rejected_qty = 0
 		target_doc.stock_qty = flt(target_doc.qty) * flt(
 			target_doc.conversion_factor, target_doc.precision("conversion_factor")
@@ -1015,9 +1013,7 @@ def make_purchase_invoice(source_name, target_doc=None, args=None):
 
 	def get_pending_qty(item_row):
 		qty = item_row.qty
-		if frappe.db.get_single_value(
-			"Buying Settings", "bill_for_rejected_quantity_in_purchase_invoice"
-		):
+		if frappe.db.get_single_value("Buying Settings", "bill_for_rejected_quantity_in_purchase_invoice"):
 			qty = item_row.received_qty
 		pending_qty = qty - invoiced_qty_map.get(item_row.name, 0)
 		returned_qty = flt(returned_qty_map.get(item_row.name, 0))
@@ -1068,13 +1064,11 @@ def make_purchase_invoice(source_name, target_doc=None, args=None):
 				"add_if_empty": True,
 				"ignore": args.get("merge_taxes") if args else 0,
 			},
-			"Purchase Taxes and Charges": {"doctype": "Purchase Taxes and Charges", "add_if_empty": True},
 		},
 		target_doc,
 		set_missing_values,
 	)
 
-	doclist.set_onload("ignore_price_list", True)
 	return doclist
 
 

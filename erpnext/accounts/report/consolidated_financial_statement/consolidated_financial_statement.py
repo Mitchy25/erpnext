@@ -193,9 +193,7 @@ def get_income_expense_data(companies, fiscal_year, filters):
 
 	expense = get_data(companies, "Expense", "Debit", fiscal_year, filters, True)
 
-	net_profit_loss = get_net_profit_loss(
-		income, expense, companies, filters.company, company_currency, True
-	)
+	net_profit_loss = get_net_profit_loss(income, expense, companies, filters.company, company_currency, True)
 
 	return income, expense, net_profit_loss
 
@@ -748,7 +746,6 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters, d):
 		additional_conditions.append((gle.finance_book.isin(finance_books)) | gle.finance_book.isnull())
 
 	return additional_conditions
-
 
 
 def add_total_row(out, root_type, balance_must_be, companies, company_currency):

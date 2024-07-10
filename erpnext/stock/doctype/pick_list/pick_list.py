@@ -46,14 +46,6 @@ class PickList(Document):
 					_("Row #{}: item {} has been picked already.").format(location.idx, location.item_code)
 				)
 
-		# set percentage picked in SO
-		for location in self.get("locations"):
-			if (
-				location.sales_order
-				and frappe.db.get_value("Sales Order", location.sales_order, "per_picked") == 100
-			):
-				frappe.throw("Row " + str(location.idx) + " has been picked already!")
-
 	def before_submit(self):
 		self.validate_picked_items()
 
@@ -221,9 +213,7 @@ class PickList(Document):
 				),
 			)
 
-			locations = get_items_with_location_and_quantity(
-				item_doc, self.item_location_map, self.docstatus
-			)
+			locations = get_items_with_location_and_quantity(item_doc, self.item_location_map, self.docstatus)
 
 			item_doc.idx = None
 			item_doc.name = None
@@ -474,17 +464,13 @@ def get_items_with_location_and_quantity(item_doc, item_location_map, docstatus)
 	locations = []
 
 	# if stock qty is zero on submitted entry, show positive remaining qty to recalculate in case of restock.
-	remaining_stock_qty = (
-		item_doc.qty if (docstatus == 1 and item_doc.stock_qty == 0) else item_doc.stock_qty
-	)
+	remaining_stock_qty = item_doc.qty if (docstatus == 1 and item_doc.stock_qty == 0) else item_doc.stock_qty
 
 	while flt(remaining_stock_qty) > 0 and available_locations:
 		item_location = available_locations.pop(0)
 		item_location = frappe._dict(item_location)
 
-		stock_qty = (
-			remaining_stock_qty if item_location.qty >= remaining_stock_qty else item_location.qty
-		)
+		stock_qty = remaining_stock_qty if item_location.qty >= remaining_stock_qty else item_location.qty
 		qty = stock_qty / (item_doc.conversion_factor or 1)
 
 		uom_must_be_whole_number = frappe.get_cached_value("UOM", item_doc.uom, "must_be_whole_number")

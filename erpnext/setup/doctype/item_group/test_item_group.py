@@ -182,9 +182,7 @@ class TestItem(unittest.TestCase):
 
 	def test_delete_group(self):
 		# cannot delete group with child, but can delete leaf
-		self.assertRaises(
-			NestedSetChildExistsError, frappe.delete_doc, "Item Group", "_Test Item Group B"
-		)
+		self.assertRaises(NestedSetChildExistsError, frappe.delete_doc, "Item Group", "_Test Item Group B")
 
 	def test_merge_groups(self):
 		frappe.rename_doc("Item Group", "_Test Item Group B", "_Test Item Group C", merge=True)

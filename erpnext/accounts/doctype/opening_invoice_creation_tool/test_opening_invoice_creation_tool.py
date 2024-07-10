@@ -83,9 +83,7 @@ class TestOpeningInvoiceCreationTool(FrappeTestCase):
 		company = "_Test Opening Invoice Company"
 		party_1, party_2 = make_customer("Customer A"), make_customer("Customer B")
 
-		old_default_receivable_account = frappe.db.get_value(
-			"Company", company, "default_receivable_account"
-		)
+		old_default_receivable_account = frappe.db.get_value("Company", company, "default_receivable_account")
 		frappe.db.set_value("Company", company, "default_receivable_account", "")
 
 		if not frappe.db.exists("Cost Center", "_Test Opening Invoice Company - _TOIC"):
@@ -121,41 +119,7 @@ class TestOpeningInvoiceCreationTool(FrappeTestCase):
 		self.assertTrue(error_log)
 
 		# teardown
-		frappe.db.set_value(
-			"Company", company, "default_receivable_account", old_default_receivable_account
-		)
-
-	def test_renaming_of_invoice_using_invoice_number_field(self):
-		company = "_Test Opening Invoice Company"
-		party_1, party_2 = make_customer("Customer A"), make_customer("Customer B")
-		self.make_invoices(
-			company=company, party_1=party_1, party_2=party_2, invoice_number="TEST-NEW-INV-11"
-		)
-
-		sales_inv1 = frappe.get_all("Sales Invoice", filters={"customer": "Customer A"})[0].get("name")
-		sales_inv2 = frappe.get_all("Sales Invoice", filters={"customer": "Customer B"})[0].get("name")
-		self.assertEqual(sales_inv1, "TEST-NEW-INV-11")
-
-		# teardown
-		for inv in [sales_inv1, sales_inv2]:
-			doc = frappe.get_doc("Sales Invoice", inv)
-			doc.cancel()
-
-	def test_opening_invoice_with_accounting_dimension(self):
-		invoices = self.make_invoices(
-			invoice_type="Sales", company="_Test Opening Invoice Company", department="Sales - _TOIC"
-		)
-
-		expected_value = {
-			"keys": ["customer", "outstanding_amount", "status", "department"],
-			0: ["_Test Customer", 300, "Overdue", "Sales - _TOIC"],
-			1: ["_Test Customer 1", 250, "Overdue", "Sales - _TOIC"],
-		}
-		self.check_expected_values(invoices, expected_value, invoice_type="Sales")
-
-	def tearDown(self):
-		disable_dimension()
-
+		frappe.db.set_value("Company", company, "default_receivable_account", old_default_receivable_account)
 
 	def test_renaming_of_invoice_using_invoice_number_field(self):
 		company = "_Test Opening Invoice Company"

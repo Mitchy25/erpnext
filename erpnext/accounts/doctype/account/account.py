@@ -142,9 +142,7 @@ class Account(NestedSet):
 
 	def validate_root_company_and_sync_account_to_children(self):
 		# ignore validation while creating new compnay or while syncing to child companies
-		if (
-			frappe.local.flags.ignore_root_company_validation or self.flags.ignore_root_company_validation
-		):
+		if frappe.local.flags.ignore_root_company_validation or self.flags.ignore_root_company_validation:
 			return
 		ancestors = get_root_company(self.company)
 		if ancestors:

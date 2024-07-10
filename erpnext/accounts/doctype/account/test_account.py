@@ -273,9 +273,7 @@ class TestAccount(unittest.TestCase):
 		self.assertRaises(frappe.ValidationError, update_account_number, acc_tc_5, "Test Modified Account")
 
 		# Rename child company account with allow_account_creation_against_child_company enabled
-		frappe.db.set_value(
-			"Company", "_Test Company 5", "allow_account_creation_against_child_company", 1
-		)
+		frappe.db.set_value("Company", "_Test Company 5", "allow_account_creation_against_child_company", 1)
 
 		update_account_number(acc_tc_5, "Test Modified Account")
 		self.assertTrue(
@@ -284,9 +282,7 @@ class TestAccount(unittest.TestCase):
 			)
 		)
 
-		frappe.db.set_value(
-			"Company", "_Test Company 5", "allow_account_creation_against_child_company", 0
-		)
+		frappe.db.set_value("Company", "_Test Company 5", "allow_account_creation_against_child_company", 0)
 
 		to_delete = [
 			"Test Group Account - _TC3",
