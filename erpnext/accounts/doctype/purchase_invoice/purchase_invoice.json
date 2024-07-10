@@ -1402,7 +1402,6 @@
    "options": "Warehouse",
    "print_hide": 1,
    "print_width": "50px",
-   "ignore_user_permissions": 1,
    "width": "50px"
   },
   {

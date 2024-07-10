@@ -15,8 +15,7 @@ from erpnext.buying.utils import update_last_purchase_rate, validate_for_items
 from erpnext.controllers.sales_and_purchase_return import get_rate_for_return
 from erpnext.controllers.subcontracting_controller import SubcontractingController
 from erpnext.stock.get_item_details import get_conversion_factor
-from erpnext.stock.stock_ledger import get_previous_sle
-from erpnext.stock.utils import get_incoming_rate, get_valuation_method
+from erpnext.stock.utils import get_incoming_rate
 
 
 class QtyMismatchError(ValidationError):
@@ -502,10 +501,6 @@ class BuyingController(SubcontractingController):
 			if d.item_code not in stock_items:
 				continue
 
-			rejected_qty = 0.0
-			if flt(d.rejected_qty) != 0:
-				rejected_qty = flt(flt(d.rejected_qty) * flt(d.conversion_factor), d.precision("stock_qty"))
-
 			if d.warehouse:
 				pr_qty = flt(flt(d.qty) * flt(d.conversion_factor), d.precision("stock_qty"))
 
@@ -534,11 +529,6 @@ class BuyingController(SubcontractingController):
 							},
 						)
 
-						if flt(rejected_qty) != 0:
-							from_warehouse_sle["actual_qty"] += -1 * rejected_qty
-							if d.rejected_serial_no:
-								from_warehouse_sle["serial_no"] += "\n" + cstr(d.rejected_serial_no).strip()
-
 						sl_entries.append(from_warehouse_sle)
 
 					type_of_transaction = "Inward"
@@ -560,20 +550,9 @@ class BuyingController(SubcontractingController):
 					)
 
 					if self.is_return:
-						if get_valuation_method(d.item_code) == "Moving Average":
-							previous_sle = get_previous_sle(
-								{
-									"item_code": d.item_code,
-									"warehouse": d.warehouse,
-									"posting_date": self.posting_date,
-									"posting_time": self.posting_time,
-								}
-							)
-							outgoing_rate = flt(previous_sle.get("valuation_rate"))
-						else:
-							outgoing_rate = get_rate_for_return(
-								self.doctype, self.name, d.item_code, self.return_against, item_row=d
-							)
+						outgoing_rate = get_rate_for_return(
+							self.doctype, self.name, d.item_code, self.return_against, item_row=d
+						)
 
 						sle.update(
 							{
@@ -616,14 +595,9 @@ class BuyingController(SubcontractingController):
 							},
 						)
 
-						if flt(rejected_qty) != 0:
-							from_warehouse_sle["actual_qty"] += -1 * rejected_qty
-							if d.rejected_serial_no:
-								from_warehouse_sle["serial_no"] += "\n" + cstr(d.rejected_serial_no).strip()
-
 						sl_entries.append(from_warehouse_sle)
 
-			if flt(rejected_qty) != 0:
+			if flt(d.rejected_qty) != 0:
 				sl_entries.append(
 					self.get_sl_entries(
 						d,

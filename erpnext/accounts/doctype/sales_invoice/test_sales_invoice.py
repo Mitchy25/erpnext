@@ -994,11 +994,8 @@ class TestSalesInvoice(FrappeTestCase):
 		pos.insert()
 		pos.submit()
 
-		pos_return = create_sales_invoice(is_return=1,
-			return_against=pos.name, qty=-5, do_not_save=True)
+		pos_return = make_sales_return(pos.name)
 
-		pos_return.is_pos = 1
-		pos_return.pos_profile = pos_profile.name
 		pos_return.insert()
 		pos_return.submit()
 
@@ -2401,9 +2398,6 @@ class TestSalesInvoice(FrappeTestCase):
 
 		for gle in gl_entries:
 			self.assertEqual(expected_values[gle.account]["cost_center"], gle.cost_center)
-	
-	def test_sales_invoice_with_project_link(self):
-		from erpnext.projects.doctype.project.test_project import make_project
 
 	def test_sales_invoice_with_project_link(self):
 		from erpnext.projects.doctype.project.test_project import make_project
@@ -3041,7 +3035,8 @@ class TestSalesInvoice(FrappeTestCase):
 			["2021-06-30", 20000.0, 21366.12, True],
 			["2022-06-30", 20000.0, 41366.12, False],
 			["2023-06-30", 20000.0, 61366.12, False],
-			["2024-06-06", 38633.88, 100000.0, False],
+			["2024-06-30", 20000.0, 81366.12, False],
+			["2025-06-06", 18633.88, 100000.0, False],
 		]
 
 		for i, schedule in enumerate(get_depr_schedule(asset.name, "Active")):

@@ -3568,52 +3568,6 @@ def merge_taxes(source_taxes, target_doc):
 	target_doc.set("taxes", existing_taxes)
 
 
-def check_if_child_table_updated(child_table_before_update, child_table_after_update, fields_to_check):
-	accounting_dimensions = [*get_accounting_dimensions(), "cost_center", "project"]
-	# Check if any field affecting accounting entry is altered
-	for index, item in enumerate(child_table_after_update):
-		for field in fields_to_check:
-			if child_table_before_update[index].get(field) != item.get(field):
-				return True
-
-		for dimension in accounting_dimensions:
-			if child_table_before_update[index].get(dimension) != item.get(dimension):
-				return True
-
-	return False
-
-
-def merge_taxes(source_taxes, target_doc):
-	from erpnext.accounts.doctype.pos_invoice_merge_log.pos_invoice_merge_log import (
-		update_item_wise_tax_detail,
-	)
-
-	existing_taxes = target_doc.get("taxes") or []
-	idx = 1
-	for tax in source_taxes:
-		found = False
-		for t in existing_taxes:
-			if t.account_head == tax.account_head and t.cost_center == tax.cost_center:
-				t.tax_amount = flt(t.tax_amount) + flt(tax.tax_amount_after_discount_amount)
-				t.base_tax_amount = flt(t.base_tax_amount) + flt(tax.base_tax_amount_after_discount_amount)
-				update_item_wise_tax_detail(t, tax)
-				found = True
-
-		if not found:
-			tax.charge_type = "Actual"
-			tax.idx = idx
-			idx += 1
-			tax.included_in_print_rate = 0
-			tax.dont_recompute_tax = 1
-			tax.row_id = ""
-			tax.tax_amount = tax.tax_amount_after_discount_amount
-			tax.base_tax_amount = tax.base_tax_amount_after_discount_amount
-			tax.item_wise_tax_detail = tax.item_wise_tax_detail
-			existing_taxes.append(tax)
-
-	target_doc.set("taxes", existing_taxes)
-
-
 @erpnext.allow_regional
 def validate_regional(doc):
 	pass

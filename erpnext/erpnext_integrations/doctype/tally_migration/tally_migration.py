@@ -24,12 +24,6 @@ from erpnext.accounts.doctype.chart_of_accounts_importer.chart_of_accounts_impor
 	unset_existing_data,
 )
 
-from erpnext import encode_company_abbr
-from erpnext.accounts.doctype.account.chart_of_accounts.chart_of_accounts import create_charts
-from erpnext.accounts.doctype.chart_of_accounts_importer.chart_of_accounts_importer import (
-	unset_existing_data,
-)
-
 PRIMARY_ACCOUNT = "Primary"
 VOUCHER_CHUNK_SIZE = 500
 

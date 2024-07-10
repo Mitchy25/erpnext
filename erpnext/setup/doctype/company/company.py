@@ -176,6 +176,7 @@ class Company(NestedSet):
 			["Default Income Account", "default_income_account"],
 			["Stock Received But Not Billed Account", "stock_received_but_not_billed"],
 			["Stock Adjustment Account", "stock_adjustment_account"],
+			["Expense Included In Valuation Account", "expenses_included_in_valuation"],
 		]
 
 		for account in accounts:

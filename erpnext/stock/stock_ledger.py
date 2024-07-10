@@ -47,6 +47,10 @@ class NegativeStockError(frappe.ValidationError):
 	pass
 
 
+class SerialNoExistsInFutureTransaction(frappe.ValidationError):
+	pass
+
+
 def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_voucher=False):
 	"""Create SL entries from SL entry dicts
 
@@ -70,6 +74,9 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 		future_sle_exists(args, sl_entries)
 
 		for sle in sl_entries:
+			if sle.serial_no and not via_landed_cost_voucher:
+				validate_serial_no(sle)
+
 			if cancel:
 				sle["actual_qty"] = -flt(sle.get("actual_qty"))
 
@@ -127,7 +134,6 @@ def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_vou
 					"creation": args.get("creation"),
 					"reserved_stock": args.get("reserved_stock"),
 				},
-				allow_zero_rate=args.get("allow_zero_valuation_rate") or False,
 				allow_negative_stock=allow_negative_stock,
 				via_landed_cost_voucher=via_landed_cost_voucher,
 			)
@@ -146,6 +152,35 @@ def get_args_for_future_sle(row):
 			"posting_time": row.get("posting_time"),
 		}
 	)
+
+
+def validate_serial_no(sle):
+	from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+
+	for sn in get_serial_nos(sle.serial_no):
+		args = copy.deepcopy(sle)
+		args.serial_no = sn
+		args.warehouse = ""
+
+		vouchers = []
+		for row in get_stock_ledger_entries(args, ">"):
+			voucher_type = frappe.bold(row.voucher_type)
+			voucher_no = frappe.bold(get_link_to_form(row.voucher_type, row.voucher_no))
+			vouchers.append(f"{voucher_type} {voucher_no}")
+
+		if vouchers:
+			serial_no = frappe.bold(sn)
+			msg = (
+				f"""The serial no {serial_no} has been used in the future transactions so you need to cancel them first.
+				The list of the transactions are as below."""
+				+ "<br><br><ul><li>"
+			)
+
+			msg += "</li><li>".join(vouchers)
+			msg += "</li></ul>"
+
+			title = "Cannot Submit" if not sle.get("is_cancelled") else "Cannot Cancel"
+			frappe.throw(_(msg), title=_(title), exc=SerialNoExistsInFutureTransaction)
 
 
 def validate_cancellation(args):
@@ -1879,11 +1914,6 @@ def get_future_sle_with_negative_qty(args):
 		args,
 		as_dict=1,
 	)
-
-	if sle.voucher_type == "Stock Reconciliation" and sle.batch_no:
-		query = query.where(SLE.batch_no == sle.batch_no)
-
-	return query.run(as_dict=True)
 
 
 def get_future_sle_with_negative_batch_qty(args):

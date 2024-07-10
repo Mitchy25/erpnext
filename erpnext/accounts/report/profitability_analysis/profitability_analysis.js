@@ -24,7 +24,7 @@ frappe.query_reports["Profitability Analysis"] = {
 					frappe.query_report.set_filter_value({
 						accounting_dimension: "",
 					});
-				},
+				}
 			},
 		},
 		{

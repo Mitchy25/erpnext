@@ -4,7 +4,6 @@
 
 import frappe
 from frappe import _
-from frappe.query_builder.custom import ConstantColumn
 from frappe.utils import getdate, nowdate
 
 

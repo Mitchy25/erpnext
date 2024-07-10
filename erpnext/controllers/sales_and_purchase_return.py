@@ -322,8 +322,6 @@ def make_return_doc(doctype: str, source_name: str, target_doc=None, return_agai
 		doc.return_against = source.name
 		doc.set_warehouse = ""
 		if doctype == "Sales Invoice" or doctype == "POS Invoice":
-			for i in range(len(doc.items)):
-				doc.items[i].ignore_pricing_rules = 1
 			doc.is_pos = source.is_pos
 
 			# look for Print Heading "Credit Note"

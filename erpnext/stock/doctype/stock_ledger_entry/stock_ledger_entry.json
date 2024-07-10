@@ -101,6 +101,7 @@
    "oldfieldtype": "Date",
    "print_width": "100px",
    "read_only": 1,
+   "search_index": 1,
    "width": "100px"
   },
   {

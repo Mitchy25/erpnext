@@ -681,32 +681,6 @@ def get_picked_items_qty(items) -> list[dict]:
 	).run(as_dict=True)
 
 
-def update_pick_list_status(pick_list):
-	if pick_list:
-		doc = frappe.get_doc("Pick List", pick_list)
-		doc.run_method("update_status")
-
-
-def get_picked_items_qty(items) -> list[dict]:
-	pi_item = frappe.qb.DocType("Pick List Item")
-	return (
-		frappe.qb.from_(pi_item)
-		.select(
-			pi_item.sales_order_item,
-			pi_item.item_code,
-			pi_item.sales_order,
-			Sum(pi_item.stock_qty).as_("stock_qty"),
-			Sum(pi_item.picked_qty).as_("picked_qty"),
-		)
-		.where((pi_item.docstatus == 1) & (pi_item.sales_order_item.isin(items)))
-		.groupby(
-			pi_item.sales_order_item,
-			pi_item.sales_order,
-		)
-		.for_update()
-	).run(as_dict=True)
-
-
 def validate_item_locations(pick_list):
 	if not pick_list.locations:
 		frappe.throw(_("Add items in the Item Locations table"))
@@ -777,6 +751,7 @@ def get_available_item_locations(
 	consider_rejected_warehouses=False,
 ):
 	locations = []
+
 	has_serial_no = frappe.get_cached_value("Item", item_code, "has_serial_no")
 	has_batch_no = frappe.get_cached_value("Item", item_code, "has_batch_no")
 
@@ -924,39 +899,6 @@ def get_available_item_locations_for_serial_and_batched_item(
 			serial_nos = [sn.name for sn in serial_nos]
 			location.serial_nos = serial_nos
 			location.qty = len(serial_nos)
-
-	if picked_item_details:
-		for location in list(locations):
-			key = (
-				(location["warehouse"], location["batch_no"])
-				if location.get("batch_no")
-				else location["warehouse"]
-			)
-
-			if key in picked_item_details:
-				picked_detail = picked_item_details[key]
-
-				if picked_detail.get("serial_no") and location.get("serial_no"):
-					location["serial_no"] = list(
-						set(location["serial_no"]).difference(set(picked_detail["serial_no"]))
-					)
-					location["qty"] = len(location["serial_no"])
-				else:
-					location["qty"] -= picked_detail.get("picked_qty")
-
-			if location["qty"] < 1:
-				locations.remove(location)
-
-		total_qty_available = sum(location.get("qty") for location in locations)
-		remaining_qty = required_qty - total_qty_available
-
-		if remaining_qty > 0 and not ignore_validation:
-			frappe.msgprint(
-				_("{0} units of Item {1} is picked in another Pick List.").format(
-					remaining_qty, frappe.get_desk_link("Item", item_code)
-				),
-				title=_("Already Picked"),
-			)
 
 	return locations
 

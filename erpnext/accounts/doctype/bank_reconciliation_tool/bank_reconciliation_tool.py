@@ -267,7 +267,6 @@ def create_journal_entry_bts(
 
 	if allow_edit:
 		return journal_entry
-	
 
 	journal_entry.insert()
 	journal_entry.submit()

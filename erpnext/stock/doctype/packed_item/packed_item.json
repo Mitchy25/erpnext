@@ -198,6 +198,7 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Parent Detail docname",
+   "no_copy": 1,
    "oldfieldname": "parent_detail_docname",
    "oldfieldtype": "Data",
    "print_hide": 1,

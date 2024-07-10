@@ -584,7 +584,7 @@ def check_if_advance_entry_modified(args):
 			.where(payment_entry.party_type == args.get("party_type"))
 			.where(payment_entry.party == args.get("party"))
 		)
-		precision = frappe.get_precision("Payment Entry", "unallocated_amount")
+
 		if args.voucher_detail_no:
 			q = (
 				q.inner_join(payment_ref)

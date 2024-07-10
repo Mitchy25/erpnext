@@ -118,7 +118,7 @@ frappe.ui.form.on("Material Request", {
 					);
 				};
 
-				if (frm.doc.material_request_type === 'Material Transfer') {
+				if (frm.doc.material_request_type === "Material Transfer") {
 					add_create_pick_list_button();
 					frm.add_custom_button(
 						__("Material Transfer"),

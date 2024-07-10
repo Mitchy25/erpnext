@@ -98,17 +98,6 @@ class StockReconciliation(StockController):
 						).format(row.idx, bold(dimension.get("doctype")))
 					)
 
-	def validate_inventory_dimension(self):
-		dimensions = get_inventory_dimensions()
-		for dimension in dimensions:
-			for row in self.items:
-				if not row.batch_no and row.current_qty and row.get(dimension.get("fieldname")):
-					frappe.throw(
-						_(
-							"Row #{0}: You cannot use the inventory dimension '{1}' in Stock Reconciliation to modify the quantity or valuation rate. Stock reconciliation with inventory dimensions is intended solely for performing opening entries."
-						).format(row.idx, bold(dimension.get("doctype")))
-					)
-
 	def on_submit(self):
 		self.make_bundle_for_current_qty()
 		self.make_bundle_using_old_serial_batch_fields()
