@@ -341,7 +341,7 @@
    "description": "Mention if non-standard Receivable account",
    "fieldname": "accounts",
    "fieldtype": "Table",
-   "label": "Receivable Accounts",
+   "label": "Accounts",
    "options": "Party Account"
   },
   {

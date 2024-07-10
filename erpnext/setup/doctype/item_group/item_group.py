@@ -53,21 +53,6 @@ class ItemGroup(NestedSet):
 				else:
 					check_list.append((d.item_tax_template, d.tax_category))
 
-	def check_item_tax(self):
-		"""Check whether Tax Rate is not entered twice for same Tax Type"""
-		check_list = []
-		for d in self.get("taxes"):
-			if d.item_tax_template:
-				if (d.item_tax_template, d.tax_category) in check_list:
-					frappe.throw(
-						_("{0} entered twice {1} in Item Taxes").format(
-							frappe.bold(d.item_tax_template),
-							f"for tax category {frappe.bold(d.tax_category)}" if d.tax_category else "",
-						)
-					)
-				else:
-					check_list.append((d.item_tax_template, d.tax_category))
-
 	def on_update(self):
 		NestedSet.on_update(self)
 		self.validate_one_root()

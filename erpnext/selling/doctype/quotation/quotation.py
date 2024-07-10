@@ -155,16 +155,6 @@ class Quotation(SellingController):
 			if not row.is_alternative and row.name in items_with_alternatives:
 				row.has_alternative_item = 1
 
-	def set_has_alternative_item(self):
-		"""Mark 'Has Alternative Item' for rows."""
-		if not any(row.is_alternative for row in self.get("items")):
-			return
-
-		items_with_alternatives = self.get_rows_with_alternatives()
-		for row in self.get("items"):
-			if not row.is_alternative and row.name in items_with_alternatives:
-				row.has_alternative_item = 1
-
 	def get_ordered_status(self):
 		status = "Open"
 		ordered_items = frappe._dict(

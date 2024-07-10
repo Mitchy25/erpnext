@@ -21,6 +21,7 @@ frappe.ui.form.on("Pick List", {
 				},
 			};
 		});
+
 		frm.set_query("work_order", () => {
 			return {
 				query: "erpnext.stock.doctype.pick_list.pick_list.get_pending_work_orders",
@@ -29,6 +30,7 @@ frappe.ui.form.on("Pick List", {
 				},
 			};
 		});
+
 		frm.set_query("material_request", () => {
 			return {
 				filters: {

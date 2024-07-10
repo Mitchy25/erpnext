@@ -7,7 +7,6 @@ erpnext.assets.AssetCapitalization = class AssetCapitalization extends erpnext.s
 	setup() {
 		this.frm.ignore_doctypes_on_cancel_all = ["Serial and Batch Bundle", "Asset Movement"];
 		this.setup_posting_date_time_check();
-		this.frm.ignore_doctypes_on_cancel_all = ["Asset Movement"];
 	}
 
 	onload() {

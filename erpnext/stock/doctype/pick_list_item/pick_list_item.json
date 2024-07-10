@@ -157,8 +157,7 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Sales Order Item",
-   "read_only": 1,
-   "search_index": 1
+   "read_only": 1
   },
   {
    "fieldname": "serial_no_and_batch_section",

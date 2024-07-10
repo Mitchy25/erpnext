@@ -16,7 +16,7 @@ app_include_js = "erpnext.bundle.js"
 app_include_css = "erpnext.bundle.css"
 web_include_js = "erpnext-web.bundle.js"
 web_include_css = "erpnext-web.bundle.css"
-email_css = "erpnext_email.bundle.scss"
+email_css = "email_erpnext.bundle.css"
 
 doctype_js = {
 	"Address": "public/js/address.js",
@@ -306,27 +306,6 @@ period_closing_doctypes = [
 	"Subcontracting Receipt",
 ]
 
-period_closing_doctypes = [
-	"Sales Invoice",
-	"Purchase Invoice",
-	"Journal Entry",
-	"Bank Clearance",
-	"Stock Entry",
-	"Dunning",
-	"Invoice Discounting",
-	"Payment Entry",
-	"Period Closing Voucher",
-	"Process Deferred Accounting",
-	"Asset",
-	"Asset Capitalization",
-	"Asset Repair",
-	"Delivery Note",
-	"Landed Cost Voucher",
-	"Purchase Receipt",
-	"Stock Reconciliation",
-	"Subcontracting Receipt",
-]
-
 doc_events = {
 	"*": {
 		"validate": [
@@ -437,7 +416,6 @@ scheduler_events = {
 		"erpnext.projects.doctype.project.project.collect_project_status",
 	],
 	"hourly_long": [
-		"erpnext.accounts.doctype.subscription.subscription.process_all",
 		"erpnext.stock.doctype.repost_item_valuation.repost_item_valuation.repost_entries",
 		"erpnext.utilities.bulk_transaction.retry",
 	],

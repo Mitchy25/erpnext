@@ -262,12 +262,8 @@ class DeliveryNote(SellingController):
 		self.validate_with_previous_doc()
 		self.set_serial_and_batch_bundle_from_pick_list()
 
-		if self.get("_action") == "submit":
-			self.validate_duplicate_serial_nos()
-
 		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
 
-		self.set_product_bundle_reference_in_packed_items()  # should be called before `make_packing_list`
 		make_packing_list(self)
 		self.update_current_stock()
 

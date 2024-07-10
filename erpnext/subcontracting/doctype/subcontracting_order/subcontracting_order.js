@@ -182,16 +182,6 @@ frappe.ui.form.on("Landed Cost Taxes and Charges", {
 	},
 });
 
-frappe.ui.form.on('Landed Cost Taxes and Charges', {
-	amount: function (frm, cdt, cdn) {
-		frm.events.set_base_amount(frm, cdt, cdn);
-	},
-
-	expense_account: function (frm, cdt, cdn) {
-		frm.events.set_account_currency(frm, cdt, cdn);
-	}
-});
-
 erpnext.buying.SubcontractingOrderController = class SubcontractingOrderController {
 	setup() {
 		this.frm.custom_make_buttons = {

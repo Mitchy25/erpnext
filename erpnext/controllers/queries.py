@@ -83,7 +83,6 @@ def lead_query(doctype, txt, searchfield, start, page_len, filters):
 			}
 		),
 		{"txt": "%%%s%%" % txt, "_txt": txt.replace("%", ""), "start": start, "page_len": page_len},
-		as_dict=as_dict,
 	)
 
 

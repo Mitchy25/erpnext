@@ -453,7 +453,9 @@ class TestStockEntry(FrappeTestCase):
 		repack.posting_date = nowdate()
 		repack.posting_time = nowtime()
 
-		default_expense_account = frappe.get_value("Company", company, "default_expense_account")
+		expenses_included_in_valuation = frappe.get_value(
+			"Company", company, "expenses_included_in_valuation"
+		)
 
 		items = get_multiple_items()
 		repack.items = []
@@ -464,12 +466,12 @@ class TestStockEntry(FrappeTestCase):
 			"additional_costs",
 			[
 				{
-					"expense_account": default_expense_account,
+					"expense_account": expenses_included_in_valuation,
 					"description": "Actual Operating Cost",
 					"amount": 1000,
 				},
 				{
-					"expense_account": default_expense_account,
+					"expense_account": expenses_included_in_valuation,
 					"description": "Additional Operating Cost",
 					"amount": 200,
 				},
@@ -508,7 +510,9 @@ class TestStockEntry(FrappeTestCase):
 		self.check_gl_entries(
 			"Stock Entry",
 			repack.name,
-			sorted([[stock_in_hand_account, 1200, 0.0], ["Cost of Goods Sold - TCP1", 0.0, 1200.0]]),
+			sorted(
+				[[stock_in_hand_account, 1200, 0.0], ["Expenses Included In Valuation - TCP1", 0.0, 1200.0]]
+			),
 		)
 
 	def check_stock_ledger_entries(self, voucher_type, voucher_no, expected_sle):
@@ -1372,6 +1376,7 @@ class TestStockEntry(FrappeTestCase):
 			do_not_save=True,
 			batches=batches,
 		)
+
 		issue.save()
 		issue.submit()
 		issue.reload()  # reload because reposting current voucher updates rate

@@ -10,7 +10,6 @@ from frappe.utils import add_days, cstr, flt, nowdate, nowtime, today
 
 from erpnext.accounts.doctype.account.test_account import get_inventory_account
 from erpnext.accounts.utils import get_balance_on
-from erpnext.controllers.sales_and_purchase_return import make_return_doc
 from erpnext.selling.doctype.product_bundle.test_product_bundle import make_product_bundle
 from erpnext.selling.doctype.sales_order.test_sales_order import (
 	automatically_fetch_payment_terms,
@@ -349,6 +348,8 @@ class TestDeliveryNote(FrappeTestCase):
 		# Check if Original DN updated
 		self.assertEqual(dn.items[0].returned_qty, 2)
 		self.assertEqual(dn.per_returned, 40)
+
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
 
 		return_dn_2 = make_return_doc("Delivery Note", dn.name)
 

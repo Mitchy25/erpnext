@@ -24,7 +24,6 @@ from erpnext.assets.doctype.asset.asset import (
 	update_maintenance_status,
 )
 from erpnext.assets.doctype.asset.depreciation import (
-	is_last_day_of_the_month,
 	post_depreciation_entries,
 	restore_asset,
 	scrap_asset,
@@ -753,42 +752,6 @@ class TestDepreciationMethods(AssetSetup):
 		schedules = [
 			[cstr(d.schedule_date), flt(d.depreciation_amount, 2), d.accumulated_depreciation_amount]
 			for d in get_depr_schedule(asset.name, "Draft")
-		]
-
-		self.assertEqual(schedules, expected_schedules)
-
-	def test_schedule_for_straight_line_method_with_daily_prorata_based(
-		self,
-	):
-		asset = create_asset(
-			calculate_depreciation=1,
-			available_for_use_date="2023-01-01",
-			purchase_date="2023-01-01",
-			gross_purchase_amount=12000,
-			depreciation_start_date="2023-01-31",
-			total_number_of_depreciations=12,
-			frequency_of_depreciation=1,
-			daily_prorata_based=1,
-		)
-
-		expected_schedules = [
-			["2023-01-31", 1019.18, 1019.18],
-			["2023-02-28", 920.55, 1939.73],
-			["2023-03-31", 1019.18, 2958.91],
-			["2023-04-30", 986.3, 3945.21],
-			["2023-05-31", 1019.18, 4964.39],
-			["2023-06-30", 986.3, 5950.69],
-			["2023-07-31", 1019.18, 6969.87],
-			["2023-08-31", 1019.18, 7989.05],
-			["2023-09-30", 986.3, 8975.35],
-			["2023-10-31", 1019.18, 9994.53],
-			["2023-11-30", 986.3, 10980.83],
-			["2023-12-31", 1019.17, 12000.0],
-		]
-
-		schedules = [
-			[cstr(d.schedule_date), d.depreciation_amount, d.accumulated_depreciation_amount]
-			for d in asset.get("schedules")
 		]
 
 		self.assertEqual(schedules, expected_schedules)

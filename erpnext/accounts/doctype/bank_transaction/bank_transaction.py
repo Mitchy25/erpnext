@@ -288,7 +288,6 @@ def get_related_bank_gl_entries(doctype, docname):
 		dict(doctype=doctype, docname=docname),
 		as_dict=True,
 	)
-	return result
 
 
 def get_total_allocated_amount(doctype, docname):

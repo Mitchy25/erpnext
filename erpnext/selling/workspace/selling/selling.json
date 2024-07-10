@@ -635,11 +635,6 @@
  "sequence_id": 6.0,
  "shortcuts": [
   {
-   "label": "Point of Sale",
-   "link_to": "point-of-sale",
-   "type": "Page"
-  },
-  {
    "color": "Grey",
    "doc_view": "List",
    "label": "Learn Sales Management",

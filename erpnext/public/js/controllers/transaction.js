@@ -26,8 +26,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					item.margin_rate_or_amount = flt(item.rate - item.price_list_rate,
 						precision("margin_rate_or_amount", item));
 					item.rate_with_margin = item.rate;
-				} else {				
-					var discount_percentage = flt((1 - item.rate / item.price_list_rate) * 100.0,
+				} else {
+					item.discount_percentage = flt((1 - item.rate / item.price_list_rate) * 100.0,
 						precision("discount_percentage", item));
 					if (Math.abs(item.discount_percentage - discount_percentage) > 0.06){
 						item.discount_percentage = discount_percentage
@@ -2731,16 +2731,16 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
 
-		if (doc.doctype == "Purchase Receipt" || (doc.doctype == "Purchase Invoice" && doc.update_stock)) {
+		if(!item.item_code) {
+			frappe.throw(__("Please enter Item Code to get batch no"));
+		} else if (doc.doctype == "Purchase Receipt" ||
+			(doc.doctype == "Purchase Invoice" && doc.update_stock)) {
 			return {
 				filters: {'item': item.item_code}
 			}
 		} 
 		else if (!doc.update_stock) {
 			return
-		}
-		else if (!item.item_code) {
-			frappe.throw(__("Please enter Item Code to get Batch Number"));
 		} else {
 			let filters = {
 				'item_code': item.item_code,
@@ -2983,7 +2983,7 @@ erpnext.show_serial_batch_selector = function (frm, item_row, callback, on_close
 }
 
 erpnext.apply_putaway_rule = (frm, purpose=null) => {
-	if (!frm.doc.company) { 
+	if (!frm.doc.company) {
 		frappe.throw({message: __("Please select a Company first."), title: __("Mandatory")});
 	}
 	if (!frm.doc.items.length) return;

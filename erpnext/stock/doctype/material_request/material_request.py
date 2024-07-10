@@ -267,7 +267,6 @@ class MaterialRequest(BuyingController):
 		mr_qty_allowance = frappe.db.get_single_value("Stock Settings", "mr_qty_allowance")
 
 		for d in self.get("items"):
-			precision = d.precision("ordered_qty")
 			if d.name in mr_items:
 				if self.material_request_type in ("Material Issue", "Material Transfer", "Customer Provided"):
 					d.ordered_qty = flt(mr_items_ordered_qty.get(d.name))
@@ -284,11 +283,11 @@ class MaterialRequest(BuyingController):
 								).format(d.ordered_qty, d.parent, allowed_qty, d.item_code)
 							)
 
-					elif d.ordered_qty and flt(d.ordered_qty, precision) > flt(d.stock_qty, precision):
+					elif d.ordered_qty and d.ordered_qty > d.stock_qty:
 						frappe.throw(
 							_(
 								"The total Issue / Transfer quantity {0} in Material Request {1} cannot be greater than requested quantity {2} for Item {3}"
-							).format(d.ordered_qty, d.parent, d.stock_qty, d.item_code)
+							).format(d.ordered_qty, d.parent, d.qty, d.item_code)
 						)
 
 				elif self.material_request_type == "Manufacture":

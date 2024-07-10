@@ -5,7 +5,6 @@
 import json
 
 import frappe
-from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 from frappe.test_runner import make_test_records
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import flt

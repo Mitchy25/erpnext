@@ -2,8 +2,6 @@
 # For license information, please see license.txt
 
 
-import collections
-
 import frappe
 from frappe import _, bold
 from frappe.query_builder.functions import IfNull, Sum

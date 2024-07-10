@@ -1205,7 +1205,7 @@ def insert_existing_sle(warehouse, item_code="_Test Item"):
 		posting_time="02:00",
 		item_code=item_code,
 		target=warehouse,
-		qty=15,
+		qty=10,
 		basic_rate=700,
 	)
 

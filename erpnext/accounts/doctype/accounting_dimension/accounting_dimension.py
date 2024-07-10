@@ -302,12 +302,6 @@ def get_dimensions(with_cost_center_and_project=False):
 		else:
 			with_cost_center_and_project = False
 
-	if isinstance(with_cost_center_and_project, str):
-		if with_cost_center_and_project.lower().strip() == "true":
-			with_cost_center_and_project = True
-		else:
-			with_cost_center_and_project = False
-
 	if with_cost_center_and_project:
 		dimension_filters.extend(
 			[

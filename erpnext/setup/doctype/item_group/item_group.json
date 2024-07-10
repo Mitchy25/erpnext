@@ -1,6 +1,5 @@
 {
  "actions": [],
- "allow_guest_to_view": 1,
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:item_group_name",
@@ -130,7 +129,6 @@
    "report_hide": 1
   }
  ],
- "has_web_view": 1,
  "icon": "fa fa-sitemap",
  "idx": 1,
  "image_field": "image",

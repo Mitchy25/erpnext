@@ -5,7 +5,7 @@
 import unittest
 
 import frappe
-from frappe.utils import add_months, today
+from frappe.utils import today
 
 from erpnext.accounts.doctype.finance_book.test_finance_book import create_finance_book
 from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
@@ -85,7 +85,6 @@ class TestPeriodClosingVoucher(unittest.TestCase):
 			customer="_Test Customer USD",
 			posting_date="2021-03-15",
 		)
-
 		create_sales_invoice(
 			company=company,
 			cost_center=cost_center2,
@@ -183,7 +182,6 @@ class TestPeriodClosingVoucher(unittest.TestCase):
 		)
 
 		self.assertSequenceEqual(pcv_gle, expected_gle)
-		warehouse = frappe.db.get_value("Warehouse", {"company": company}, "name")
 
 	def test_gl_entries_restrictions(self):
 		frappe.db.sql("delete from `tabGL Entry` where company='Test PCV Company'")

@@ -200,7 +200,7 @@ class TestPricingRule(unittest.TestCase):
 			}
 		)
 		details = get_item_details(args)
-		self.assertEquals(details.get("discount_percentage"), 10)
+		self.assertEqual(details.get("discount_percentage"), 10)
 
 	def test_pricing_rule_for_variants(self):
 		from erpnext.stock.get_item_details import get_item_details
