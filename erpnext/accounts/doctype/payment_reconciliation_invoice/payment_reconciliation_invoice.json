@@ -12,7 +12,6 @@
   "amount",
   "outstanding_amount",
   "currency",
-  "remarks",
   "exchange_rate"
  ],
  "fields": [
@@ -64,11 +63,6 @@
    "hidden": 1,
    "label": "Currency",
    "options": "Currency"
-  },
-  {
-   "fieldname": "remarks",
-   "fieldtype": "Data",
-   "label": "Remarks"
   },
   {
    "fieldname": "exchange_rate",

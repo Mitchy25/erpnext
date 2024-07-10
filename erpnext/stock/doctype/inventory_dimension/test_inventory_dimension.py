@@ -635,13 +635,13 @@ def prepare_data_for_internal_transfer():
 	company = "_Test Company with perpetual inventory"
 
 	customer = create_internal_customer(
-		"_Test Internal Customer 2",
+		"_Test Internal Customer 3",
 		company,
 		company,
 	)
 
 	supplier = create_internal_supplier(
-		"_Test Internal Supplier 2",
+		"_Test Internal Supplier 3",
 		company,
 		company,
 	)
@@ -678,7 +678,7 @@ def prepare_data_for_internal_transfer():
 		"Cost Center", {"company": company}, "name"
 	)
 
-	expense_account = frappe.db.get_value(
+	expene_account = frappe.db.get_value(
 		"Company", company, "stock_adjustment_account"
 	) or frappe.db.get_value("Account", {"company": company, "account_type": "Expense Account"}, "name")
 
@@ -690,7 +690,7 @@ def prepare_data_for_internal_transfer():
 			"supplier": supplier,
 			"company": company,
 			"cost_center": cost_center,
-			"expense_account": expense_account,
+			"expene_account": expene_account,
 			"store_warehouse": frappe.db.get_value(
 				"Warehouse", {"name": ("like", "Store%"), "company": company}, "name"
 			),

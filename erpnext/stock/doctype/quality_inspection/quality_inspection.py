@@ -6,7 +6,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import cint, cstr, flt
+from frappe.utils import cint, cstr, flt, get_number_format_info
 
 from erpnext.stock.doctype.quality_inspection_template.quality_inspection_template import (
 	get_template_details,
@@ -14,6 +14,49 @@ from erpnext.stock.doctype.quality_inspection_template.quality_inspection_templa
 
 
 class QualityInspection(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.stock.doctype.quality_inspection_reading.quality_inspection_reading import (
+			QualityInspectionReading,
+		)
+
+		amended_from: DF.Link | None
+		batch_no: DF.Link | None
+		bom_no: DF.Link | None
+		description: DF.SmallText | None
+		inspected_by: DF.Link
+		inspection_type: DF.Literal["", "Incoming", "Outgoing", "In Process"]
+		item_code: DF.Link
+		item_name: DF.Data | None
+		item_serial_no: DF.Link | None
+		manual_inspection: DF.Check
+		naming_series: DF.Literal["MAT-QA-.YYYY.-"]
+		quality_inspection_template: DF.Link | None
+		readings: DF.Table[QualityInspectionReading]
+		reference_name: DF.DynamicLink
+		reference_type: DF.Literal[
+			"",
+			"Purchase Receipt",
+			"Purchase Invoice",
+			"Subcontracting Receipt",
+			"Delivery Note",
+			"Sales Invoice",
+			"Stock Entry",
+			"Job Card",
+		]
+		remarks: DF.Text | None
+		report_date: DF.Date
+		sample_size: DF.Float
+		status: DF.Literal["", "Accepted", "Rejected"]
+		verified_by: DF.Data | None
+	# end: auto-generated types
+
 	def validate(self):
 		if not self.readings and self.item_code:
 			self.get_item_specification_details()
@@ -155,7 +198,11 @@ class QualityInspection(Document):
 		for i in range(1, 11):
 			reading_value = reading.get("reading_" + str(i))
 			if reading_value is not None and reading_value.strip():
-				result = flt(reading.get("min_value")) <= flt(reading_value) <= flt(reading.get("max_value"))
+				result = (
+					flt(reading.get("min_value"))
+					<= parse_float(reading_value)
+					<= flt(reading.get("max_value"))
+				)
 				if not result:
 					return False
 		return True
@@ -195,7 +242,7 @@ class QualityInspection(Document):
 			# numeric readings
 			for i in range(1, 11):
 				field = "reading_" + str(i)
-				data[field] = flt(reading.get(field))
+				data[field] = parse_float(reading.get(field))
 			data["mean"] = self.calculate_mean(reading)
 
 		return data
@@ -209,7 +256,7 @@ class QualityInspection(Document):
 		for i in range(1, 11):
 			reading_value = reading.get("reading_" + str(i))
 			if reading_value is not None and reading_value.strip():
-				readings_list.append(flt(reading_value))
+				readings_list.append(parse_float(reading_value))
 
 		actual_mean = mean(readings_list) if readings_list else 0
 		return actual_mean
@@ -309,3 +356,19 @@ def make_quality_inspection(source_name, target_doc=None):
 	)
 
 	return doc
+
+
+def parse_float(num: str) -> float:
+	"""Since reading_# fields are `Data` field they might contain number which
+	is representation in user's prefered number format instead of machine
+	readable format. This function converts them to machine readable format."""
+
+	number_format = frappe.db.get_default("number_format") or "#,###.##"
+	decimal_str, comma_str, _number_format_precision = get_number_format_info(number_format)
+
+	if decimal_str == "," and comma_str == ".":
+		num = num.replace(",", "#$")
+		num = num.replace(".", ",")
+		num = num.replace("#$", ".")
+
+	return flt(num)

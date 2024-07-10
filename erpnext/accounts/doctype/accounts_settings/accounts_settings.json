@@ -1,7 +1,6 @@
 {
  "actions": [],
  "creation": "2013-06-24 15:49:57",
- "description": "Settings for Accounts",
  "doctype": "DocType",
  "document_type": "Other",
  "editable_grid": 1,
@@ -13,6 +12,7 @@
   "unlink_advance_payment_on_cancelation_of_order",
   "column_break_13",
   "delete_linked_ledger_entries",
+  "enable_immutable_ledger",
   "invoicing_features_section",
   "check_supplier_invoice_uniqueness",
   "automatically_fetch_payment_terms",
@@ -21,8 +21,6 @@
   "allow_multi_currency_invoices_against_single_party_account",
   "journals_section",
   "merge_similar_account_heads",
-  "report_setting_section",
-  "use_custom_cash_flow",
   "deferred_accounting_settings_section",
   "book_deferred_entries_based_on",
   "column_break_18",
@@ -34,6 +32,7 @@
   "column_break_19",
   "add_taxes_from_item_tax_template",
   "book_tax_discount_loss",
+  "round_row_wise_tax",
   "print_settings",
   "show_inclusive_tax_in_print",
   "show_taxes_as_table_in_print",
@@ -63,12 +62,11 @@
   "ignore_account_closing_balance",
   "column_break_25",
   "frozen_accounts_modifier",
-  "report_settings_sb",
+  "tab_break_dpet",
+  "show_balance_in_coa",
   "banking_tab",
   "enable_party_matching",
   "enable_fuzzy_matching",
-  "tab_break_dpet",
-  "show_balance_in_coa",
   "reports_tab",
   "remarks_section",
   "general_ledger_remarks_length",
@@ -108,7 +106,7 @@
   },
   {
    "default": "0",
-   "description": "Enabling ensure each Purchase Invoice has a unique value in Supplier Invoice No. field",
+   "description": "Enabling this ensures each Purchase Invoice has a unique value in Supplier Invoice No. field within a particular fiscal year",
    "fieldname": "check_supplier_invoice_uniqueness",
    "fieldtype": "Check",
    "label": "Check Supplier Invoice Number Uniqueness"
@@ -183,13 +181,6 @@
    "fieldname": "stale_days",
    "fieldtype": "Int",
    "label": "Stale Days"
-  },
-  {
-   "default": "0",
-   "description": "Only select this if you have set up the Cash Flow Mapper documents",
-   "fieldname": "use_custom_cash_flow",
-   "fieldtype": "Check",
-   "label": "Enable Custom Cash Flow Format"
   },
   {
    "default": "0",
@@ -350,16 +341,22 @@
    "label": "POS"
   },
   {
-   "fieldname": "report_setting_section",
-   "fieldtype": "Section Break",
-   "label": "Report Setting"
-  },
-  {
    "default": "0",
    "description": "Enabling this will allow creation of multi-currency invoices against single party account in company currency",
    "fieldname": "allow_multi_currency_invoices_against_single_party_account",
    "fieldtype": "Check",
    "label": "Allow multi-currency invoices against single party account "
+  },
+  {
+   "fieldname": "tab_break_dpet",
+   "fieldtype": "Tab Break",
+   "label": "Chart Of Accounts"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_balance_in_coa",
+   "fieldtype": "Check",
+   "label": "Show Balances in Chart Of Accounts"
   },
   {
    "default": "0",
@@ -425,15 +422,11 @@
    "label": "Ignore Account Closing Balance"
   },
   {
-   "fieldname": "tab_break_dpet",
-   "fieldtype": "Tab Break",
-   "label": "Chart Of Accounts"
-  },
-  {
-   "default": "1",
-   "fieldname": "show_balance_in_coa",
+   "default": "0",
+   "description": "Tax Amount will be rounded on a row(items) level",
+   "fieldname": "round_row_wise_tax",
    "fieldtype": "Check",
-   "label": "Show Balances in Chart Of Accounts"
+   "label": "Round Tax Amount Row-wise"
   },
   {
    "fieldname": "reports_tab",
@@ -462,6 +455,13 @@
    "fieldname": "remarks_section",
    "fieldtype": "Section Break",
    "label": "Remarks Column Length"
+  },
+  {
+   "default": "0",
+   "description": "On enabling this cancellation entries will be posted on the actual cancellation date and reports will consider cancelled entries as well",
+   "fieldname": "enable_immutable_ledger",
+   "fieldtype": "Check",
+   "label": "Enable Immutable Ledger"
   }
  ],
  "icon": "icon-cog",
@@ -469,7 +469,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-11-20 09:37:47.650347",
+ "modified": "2024-05-11 23:19:44.673975",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounts Settings",

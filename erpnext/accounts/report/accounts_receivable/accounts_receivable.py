@@ -14,7 +14,7 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
 	get_dimension_with_children,
 )
-from erpnext.accounts.utils import get_currency_precision
+from erpnext.accounts.utils import get_currency_precision, get_party_types_from_account_type
 
 #  This report gives a summary of all Outstanding Invoices considering the following
 
@@ -30,7 +30,6 @@ from erpnext.accounts.utils import get_currency_precision
 #  8. Invoice details like Sales Persons, Delivery Notes are also fetched comma separated
 #  9. Report amounts are in party currency if in_party_currency is selected, otherwise company currency
 # 10. This report is based on Payment Ledger Entries
-
 
 
 def execute(filters=None):
@@ -54,9 +53,7 @@ class ReceivablePayableReport:
 	def run(self, args):
 		self.filters.update(args)
 		self.set_defaults()
-		self.party_naming_by = frappe.db.get_value(
-			args.get("naming_by")[0], None, args.get("naming_by")[1]
-		)
+		self.party_naming_by = frappe.db.get_value(args.get("naming_by")[0], None, args.get("naming_by")[1])
 		self.get_columns()
 		self.get_data()
 		self.get_chart_data()
@@ -71,7 +68,7 @@ class ReceivablePayableReport:
 		self.currency_precision = get_currency_precision() or 2
 		self.dr_or_cr = "debit" if self.filters.account_type == "Receivable" else "credit"
 		self.account_type = self.filters.account_type
-		self.party_type = frappe.db.get_all("Party Type", {"account_type": self.account_type}, pluck="name")
+		self.party_type = get_party_types_from_account_type(self.account_type)
 		self.party_details = {}
 		self.invoices = set()
 		self.skip_total_row = 0

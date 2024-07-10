@@ -19,6 +19,92 @@ from erpnext.setup.setup_wizard.operations.taxes_setup import setup_taxes_and_ch
 
 
 class Company(NestedSet):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		abbr: DF.Data
+		accumulated_depreciation_account: DF.Link | None
+		allow_account_creation_against_child_company: DF.Check
+		asset_received_but_not_billed: DF.Link | None
+		auto_err_frequency: DF.Literal["Daily", "Weekly"]
+		auto_exchange_rate_revaluation: DF.Check
+		book_advance_payments_in_separate_party_account: DF.Check
+		capital_work_in_progress_account: DF.Link | None
+		chart_of_accounts: DF.Literal[None]
+		company_description: DF.TextEditor | None
+		company_logo: DF.AttachImage | None
+		company_name: DF.Data
+		cost_center: DF.Link | None
+		country: DF.Link
+		create_chart_of_accounts_based_on: DF.Literal["", "Standard Template", "Existing Company"]
+		credit_limit: DF.Currency
+		date_of_commencement: DF.Date | None
+		date_of_establishment: DF.Date | None
+		date_of_incorporation: DF.Date | None
+		default_advance_paid_account: DF.Link | None
+		default_advance_received_account: DF.Link | None
+		default_bank_account: DF.Link | None
+		default_buying_terms: DF.Link | None
+		default_cash_account: DF.Link | None
+		default_currency: DF.Link
+		default_deferred_expense_account: DF.Link | None
+		default_deferred_revenue_account: DF.Link | None
+		default_discount_account: DF.Link | None
+		default_expense_account: DF.Link | None
+		default_finance_book: DF.Link | None
+		default_holiday_list: DF.Link | None
+		default_in_transit_warehouse: DF.Link | None
+		default_income_account: DF.Link | None
+		default_inventory_account: DF.Link | None
+		default_letter_head: DF.Link | None
+		default_operating_cost_account: DF.Link | None
+		default_payable_account: DF.Link | None
+		default_provisional_account: DF.Link | None
+		default_receivable_account: DF.Link | None
+		default_selling_terms: DF.Link | None
+		default_warehouse_for_sales_return: DF.Link | None
+		depreciation_cost_center: DF.Link | None
+		depreciation_expense_account: DF.Link | None
+		disposal_account: DF.Link | None
+		domain: DF.Data | None
+		email: DF.Data | None
+		enable_perpetual_inventory: DF.Check
+		enable_provisional_accounting_for_non_stock_items: DF.Check
+		exception_budget_approver_role: DF.Link | None
+		exchange_gain_loss_account: DF.Link | None
+		existing_company: DF.Link | None
+		fax: DF.Data | None
+		is_group: DF.Check
+		lft: DF.Int
+		monthly_sales_target: DF.Currency
+		old_parent: DF.Data | None
+		parent_company: DF.Link | None
+		payment_terms: DF.Link | None
+		phone_no: DF.Data | None
+		reconcile_on_advance_payment_date: DF.Check
+		registration_details: DF.Code | None
+		rgt: DF.Int
+		round_off_account: DF.Link | None
+		round_off_cost_center: DF.Link | None
+		sales_monthly_history: DF.SmallText | None
+		series_for_depreciation_entry: DF.Data | None
+		stock_adjustment_account: DF.Link | None
+		stock_received_but_not_billed: DF.Link | None
+		submit_err_jv: DF.Check
+		tax_id: DF.Data | None
+		total_monthly_sales: DF.Currency
+		transactions_annual_history: DF.Code | None
+		unrealized_exchange_gain_loss_account: DF.Link | None
+		unrealized_profit_loss_account: DF.Link | None
+		website: DF.Data | None
+		write_off_account: DF.Link | None
+	# end: auto-generated types
+
 	nsm_parent_field = "parent_company"
 
 	def onload(self):
@@ -55,6 +141,7 @@ class Company(NestedSet):
 		self.validate_abbr()
 		self.validate_default_accounts()
 		self.validate_currency()
+		self.validate_advance_account_currency()
 		self.validate_coa_input()
 		self.validate_perpetual_inventory()
 		self.validate_provisional_account_for_non_stock_items()
@@ -106,6 +193,29 @@ class Company(NestedSet):
 						"{0} currency must be same as company's default currency. Please select another account."
 					).format(frappe.bold(account[0]))
 					frappe.throw(error_message)
+
+	def validate_advance_account_currency(self):
+		if (
+			self.default_advance_received_account
+			and frappe.get_cached_value("Account", self.default_advance_received_account, "account_currency")
+			!= self.default_currency
+		):
+			frappe.throw(
+				_("'{0}' should be in company currency {1}.").format(
+					frappe.bold("Default Advance Received Account"), frappe.bold(self.default_currency)
+				)
+			)
+
+		if (
+			self.default_advance_paid_account
+			and frappe.get_cached_value("Account", self.default_advance_paid_account, "account_currency")
+			!= self.default_currency
+		):
+			frappe.throw(
+				_("'{0}' should be in company currency {1}.").format(
+					frappe.bold("Default Advance Paid Account"), frappe.bold(self.default_currency)
+				)
+			)
 
 	def validate_currency(self):
 		if self.is_new():
@@ -377,6 +487,7 @@ class Company(NestedSet):
 			"depreciation_expense_account": "Depreciation",
 			"capital_work_in_progress_account": "Capital Work in Progress",
 			"asset_received_but_not_billed": "Asset Received But Not Billed",
+			"expenses_included_in_asset_valuation": "Expenses Included In Asset Valuation",
 			"default_expense_account": "Cost of Goods Sold",
 		}
 
@@ -386,6 +497,7 @@ class Company(NestedSet):
 					"stock_received_but_not_billed": "Stock Received But Not Billed",
 					"default_inventory_account": "Stock",
 					"stock_adjustment_account": "Stock Adjustment",
+					"expenses_included_in_valuation": "Expenses Included In Valuation",
 				}
 			)
 
@@ -394,14 +506,20 @@ class Company(NestedSet):
 				self._set_default_account(default_account, default_accounts.get(default_account))
 
 		if not self.default_income_account:
-			income_account = frappe.db.get_value(
-				"Account", {"account_name": _("Sales"), "company": self.name, "is_group": 0}
+			income_account = frappe.db.get_all(
+				"Account",
+				filters={"company": self.name, "is_group": 0},
+				or_filters={
+					"account_name": ("in", [_("Sales"), _("Sales Account")]),
+					"account_type": "Income Account",
+				},
+				pluck="name",
 			)
 
-			if not income_account:
-				income_account = frappe.db.get_value(
-					"Account", {"account_name": _("Sales Account"), "company": self.name}
-				)
+			if income_account:
+				income_account = income_account[0]
+			else:
+				income_account = None
 
 			self.db_set("default_income_account", income_account)
 

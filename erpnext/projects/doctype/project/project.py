@@ -7,17 +7,71 @@ from email_reply_parser import EmailReplyParser
 from frappe import _, qb
 from frappe.desk.reportview import get_match_cond
 from frappe.model.document import Document
-from frappe.query_builder.functions import Sum
+from frappe.query_builder import Interval
+from frappe.query_builder.functions import Count, CurDate, Date, Sum, UnixTimestamp
 from frappe.utils import add_days, flt, get_datetime, get_time, get_url, nowtime, today
+from frappe.utils.user import is_website_user
 
 from erpnext import get_default_company
 from erpnext.controllers.queries import get_filters_cond
+from erpnext.controllers.website_list_for_contact import get_customers_suppliers
 from erpnext.setup.doctype.holiday_list.holiday_list import is_holiday
 
 
 class Project(Document):
-	def get_feed(self):
-		return f"{_(self.status)}: {frappe.safe_decode(self.project_name)}"
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.projects.doctype.project_user.project_user import ProjectUser
+
+		actual_end_date: DF.Date | None
+		actual_start_date: DF.Date | None
+		actual_time: DF.Float
+		collect_progress: DF.Check
+		company: DF.Link
+		copied_from: DF.Data | None
+		cost_center: DF.Link | None
+		customer: DF.Link | None
+		daily_time_to_send: DF.Time | None
+		day_to_send: DF.Literal["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+		department: DF.Link | None
+		estimated_costing: DF.Currency
+		expected_end_date: DF.Date | None
+		expected_start_date: DF.Date | None
+		first_email: DF.Time | None
+		frequency: DF.Literal["Hourly", "Twice Daily", "Daily", "Weekly"]
+		from_time: DF.Time | None
+		gross_margin: DF.Currency
+		holiday_list: DF.Link | None
+		is_active: DF.Literal["Yes", "No"]
+		message: DF.Text | None
+		naming_series: DF.Literal["PROJ-.####"]
+		notes: DF.TextEditor | None
+		per_gross_margin: DF.Percent
+		percent_complete: DF.Percent
+		percent_complete_method: DF.Literal["Manual", "Task Completion", "Task Progress", "Task Weight"]
+		priority: DF.Literal["Medium", "Low", "High"]
+		project_name: DF.Data
+		project_template: DF.Link | None
+		project_type: DF.Link | None
+		sales_order: DF.Link | None
+		second_email: DF.Time | None
+		status: DF.Literal["Open", "Completed", "Cancelled"]
+		to_time: DF.Time | None
+		total_billable_amount: DF.Currency
+		total_billed_amount: DF.Currency
+		total_consumed_material_cost: DF.Currency
+		total_costing_amount: DF.Currency
+		total_purchase_cost: DF.Currency
+		total_sales_amount: DF.Currency
+		users: DF.Table[ProjectUser]
+		weekly_time_to_send: DF.Time | None
+	# end: auto-generated types
 
 	def onload(self):
 		self.set_onload(
@@ -43,6 +97,8 @@ class Project(Document):
 		self.send_welcome_email()
 		self.update_costing()
 		self.update_percent_complete()
+		self.validate_from_to_dates("expected_start_date", "expected_end_date")
+		self.validate_from_to_dates("actual_start_date", "actual_end_date")
 
 	def copy_from_template(self):
 		"""
@@ -297,24 +353,35 @@ class Project(Document):
 				user.welcome_email_sent = 1
 
 
-def get_timeline_data(doctype, name):
+def get_timeline_data(doctype: str, name: str) -> dict[int, int]:
 	"""Return timeline for attendance"""
+
+	timesheet_detail = frappe.qb.DocType("Timesheet Detail")
+
 	return dict(
-		frappe.db.sql(
-			"""select unix_timestamp(from_time), count(*)
-		from `tabTimesheet Detail` where project=%s
-			and from_time > date_sub(curdate(), interval 1 year)
-			and docstatus < 2
-			group by date(from_time)""",
-			name,
-		)
+		frappe.qb.from_(timesheet_detail)
+		.select(UnixTimestamp(timesheet_detail.from_time), Count("*"))
+		.where(timesheet_detail.project == name)
+		.where(timesheet_detail.from_time > CurDate() - Interval(years=1))
+		.where(timesheet_detail.docstatus < 2)
+		.groupby(Date(timesheet_detail.from_time))
+		.run()
 	)
 
 
 def get_project_list(doctype, txt, filters, limit_start, limit_page_length=20, order_by="modified"):
+	customers, suppliers = get_customers_suppliers("Project", frappe.session.user)
+
+	ignore_permissions = False
+	if is_website_user() and frappe.session.user != "Guest":
+		if not filters:
+			filters = []
+
+		if customers:
+			filters.append([doctype, "customer", "in", customers])
+			ignore_permissions = True
+
 	meta = frappe.get_meta(doctype)
-	if not filters:
-		filters = []
 
 	fields = "distinct *"
 
@@ -345,18 +412,26 @@ def get_project_list(doctype, txt, filters, limit_start, limit_page_length=20, o
 		limit_start=limit_start,
 		limit_page_length=limit_page_length,
 		order_by=order_by,
+		ignore_permissions=ignore_permissions,
 	)
 
 
 def get_list_context(context=None):
-	return {
-		"show_sidebar": True,
-		"show_search": True,
-		"no_breadcrumbs": True,
-		"title": _("Projects"),
-		"get_list": get_project_list,
-		"row_template": "templates/includes/projects/project_row.html",
-	}
+	from erpnext.controllers.website_list_for_contact import get_list_context
+
+	list_context = get_list_context(context)
+	list_context.update(
+		{
+			"show_sidebar": True,
+			"show_search": True,
+			"no_breadcrumbs": True,
+			"title": _("Projects"),
+			"get_list": get_project_list,
+			"row_template": "templates/includes/projects/project_row.html",
+		}
+	)
+
+	return list_context
 
 
 @frappe.whitelist()

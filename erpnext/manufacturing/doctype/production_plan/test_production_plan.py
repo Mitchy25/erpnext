@@ -328,6 +328,28 @@ class TestProductionPlan(FrappeTestCase):
 
 		self.assertEqual(pln2.po_items[0].bom_no, bom2.name)
 
+	def test_production_plan_with_non_active_bom_item(self):
+		item = make_item("Test Production Item 1 for Non Active BOM", {"is_stock_item": 1}).name
+
+		so1 = make_sales_order(item_code=item, qty=1)
+
+		pln = frappe.new_doc("Production Plan")
+		pln.company = so1.company
+		pln.get_items_from = "Sales Order"
+		pln.append(
+			"sales_orders",
+			{
+				"sales_order": so1.name,
+				"sales_order_date": so1.transaction_date,
+				"customer": so1.customer,
+				"grand_total": so1.grand_total,
+			},
+		)
+
+		pln.get_items()
+
+		self.assertFalse(pln.po_items)
+
 	def test_production_plan_combine_items(self):
 		"Test combining FG items in Production Plan."
 		item = "Test Production Item 1"
@@ -419,11 +441,15 @@ class TestProductionPlan(FrappeTestCase):
 
 	def test_production_plan_for_subcontracting_po(self):
 		from erpnext.manufacturing.doctype.bom.test_bom import create_nested_bom
+		from erpnext.subcontracting.doctype.subcontracting_bom.test_subcontracting_bom import (
+			create_subcontracting_bom,
+		)
 
-		bom_tree_1 = {"Test Laptop 1": {"Test Motherboard 1": {"Test Motherboard Wires 1": {}}}}
+		fg_item = "Test Motherboard 1"
+		bom_tree_1 = {"Test Laptop 1": {fg_item: {"Test Motherboard Wires 1": {}}}}
 		create_nested_bom(bom_tree_1, prefix="")
 
-		item_doc = frappe.get_doc("Item", "Test Motherboard 1")
+		item_doc = frappe.get_doc("Item", fg_item)
 		company = "_Test Company"
 
 		item_doc.is_sub_contracted_item = 1
@@ -435,6 +461,12 @@ class TestProductionPlan(FrappeTestCase):
 			item_doc.append("item_defaults", {"company": company, "default_supplier": "_Test Supplier"})
 
 		item_doc.save()
+
+		service_item = make_item(properties={"is_stock_item": 0}).name
+		create_subcontracting_bom(
+			finished_good=fg_item,
+			service_item=service_item,
+		)
 
 		plan = create_production_plan(
 			item_code="Test Laptop 1", planned_qty=10, use_multi_level_bom=1, do_not_submit=True
@@ -452,7 +484,8 @@ class TestProductionPlan(FrappeTestCase):
 		self.assertEqual(po_doc.items[0].qty, 10.0)
 		self.assertEqual(po_doc.items[0].fg_item_qty, 10.0)
 		self.assertEqual(po_doc.items[0].fg_item_qty, 10.0)
-		self.assertEqual(po_doc.items[0].fg_item, "Test Motherboard 1")
+		self.assertEqual(po_doc.items[0].fg_item, fg_item)
+		self.assertEqual(po_doc.items[0].item_code, service_item)
 
 	def test_production_plan_combine_subassembly(self):
 		"""

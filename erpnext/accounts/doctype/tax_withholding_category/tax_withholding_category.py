@@ -9,8 +9,31 @@ from frappe.query_builder import Criterion
 from frappe.query_builder.functions import Abs, Sum
 from frappe.utils import cint, flt, getdate
 
+from erpnext.controllers.accounts_controller import validate_account_head
+
 
 class TaxWithholdingCategory(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.accounts.doctype.tax_withholding_account.tax_withholding_account import (
+			TaxWithholdingAccount,
+		)
+		from erpnext.accounts.doctype.tax_withholding_rate.tax_withholding_rate import TaxWithholdingRate
+
+		accounts: DF.Table[TaxWithholdingAccount]
+		category_name: DF.Data | None
+		consider_party_ledger_amount: DF.Check
+		rates: DF.Table[TaxWithholdingRate]
+		round_off_tax_amount: DF.Check
+		tax_on_excess_amount: DF.Check
+	# end: auto-generated types
+
 	def validate(self):
 		self.validate_dates()
 		self.validate_accounts()
@@ -32,6 +55,7 @@ class TaxWithholdingCategory(Document):
 			if d.get("account") in existing_accounts:
 				frappe.throw(_("Account {0} added multiple times").format(frappe.bold(d.get("account"))))
 
+			validate_account_head(d.idx, d.get("account"), d.get("company"))
 			existing_accounts.append(d.get("account"))
 
 	def validate_thresholds(self):
@@ -98,11 +122,14 @@ def get_party_tax_withholding_details(inv, tax_withholding_category=None):
 	tax_details = get_tax_withholding_details(tax_withholding_category, posting_date, inv.company)
 
 	if not tax_details:
-		frappe.throw(
-			_("Please set associated account in Tax Withholding Category {0} against Company {1}").format(
-				tax_withholding_category, inv.company
-			)
+		frappe.msgprint(
+			_(
+				"Skipping Tax Withholding Category {0} as there is no associated account set for Company {1} in it."
+			).format(tax_withholding_category, inv.company)
 		)
+		if inv.doctype == "Purchase Invoice":
+			return {}, [], {}
+		return {}
 
 	if party_type == "Customer" and not tax_details.cumulative_threshold:
 		# TCS is only chargeable on sum of invoiced value
@@ -122,7 +149,12 @@ def get_party_tax_withholding_details(inv, tax_withholding_category=None):
 		tax_row = get_tax_row_for_tcs(inv, tax_details, tax_amount, tax_deducted)
 
 	cost_center = get_cost_center(inv)
-	tax_row.update({"cost_center": cost_center})
+	tax_row.update(
+		{
+			"cost_center": cost_center,
+			"is_tax_withholding_account": 1,
+		}
+	)
 
 	if inv.doctype == "Purchase Invoice":
 		return tax_row, tax_deducted_on_advances, voucher_wise_amount

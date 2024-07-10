@@ -17,6 +17,7 @@ from frappe.www.printview import get_print_style
 
 from erpnext import get_company_currency
 from erpnext.accounts.party import get_party_account_currency
+from erpnext.accounts.report.accounts_receivable.accounts_receivable import execute as get_ar_soa
 from erpnext.accounts.report.accounts_receivable_summary.accounts_receivable_summary import (
 	execute as get_ageing,
 )
@@ -33,11 +34,70 @@ from erpnext import get_default_company
 logger = frappe.logger(module="CustomerStatements", allow_site=True, with_more_info=False, file_count=2)
 
 class ProcessStatementOfAccounts(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.accounts.doctype.process_statement_of_accounts_customer.process_statement_of_accounts_customer import (
+			ProcessStatementOfAccountsCustomer,
+		)
+		from erpnext.accounts.doctype.psoa_cost_center.psoa_cost_center import PSOACostCenter
+		from erpnext.accounts.doctype.psoa_project.psoa_project import PSOAProject
+
+		account: DF.Link | None
+		ageing_based_on: DF.Literal["Due Date", "Posting Date"]
+		based_on_payment_terms: DF.Check
+		body: DF.TextEditor | None
+		cc_to: DF.Link | None
+		collection_name: DF.DynamicLink | None
+		company: DF.Link
+		cost_center: DF.TableMultiSelect[PSOACostCenter]
+		currency: DF.Link | None
+		customer_collection: DF.Literal["", "Customer Group", "Territory", "Sales Partner", "Sales Person"]
+		customers: DF.Table[ProcessStatementOfAccountsCustomer]
+		enable_auto_email: DF.Check
+		filter_duration: DF.Int
+		finance_book: DF.Link | None
+		frequency: DF.Literal["Weekly", "Monthly", "Quarterly"]
+		from_date: DF.Date | None
+		group_by: DF.Literal["", "Group by Voucher", "Group by Voucher (Consolidated)"]
+		ignore_exchange_rate_revaluation_journals: DF.Check
+		include_ageing: DF.Check
+		include_break: DF.Check
+		letter_head: DF.Link | None
+		orientation: DF.Literal["Landscape", "Portrait"]
+		payment_terms_template: DF.Link | None
+		pdf_name: DF.Data | None
+		posting_date: DF.Date | None
+		primary_mandatory: DF.Check
+		project: DF.TableMultiSelect[PSOAProject]
+		report: DF.Literal["General Ledger", "Accounts Receivable"]
+		sales_partner: DF.Link | None
+		sales_person: DF.Link | None
+		sender: DF.Link | None
+		show_net_values_in_party_account: DF.Check
+		start_date: DF.Date | None
+		subject: DF.Data | None
+		terms_and_conditions: DF.Link | None
+		territory: DF.Link | None
+		to_date: DF.Date | None
+	# end: auto-generated types
+
 	def validate(self):
 		if not self.subject:
 			self.subject = "Statement Of Accounts for {{ customer.customer_name }}"
 		if not self.body:
-			self.body = "Hello {{ customer.name }},<br>PFA your Statement Of Accounts from {{ doc.from_date }} to {{ doc.to_date }}."
+			if self.report == "General Ledger":
+				body_str = " from {{ doc.from_date }} to {{ doc.to_date }}."
+			else:
+				body_str = " until {{ doc.posting_date }}."
+			self.body = "Hello {{ customer.customer_name }},<br>PFA your Statement Of Accounts" + body_str
+		if not self.pdf_name:
+			self.pdf_name = "{{ customer.customer_name }}"
 
 		validate_template(self.subject)
 		validate_template(self.body)
@@ -54,10 +114,6 @@ class ProcessStatementOfAccounts(Document):
 def get_report_pdf(doc, consolidated=True, customer=None):
 	statement_dict = {}
 	ageing = ""
-	base_template_path = "frappe/www/printview.html"
-	template_path = (
-		"erpnext/accounts/doctype/process_statement_of_accounts/process_statement_of_accounts.html"
-	)
 
 	#Get Process ID
 	pid = os.getpid()
@@ -81,7 +137,9 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 		if doc.letter_head:
 			from frappe.www.printview import get_letter_head
 
-			letter_head = get_letter_head(doc, 0)
+		filters = get_common_filters(doc)
+		if doc.ignore_exchange_rate_revaluation_journals:
+			filters.update({"ignore_err": True})
 
 		filters= frappe._dict({
 			'from_date': doc.from_date,

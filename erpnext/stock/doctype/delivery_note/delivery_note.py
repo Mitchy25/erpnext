@@ -12,13 +12,134 @@ from frappe.utils import cint, flt
 
 from erpnext.controllers.accounts_controller import get_taxes_and_charges, merge_taxes
 from erpnext.controllers.selling_controller import SellingController
-from erpnext.stock.doctype.batch.batch import set_batch_nos
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 
 form_grid_templates = {"items": "templates/form_grid/item_grid.html"}
 
 
 class DeliveryNote(SellingController):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.accounts.doctype.pricing_rule_detail.pricing_rule_detail import PricingRuleDetail
+		from erpnext.accounts.doctype.sales_taxes_and_charges.sales_taxes_and_charges import (
+			SalesTaxesandCharges,
+		)
+		from erpnext.selling.doctype.sales_team.sales_team import SalesTeam
+		from erpnext.stock.doctype.delivery_note_item.delivery_note_item import DeliveryNoteItem
+		from erpnext.stock.doctype.packed_item.packed_item import PackedItem
+
+		additional_discount_percentage: DF.Float
+		address_display: DF.SmallText | None
+		amended_from: DF.Link | None
+		amount_eligible_for_commission: DF.Currency
+		apply_discount_on: DF.Literal["", "Grand Total", "Net Total"]
+		auto_repeat: DF.Link | None
+		base_discount_amount: DF.Currency
+		base_grand_total: DF.Currency
+		base_in_words: DF.Data | None
+		base_net_total: DF.Currency
+		base_rounded_total: DF.Currency
+		base_rounding_adjustment: DF.Currency
+		base_total: DF.Currency
+		base_total_taxes_and_charges: DF.Currency
+		campaign: DF.Link | None
+		commission_rate: DF.Float
+		company: DF.Link
+		company_address: DF.Link | None
+		company_address_display: DF.SmallText | None
+		contact_display: DF.SmallText | None
+		contact_email: DF.Data | None
+		contact_mobile: DF.SmallText | None
+		contact_person: DF.Link | None
+		conversion_rate: DF.Float
+		cost_center: DF.Link | None
+		currency: DF.Link
+		customer: DF.Link
+		customer_address: DF.Link | None
+		customer_group: DF.Link | None
+		customer_name: DF.Data | None
+		disable_rounded_total: DF.Check
+		discount_amount: DF.Currency
+		dispatch_address: DF.SmallText | None
+		dispatch_address_name: DF.Link | None
+		driver: DF.Link | None
+		driver_name: DF.Data | None
+		excise_page: DF.Data | None
+		grand_total: DF.Currency
+		group_same_items: DF.Check
+		ignore_pricing_rule: DF.Check
+		in_words: DF.Data | None
+		incoterm: DF.Link | None
+		installation_status: DF.Literal[None]
+		instructions: DF.Text | None
+		inter_company_reference: DF.Link | None
+		is_internal_customer: DF.Check
+		is_return: DF.Check
+		issue_credit_note: DF.Check
+		items: DF.Table[DeliveryNoteItem]
+		language: DF.Data | None
+		letter_head: DF.Link | None
+		lr_date: DF.Date | None
+		lr_no: DF.Data | None
+		named_place: DF.Data | None
+		naming_series: DF.Literal["MAT-DN-.YYYY.-", "MAT-DN-RET-.YYYY.-"]
+		net_total: DF.Currency
+		other_charges_calculation: DF.TextEditor | None
+		packed_items: DF.Table[PackedItem]
+		per_billed: DF.Percent
+		per_installed: DF.Percent
+		per_returned: DF.Percent
+		pick_list: DF.Link | None
+		plc_conversion_rate: DF.Float
+		po_date: DF.Date | None
+		po_no: DF.SmallText | None
+		posting_date: DF.Date
+		posting_time: DF.Time
+		price_list_currency: DF.Link
+		pricing_rules: DF.Table[PricingRuleDetail]
+		print_without_amount: DF.Check
+		project: DF.Link | None
+		represents_company: DF.Link | None
+		return_against: DF.Link | None
+		rounded_total: DF.Currency
+		rounding_adjustment: DF.Currency
+		sales_partner: DF.Link | None
+		sales_team: DF.Table[SalesTeam]
+		scan_barcode: DF.Data | None
+		select_print_heading: DF.Link | None
+		selling_price_list: DF.Link
+		set_posting_time: DF.Check
+		set_target_warehouse: DF.Link | None
+		set_warehouse: DF.Link | None
+		shipping_address: DF.SmallText | None
+		shipping_address_name: DF.Link | None
+		shipping_rule: DF.Link | None
+		source: DF.Link | None
+		status: DF.Literal["", "Draft", "To Bill", "Completed", "Return Issued", "Cancelled", "Closed"]
+		tax_category: DF.Link | None
+		tax_id: DF.Data | None
+		taxes: DF.Table[SalesTaxesandCharges]
+		taxes_and_charges: DF.Link | None
+		tc_name: DF.Link | None
+		terms: DF.TextEditor | None
+		territory: DF.Link | None
+		title: DF.Data | None
+		total: DF.Currency
+		total_commission: DF.Currency
+		total_net_weight: DF.Float
+		total_qty: DF.Float
+		total_taxes_and_charges: DF.Currency
+		transporter: DF.Link | None
+		transporter_name: DF.Data | None
+		vehicle_no: DF.Data | None
+	# end: auto-generated types
+
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.status_updater = [
@@ -139,6 +260,7 @@ class DeliveryNote(SellingController):
 		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_uom_is_integer("uom", "qty")
 		self.validate_with_previous_doc()
+		self.set_serial_and_batch_bundle_from_pick_list()
 
 		if self.get("_action") == "submit":
 			self.validate_duplicate_serial_nos()
@@ -147,15 +269,12 @@ class DeliveryNote(SellingController):
 
 		self.set_product_bundle_reference_in_packed_items()  # should be called before `make_packing_list`
 		make_packing_list(self)
-
-		if self._action != "submit" and not self.is_return:
-			set_batch_nos(self, "warehouse", throw=True)
-			set_batch_nos(self, "warehouse", throw=True, child_table="packed_items")
-
 		self.update_current_stock()
 
 		if not self.installation_status:
 			self.installation_status = "Not Installed"
+
+		self.validate_against_stock_reservation_entries()
 		self.reset_default_field_value("set_warehouse", "items", "warehouse")
 
 	def validate_with_previous_doc(self):
@@ -205,6 +324,37 @@ class DeliveryNote(SellingController):
 					["Sales Invoice", "against_sales_invoice", "si_detail"],
 				]
 			)
+
+	def set_serial_and_batch_bundle_from_pick_list(self):
+		from erpnext.stock.serial_batch_bundle import SerialBatchCreation
+
+		if not self.pick_list:
+			return
+
+		for item in self.items:
+			if item.pick_list_item and not item.serial_and_batch_bundle:
+				filters = {
+					"item_code": item.item_code,
+					"voucher_type": "Pick List",
+					"voucher_no": self.pick_list,
+					"voucher_detail_no": item.pick_list_item,
+				}
+
+				bundle_id = frappe.db.get_value("Serial and Batch Bundle", filters, "name")
+
+				if bundle_id:
+					cls_obj = SerialBatchCreation(
+						{
+							"type_of_transaction": "Outward",
+							"serial_and_batch_bundle": bundle_id,
+							"item_code": item.get("item_code"),
+							"warehouse": item.get("warehouse"),
+						}
+					)
+
+					cls_obj.duplicate_package()
+
+					item.serial_and_batch_bundle = cls_obj.serial_and_batch_bundle
 
 	def validate_references(self):
 		self.validate_sales_order_references()
@@ -310,10 +460,20 @@ class DeliveryNote(SellingController):
 		self.update_prevdoc_status()
 		self.update_billing_status()
 
+		self.update_stock_reservation_entries()
+
 		if not self.is_return:
 			self.check_credit_limit()
 		elif self.issue_credit_note:
 			self.make_return_invoice()
+
+		for table_name in ["items", "packed_items"]:
+			if not self.get(table_name):
+				continue
+
+			self.make_bundle_for_sales_purchase_return(table_name)
+			self.make_bundle_using_old_serial_batch_fields(table_name)
+
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating reserved qty in bin depends upon updated delivered qty in SO
 		self.update_stock_ledger()
@@ -329,18 +489,216 @@ class DeliveryNote(SellingController):
 		self.update_prevdoc_status()
 		self.update_billing_status()
 
+		self.update_stock_reservation_entries()
+
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating reserved qty in bin depends upon updated delivered qty in SO
 		self.update_stock_ledger()
 
 		self.cancel_packing_slips()
+		self.update_pick_list_status()
 
 		self.make_gl_entries_on_cancel()
 		self.repost_future_sle_and_gle()
-		self.ignore_linked_doctypes = ("GL Entry", "Stock Ledger Entry", "Repost Item Valuation")
+		self.ignore_linked_doctypes = (
+			"GL Entry",
+			"Stock Ledger Entry",
+			"Repost Item Valuation",
+			"Serial and Batch Bundle",
+		)
+
+		self.delete_auto_created_batches()
+
+	def update_stock_reservation_entries(self) -> None:
+		"""Updates Delivered Qty in Stock Reservation Entries."""
+
+		# Don't update Delivered Qty on Return.
+		if self.is_return:
+			return
+
+		if self._action == "submit":
+			for item in self.get("items"):
+				# Skip if `Sales Order` or `Sales Order Item` reference is not set.
+				if not item.against_sales_order or not item.so_detail:
+					continue
+
+				sre_list = frappe.db.get_all(
+					"Stock Reservation Entry",
+					{
+						"docstatus": 1,
+						"voucher_type": "Sales Order",
+						"voucher_no": item.against_sales_order,
+						"voucher_detail_no": item.so_detail,
+						"warehouse": item.warehouse,
+						"status": ["not in", ["Delivered", "Cancelled"]],
+					},
+					order_by="creation",
+				)
+
+				# Skip if no Stock Reservation Entries.
+				if not sre_list:
+					continue
+
+				qty_to_deliver = item.stock_qty
+				for sre in sre_list:
+					if qty_to_deliver <= 0:
+						break
+
+					sre_doc = frappe.get_doc("Stock Reservation Entry", sre)
+
+					qty_can_be_deliver = 0
+					if sre_doc.reservation_based_on == "Serial and Batch":
+						sbb = frappe.get_doc("Serial and Batch Bundle", item.serial_and_batch_bundle)
+						if sre_doc.has_serial_no:
+							delivered_serial_nos = [d.serial_no for d in sbb.entries]
+							for entry in sre_doc.sb_entries:
+								if entry.serial_no in delivered_serial_nos:
+									entry.delivered_qty = 1  # Qty will always be 0 or 1 for Serial No.
+									entry.db_update()
+									qty_can_be_deliver += 1
+									delivered_serial_nos.remove(entry.serial_no)
+						else:
+							delivered_batch_qty = {d.batch_no: -1 * d.qty for d in sbb.entries}
+							for entry in sre_doc.sb_entries:
+								if entry.batch_no in delivered_batch_qty:
+									delivered_qty = min(
+										(entry.qty - entry.delivered_qty), delivered_batch_qty[entry.batch_no]
+									)
+									entry.delivered_qty += delivered_qty
+									entry.db_update()
+									qty_can_be_deliver += delivered_qty
+									delivered_batch_qty[entry.batch_no] -= delivered_qty
+					else:
+						# `Delivered Qty` should be less than or equal to `Reserved Qty`.
+						qty_can_be_deliver = min(
+							(sre_doc.reserved_qty - sre_doc.delivered_qty), qty_to_deliver
+						)
+
+					sre_doc.delivered_qty += qty_can_be_deliver
+					sre_doc.db_update()
+
+					# Update Stock Reservation Entry `Status` based on `Delivered Qty`.
+					sre_doc.update_status()
+
+					# Update Reserved Stock in Bin.
+					sre_doc.update_reserved_stock_in_bin()
+
+					qty_to_deliver -= qty_can_be_deliver
+
+		if self._action == "cancel":
+			for item in self.get("items"):
+				# Skip if `Sales Order` or `Sales Order Item` reference is not set.
+				if not item.against_sales_order or not item.so_detail:
+					continue
+
+				sre_list = frappe.db.get_all(
+					"Stock Reservation Entry",
+					{
+						"docstatus": 1,
+						"voucher_type": "Sales Order",
+						"voucher_no": item.against_sales_order,
+						"voucher_detail_no": item.so_detail,
+						"warehouse": item.warehouse,
+						"status": ["in", ["Partially Delivered", "Delivered"]],
+					},
+					order_by="creation",
+				)
+
+				# Skip if no Stock Reservation Entries.
+				if not sre_list:
+					continue
+
+				qty_to_undelivered = item.stock_qty
+				for sre in sre_list:
+					if qty_to_undelivered <= 0:
+						break
+
+					sre_doc = frappe.get_doc("Stock Reservation Entry", sre)
+
+					qty_can_be_undelivered = 0
+					if sre_doc.reservation_based_on == "Serial and Batch":
+						sbb = frappe.get_doc("Serial and Batch Bundle", item.serial_and_batch_bundle)
+						if sre_doc.has_serial_no:
+							serial_nos_to_undelivered = [d.serial_no for d in sbb.entries]
+							for entry in sre_doc.sb_entries:
+								if entry.serial_no in serial_nos_to_undelivered:
+									entry.delivered_qty = 0  # Qty will always be 0 or 1 for Serial No.
+									entry.db_update()
+									qty_can_be_undelivered += 1
+									serial_nos_to_undelivered.remove(entry.serial_no)
+						else:
+							batch_qty_to_undelivered = {d.batch_no: -1 * d.qty for d in sbb.entries}
+							for entry in sre_doc.sb_entries:
+								if entry.batch_no in batch_qty_to_undelivered:
+									undelivered_qty = min(
+										entry.delivered_qty, batch_qty_to_undelivered[entry.batch_no]
+									)
+									entry.delivered_qty -= undelivered_qty
+									entry.db_update()
+									qty_can_be_undelivered += undelivered_qty
+									batch_qty_to_undelivered[entry.batch_no] -= undelivered_qty
+					else:
+						# `Qty to Undelivered` should be less than or equal to `Delivered Qty`.
+						qty_can_be_undelivered = min(sre_doc.delivered_qty, qty_to_undelivered)
+
+					sre_doc.delivered_qty -= qty_can_be_undelivered
+					sre_doc.db_update()
+
+					# Update Stock Reservation Entry `Status` based on `Delivered Qty`.
+					sre_doc.update_status()
+
+					# Update Reserved Stock in Bin.
+					sre_doc.update_reserved_stock_in_bin()
+
+					qty_to_undelivered -= qty_can_be_undelivered
+
+	def validate_against_stock_reservation_entries(self):
+		"""Validates if Stock Reservation Entries are available for the Sales Order Item reference."""
+
+		from erpnext.stock.doctype.stock_reservation_entry.stock_reservation_entry import (
+			get_sre_reserved_warehouses_for_voucher,
+		)
+
+		# Don't validate if Return
+		if self.is_return:
+			return
+
+		for item in self.get("items"):
+			# Skip if `Sales Order` or `Sales Order Item` reference is not set.
+			if not item.against_sales_order or not item.so_detail:
+				continue
+
+			reserved_warehouses = get_sre_reserved_warehouses_for_voucher(
+				"Sales Order", item.against_sales_order, item.so_detail
+			)
+
+			# Skip if stock is not reserved.
+			if not reserved_warehouses:
+				continue
+
+			# Set `Warehouse` from SRE if not set.
+			if not item.warehouse:
+				item.warehouse = reserved_warehouses[0]
+			else:
+				# Throw if `Warehouse` not in Reserved Warehouses.
+				if item.warehouse not in reserved_warehouses:
+					msg = _("Row #{0}: Stock is reserved for item {1} in warehouse {2}.").format(
+						item.idx,
+						frappe.bold(item.item_code),
+						frappe.bold(reserved_warehouses[0])
+						if len(reserved_warehouses) == 1
+						else _("{0} and {1}").format(
+							frappe.bold(", ".join(reserved_warehouses[:-1])),
+							frappe.bold(reserved_warehouses[-1]),
+						),
+					)
+					frappe.throw(msg, title=_("Stock Reservation Warehouse Mismatch"))
 
 	def check_credit_limit(self):
 		from erpnext.selling.doctype.customer.customer import check_credit_limit
+
+		if self.per_billed == 100:
+			return
 
 		extra_amount = 0
 		validate_against_credit_limit = False
@@ -478,32 +836,6 @@ class DeliveryNote(SellingController):
 			filters={"new_item_code": ["in", items_list], "disabled": 0},
 			pluck="name",
 		)
-
-	def validate_duplicate_serial_nos(self):
-		serial_nos = []
-		for item in self.items:
-			if not item.serial_no:
-				continue
-
-			for serial_no in item.serial_no.split("\n"):
-				if serial_no in serial_nos:
-					frappe.throw(
-						_("Row #{0}: Serial No {1} is already selected.").format(item.idx, serial_no),
-						title=_("Duplicate Serial No"),
-					)
-				else:
-					serial_nos.append(serial_no)
-
-	def set_product_bundle_reference_in_packed_items(self):
-		if self.packed_items and ((self.is_return and self.return_against) or self.amended_from):
-			if items_ref_map := {
-				item.dn_detail or item.get("_amended_from"): item.name
-				for item in self.items
-				if item.dn_detail or item.get("_amended_from")
-			}:
-				for item in self.packed_items:
-					if item.parent_detail_docname in items_ref_map:
-						item.parent_detail_docname = items_ref_map[item.parent_detail_docname]
 
 
 def update_billed_amount_based_on_so(so_detail, update_modified=True):
@@ -1044,6 +1376,9 @@ def make_inter_company_transaction(doctype, source_name, target_doc=None):
 		if source_parent.doctype == "Delivery Note" and source.received_qty:
 			target.qty = flt(source.qty) + flt(source.returned_qty) - flt(source.received_qty)
 
+		if source.get("use_serial_batch_fields"):
+			target.set("use_serial_batch_fields", 1)
+
 	doclist = get_mapped_doc(
 		doctype,
 		source_name,
@@ -1058,8 +1393,6 @@ def make_inter_company_transaction(doctype, source_name, target_doc=None):
 				"field_map": {
 					source_document_warehouse_field: target_document_warehouse_field,
 					"name": "delivery_note_item",
-					"batch_no": "batch_no",
-					"serial_no": "serial_no",
 					"purchase_order": "purchase_order",
 					"purchase_order_item": "purchase_order_item",
 					"material_request": "material_request",

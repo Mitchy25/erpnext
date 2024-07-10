@@ -7,32 +7,20 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "finance_book",
   "schedule_date",
   "depreciation_amount",
   "column_break_3",
   "accumulated_depreciation_amount",
   "journal_entry",
   "shift",
-  "make_depreciation_entry",
-  "finance_book_id",
-  "depreciation_method"
+  "make_depreciation_entry"
  ],
  "fields": [
-  {
-   "fieldname": "finance_book",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Finance Book",
-   "options": "Finance Book",
-   "read_only": 1
-  },
   {
    "fieldname": "schedule_date",
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Schedule Date",
-   "no_copy": 1,
    "reqd": 1
   },
   {
@@ -40,7 +28,6 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Depreciation Amount",
-   "no_copy": 1,
    "options": "Company:company:default_currency",
    "reqd": 1
   },
@@ -53,7 +40,6 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Accumulated Depreciation Amount",
-   "no_copy": 1,
    "options": "Company:company:default_currency",
    "read_only": 1
   },
@@ -63,35 +49,15 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Journal Entry",
-   "no_copy": 1,
    "options": "Journal Entry",
    "read_only": 1
   },
   {
    "allow_on_submit": 1,
-   "depends_on": "eval:(doc.docstatus==1 && !doc.journal_entry && doc.schedule_date <= get_today())",
+   "depends_on": "eval:(doc.docstatus==1 && !doc.journal_entry && doc.schedule_date <= frappe.datetime.now_date())",
    "fieldname": "make_depreciation_entry",
    "fieldtype": "Button",
    "label": "Make Depreciation Entry"
-  },
-  {
-   "fieldname": "finance_book_id",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Finance Book Id",
-   "no_copy": 1,
-   "print_hide": 1,
-   "read_only": 1
-  },
-  {
-   "fieldname": "depreciation_method",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Depreciation Method",
-   "no_copy": 1,
-   "options": "\nStraight Line\nDouble Declining Balance\nWritten Down Value\nManual",
-   "print_hide": 1,
-   "read_only": 1
   },
   {
    "fieldname": "shift",
@@ -102,7 +68,7 @@
  ],
  "istable": 1,
  "links": [],
- "modified": "2023-11-29 04:43:04.218580",
+ "modified": "2023-11-27 18:28:35.325376",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Depreciation Schedule",

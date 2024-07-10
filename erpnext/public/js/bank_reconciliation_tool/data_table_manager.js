@@ -39,6 +39,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 				name: __("Date"),
 				editable: false,
 				width: 100,
+				format: frappe.form.formatters.Date,
 			},
 
 			// {
@@ -112,17 +113,15 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 		return [
 			row["date"],
 			// row["party_type"],
-			// row["party"],
+			//frappe.form.formatters.Link(row["party"], { options: row["party_type"] }),
 			row["description"],
 			row["deposit"],
 			row["withdrawal"],
 			row["unallocated_amount"],
 			row["reference_number"],
-			`
-			<Button class="btn btn-primary btn-xs center"  data-name = ${row["name"]} >
-				${__("Actions")}
-			</a>
-			`,
+			`<button class="btn btn-primary btn-xs center" data-name="${row["name"]}">${__(
+				"Actions"
+			)}</button>`,
 		];
 	}
 
@@ -158,9 +157,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 
 	update_dt_cards(bank_transaction) {
 		this.make_dt();
-		const transaction_index = this.transaction_dt_map[
-			bank_transaction.name
-		];
+		const transaction_index = this.transaction_dt_map[bank_transaction.name];
 		if (bank_transaction.unallocated_amount > 0) {
 			this.transactions[transaction_index] = this.format_row(bank_transaction);
 		} else {

@@ -268,7 +268,6 @@ def set_address_details(
 	return party_address, shipping_address
 
 
-
 @erpnext.allow_regional
 def get_regional_address_details(party_details, doctype, company):
 	pass
@@ -292,9 +291,7 @@ def set_contact_details(party_details, party, party_type):
 	else:
 		fields = [
 			"name as contact_person",
-			"salutation",
-			"first_name",
-			"last_name",
+			"full_name as contact_display",
 			"email_id as contact_email",
 			"mobile_no as contact_mobile",
 			"phone as contact_phone",
@@ -303,17 +300,6 @@ def set_contact_details(party_details, party, party_type):
 		]
 
 		contact_details = frappe.db.get_value("Contact", party_details.contact_person, fields, as_dict=True)
-
-		contact_details.contact_display = " ".join(
-			filter(
-				None,
-				[
-					contact_details.get("salutation"),
-					contact_details.get("first_name"),
-					contact_details.get("last_name"),
-				],
-			)
-		)
 
 		party_details.update(contact_details)
 
@@ -339,7 +325,7 @@ def get_default_price_list(party):
 		return party.default_price_list
 
 	if party.doctype == "Customer":
-		return frappe.db.get_value("Customer Group", party.customer_group, "default_price_list")
+		return frappe.get_cached_value("Customer Group", party.customer_group, "default_price_list")
 
 
 def set_price_list(party_details, party, party_type, given_price_list, pos=None):
@@ -387,7 +373,7 @@ def set_account_and_due_date(party, account, party_type, company, posting_date, 
 
 
 @frappe.whitelist()
-def get_party_account(party_type, party=None, company=None):
+def get_party_account(party_type, party=None, company=None, include_advance=False):
 	"""Returns the account for the given `party`.
 	Will first search in party (Customer / Supplier) record, if not found,
 	will search in group (Customer Group / Supplier Group),
@@ -424,9 +410,41 @@ def get_party_account(party_type, party=None, company=None):
 	existing_gle_currency = get_party_gle_currency(party_type, party, company)
 	if existing_gle_currency:
 		if account:
-			account_currency = frappe.db.get_value("Account", account, "account_currency", cache=True)
+			account_currency = frappe.get_cached_value("Account", account, "account_currency")
 		if (account and account_currency != existing_gle_currency) or not account:
 			account = get_party_gle_account(party_type, party, company)
+
+	if include_advance and party_type in ["Customer", "Supplier", "Student"]:
+		advance_account = get_party_advance_account(party_type, party, company)
+		if advance_account:
+			return [account, advance_account]
+		else:
+			return [account]
+
+	return account
+
+
+def get_party_advance_account(party_type, party, company):
+	account = frappe.db.get_value(
+		"Party Account",
+		{"parenttype": party_type, "parent": party, "company": company},
+		"advance_account",
+	)
+
+	if not account:
+		party_group_doctype = "Customer Group" if party_type == "Customer" else "Supplier Group"
+		group = frappe.get_cached_value(party_type, party, scrub(party_group_doctype))
+		account = frappe.db.get_value(
+			"Party Account",
+			{"parenttype": party_group_doctype, "parent": group, "company": company},
+			"advance_account",
+		)
+
+	if not account:
+		account_name = (
+			"default_advance_received_account" if party_type == "Customer" else "default_advance_paid_account"
+		)
+		account = frappe.get_cached_value("Company", company, account_name)
 
 	return account
 
@@ -439,7 +457,7 @@ def get_party_bank_account(party_type, party):
 def get_party_account_currency(party_type, party, company):
 	def generator():
 		party_account = get_party_account(party_type, party, company)
-		return frappe.db.get_value("Account", party_account, "account_currency", cache=True)
+		return frappe.get_cached_value("Account", party_account, "account_currency")
 
 	return frappe.local_cache("party_account_currency", (party_type, party, company), generator)
 
@@ -519,15 +537,13 @@ def validate_party_accounts(doc):
 		else:
 			companies.append(account.company)
 
-		party_account_currency = frappe.db.get_value(
-			"Account", account.account, "account_currency", cache=True
-		)
+		party_account_currency = frappe.get_cached_value("Account", account.account, "account_currency")
 		if frappe.db.get_default("Company"):
 			company_default_currency = frappe.get_cached_value(
 				"Company", frappe.db.get_default("Company"), "default_currency"
 			)
 		else:
-			company_default_currency = frappe.db.get_value("Company", account.company, "default_currency")
+			company_default_currency = frappe.get_cached_value("Company", account.company, "default_currency")
 
 		validate_party_gle_currency(doc.doctype, doc.name, account.company, party_account_currency)
 
@@ -543,7 +559,10 @@ def validate_party_accounts(doc):
 				)
 
 		# validate if account is mapped for same company
-		validate_account_head(account.idx, account.account, account.company)
+		if account.account:
+			validate_account_head(account.idx, account.account, account.company)
+		if account.advance_account:
+			validate_account_head(account.idx, account.advance_account, account.company)
 
 
 @frappe.whitelist()
@@ -591,9 +610,7 @@ def get_due_date_from_template(template_name, posting_date, bill_date):
 	return due_date
 
 
-def validate_due_date(
-	posting_date, due_date, party_type, party, company=None, bill_date=None, template_name=None
-):
+def validate_due_date(posting_date, due_date, bill_date=None, template_name=None):
 	if getdate(due_date) < getdate(posting_date):
 		frappe.throw(_("Due Date cannot be before Posting / Supplier Invoice Date"))
 	else:
@@ -693,6 +710,7 @@ def get_payment_terms_template(party_name, party_type, company=None):
 	if party_type not in ("Customer", "Supplier"):
 		return
 	template = None
+
 	if party_type == "Customer":
 		customer = frappe.get_cached_value(
 			"Customer", party_name, fieldname=["payment_terms", "customer_group"], as_dict=1
@@ -733,52 +751,6 @@ def validate_party_frozen_disabled(party_type, party_name):
 		elif party_type == "Employee":
 			if frappe.db.get_value("Employee", party_name, "status") != "Active":
 				frappe.msgprint(_("{0} {1} is not active").format(party_type, party_name), alert=True)
-
-
-def get_timeline_data(doctype, name):
-	"""returns timeline data for the past one year"""
-	from frappe.desk.form.load import get_communication_data
-
-	out = {}
-	after = add_years(None, -1).strftime("%Y-%m-%d")
-
-	data = get_communication_data(
-		doctype,
-		name,
-		after=after,
-		group_by="group by communication_date",
-		fields="C.communication_date as communication_date, count(C.name)",
-		as_dict=False,
-	)
-
-	# fetch and append data from Activity Log
-	activity_log = frappe.qb.DocType("Activity Log")
-	data += (
-		frappe.qb.from_(activity_log)
-		.select(activity_log.communication_date, Count(activity_log.name))
-		.where(
-			(
-				((activity_log.reference_doctype == doctype) & (activity_log.reference_name == name))
-				| ((activity_log.timeline_doctype == doctype) & (activity_log.timeline_name == name))
-				| (
-					(activity_log.reference_doctype.isin(["Quotation", "Opportunity"]))
-					& (activity_log.timeline_name == name)
-				)
-			)
-			& (activity_log.status != "Success")
-			& (activity_log.creation > after)
-		)
-		.groupby(activity_log.communication_date)
-		.orderby(activity_log.communication_date, order=frappe.qb.desc)
-	).run()
-
-	timeline_items = dict(data)
-
-	for date, count in timeline_items.items():
-		timestamp = get_timestamp(date)
-		out.update({timestamp: count})
-
-	return out
 
 
 def get_dashboard_info(party_type, party, loyalty_program=None):
@@ -846,7 +818,7 @@ def get_dashboard_info(party_type, party, loyalty_program=None):
 	)
 
 	for d in companies:
-		company_default_currency = frappe.db.get_value("Company", d.company, "default_currency")
+		company_default_currency = frappe.get_cached_value("Company", d.company, "default_currency")
 		party_account_currency = get_party_account_currency(party_type, party, d.company)
 
 		if party_account_currency == company_default_currency:

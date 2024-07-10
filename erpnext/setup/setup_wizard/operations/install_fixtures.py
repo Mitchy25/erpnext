@@ -452,7 +452,6 @@ def install_defaults(args=None):  # nosemgrep
 
 	set_global_defaults(args)
 	update_stock_settings()
-	update_shopping_cart_settings(args)
 
 	args.update({"set_default": 1})
 	create_bank_account(args)
@@ -480,14 +479,13 @@ def update_stock_settings():
 	stock_settings.stock_uom = _("Nos")
 	stock_settings.auto_indent = 1
 	stock_settings.auto_insert_price_list_rate_if_missing = 1
-	stock_settings.automatically_set_serial_nos_based_on_fifo = 1
 	stock_settings.set_qty_in_transactions_based_on_serial_no_input = 1
 	stock_settings.save()
 
 
 def create_bank_account(args):
 	if not args.get("bank_account"):
-		return
+		args["bank_account"] = _("Bank Account")
 
 	company_name = args.get("company_name")
 	bank_account_group = frappe.db.get_value(
@@ -524,20 +522,6 @@ def create_bank_account(args):
 		except frappe.DuplicateEntryError:
 			# bank account same as a CoA entry
 			pass
-
-
-def update_shopping_cart_settings(args):  # nosemgrep
-	shopping_cart = frappe.get_doc("E Commerce Settings")
-	shopping_cart.update(
-		{
-			"enabled": 1,
-			"company": args.company_name,
-			"price_list": frappe.db.get_value("Price List", {"selling": 1}),
-			"default_customer_group": _("Individual"),
-			"quotation_series": "QTN-",
-		}
-	)
-	shopping_cart.update_single(shopping_cart.get_valid_dict())
 
 
 def get_fy_details(fy_start_date, fy_end_date):

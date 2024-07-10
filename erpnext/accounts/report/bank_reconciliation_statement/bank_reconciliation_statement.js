@@ -46,12 +46,4 @@ frappe.query_reports["Bank Reconciliation Statement"] = {
 			fieldtype: "Check",
 		},
 	],
-	onload: function(){
-		if (frappe.utils.get_url_arg('bank_account')){
-			frappe.query_report.set_filter_value('account', frappe.utils.get_url_arg('bank_account'));
-		}	
-		if (frappe.utils.get_url_arg('report_date')){
-			frappe.query_report.set_filter_value('report_date', frappe.utils.get_url_arg('report_date'));
-		}
-	}
-}
+};

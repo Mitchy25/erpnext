@@ -14,6 +14,7 @@ frappe.ui.form.on("Journal Entry", {
 			"Repost Payment Ledger",
 			"Asset",
 			"Asset Movement",
+			"Asset Depreciation Schedule",
 			"Repost Accounting Ledger",
 			"Unreconcile Payment",
 			"Unreconcile Payment Entries",
@@ -23,6 +24,30 @@ frappe.ui.form.on("Journal Entry", {
 
 	refresh: function (frm) {
 		erpnext.toggle_naming_series();
+
+		if (frm.doc.repost_required && frm.doc.docstatus === 1) {
+			frm.set_intro(
+				__(
+					"Accounting entries for this Journal Entry need to be reposted. Please click on 'Repost' button to update."
+				)
+			);
+			frm.add_custom_button(__("Repost Accounting Entries"), () => {
+				frm.call({
+					doc: frm.doc,
+					method: "repost_accounting_entries",
+					freeze: true,
+					freeze_message: __("Reposting..."),
+					callback: (r) => {
+						if (!r.exc) {
+							frappe.msgprint(__("Accounting Entries are reposted."));
+							frm.refresh();
+						}
+					},
+				});
+			})
+				.removeClass("btn-default")
+				.addClass("btn-warning");
+		}
 
 		if (frm.doc.docstatus > 0) {
 			frm.add_custom_button(
@@ -304,11 +329,11 @@ erpnext.accounts.JournalEntry = class JournalEntry extends frappe.ui.form.Contro
 			}
 
 			if (jvd.party_type && jvd.party) {
-				var party_field = "";
+				let party_field = "";
 				if (jvd.reference_type.indexOf("Sales") === 0) {
-					var party_field = "customer";
+					party_field = "customer";
 				} else if (jvd.reference_type.indexOf("Purchase") === 0) {
-					var party_field = "supplier";
+					party_field = "supplier";
 				}
 
 				if (party_field) {
@@ -682,7 +707,10 @@ $.extend(erpnext.journal_entry, {
 		};
 		if (!frm.doc.multi_currency) {
 			$.extend(filters, {
-				account_currency: frappe.get_doc(":Company", frm.doc.company).default_currency,
+				account_currency: [
+					"in",
+					[frappe.get_doc(":Company", frm.doc.company).default_currency, null],
+				],
 			});
 		}
 		return { filters: filters };

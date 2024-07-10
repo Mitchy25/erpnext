@@ -2,6 +2,7 @@
  "actions": [],
  "allow_events_in_timeline": 1,
  "allow_import": 1,
+ "allow_rename": 1,
  "autoname": "naming_series:",
  "creation": "2022-02-08 13:14:41.083327",
  "doctype": "DocType",
@@ -312,7 +313,8 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Title",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "language",
@@ -518,7 +520,6 @@
  "modified_by": "Administrator",
  "module": "CRM",
  "name": "Lead",
- "name_case": "Title Case",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
@@ -526,7 +527,7 @@
    "permlevel": 1,
    "read": 1,
    "report": 1,
-   "role": "All"
+   "role": "Desk User"
   },
   {
    "create": 1,

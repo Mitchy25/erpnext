@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from frappe.desk.form.load import get_attachments
 from frappe.exceptions import QueryDeadlockError, QueryTimeoutError
 from frappe.model.document import Document
 from frappe.query_builder import DocType, Interval
@@ -24,6 +25,37 @@ RecoverableErrors = (JobTimeoutException, QueryDeadlockError, QueryTimeoutError)
 
 
 class RepostItemValuation(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		affected_transactions: DF.Code | None
+		allow_negative_stock: DF.Check
+		allow_zero_rate: DF.Check
+		amended_from: DF.Link | None
+		based_on: DF.Literal["Transaction", "Item and Warehouse"]
+		company: DF.Link | None
+		current_index: DF.Int
+		distinct_item_and_warehouse: DF.Code | None
+		error_log: DF.LongText | None
+		gl_reposting_index: DF.Int
+		item_code: DF.Link | None
+		items_to_be_repost: DF.Code | None
+		posting_date: DF.Date
+		posting_time: DF.Time | None
+		reposting_data_file: DF.Attach | None
+		status: DF.Literal["Queued", "In Progress", "Completed", "Skipped", "Failed"]
+		total_reposting_count: DF.Int
+		via_landed_cost_voucher: DF.Check
+		voucher_no: DF.DynamicLink | None
+		voucher_type: DF.Link | None
+		warehouse: DF.Link | None
+	# end: auto-generated types
+
 	@staticmethod
 	def clear_old_logs(days=None):
 		days = days or 90
@@ -123,6 +155,12 @@ class RepostItemValuation(Document):
 
 		self.allow_negative_stock = 1
 
+	def on_cancel(self):
+		self.clear_attachment()
+
+	def on_trash(self):
+		self.clear_attachment()
+
 	def set_company(self):
 		if self.based_on == "Transaction":
 			self.company = frappe.get_cached_value(self.voucher_type, self.voucher_no, "company")
@@ -137,6 +175,14 @@ class RepostItemValuation(Document):
 			self.status = status
 		if write:
 			self.db_set("status", self.status)
+
+	def clear_attachment(self):
+		if attachments := get_attachments(self.doctype, self.name):
+			attachment = attachments[0]
+			frappe.delete_doc("File", attachment.name, ignore_permissions=True)
+
+		if self.reposting_data_file:
+			self.db_set("reposting_data_file", None)
 
 	def on_submit(self):
 		"""During tests reposts are executed immediately.
@@ -173,6 +219,7 @@ class RepostItemValuation(Document):
 		self.distinct_item_and_warehouse = None
 		self.items_to_be_repost = None
 		self.gl_reposting_index = 0
+		self.clear_attachment()
 		self.db_update()
 
 	def deduplicate_similar_repost(self):
@@ -225,6 +272,8 @@ def repost(doc):
 		repost_gl_entries(doc)
 
 		doc.set_status("Completed")
+		doc.db_set("reposting_data_file", None)
+		remove_attached_file(doc.name)
 
 	except Exception as e:
 		if frappe.flags.in_test:
@@ -237,9 +286,20 @@ def repost(doc):
 		doc.log_error("Unable to repost item valuation")
 
 		message = frappe.message_log.pop() if frappe.message_log else ""
+		if isinstance(message, dict):
+			message = message.get("message")
+
 		if traceback:
-			message += "<br>" + "Traceback: <br>" + traceback
-		frappe.db.set_value(doc.doctype, doc.name, "error_log", message)
+			message += "<br><br>" + "<b>Traceback:</b> <br>" + traceback
+
+		frappe.db.set_value(
+			doc.doctype,
+			doc.name,
+			{
+				"error_log": message,
+				"status": "Failed",
+			},
+		)
 
 		outgoing_email_account = frappe.get_cached_value(
 			"Email Account", {"default_outgoing": 1, "enable_outgoing": 1}, "name"
@@ -251,6 +311,13 @@ def repost(doc):
 	finally:
 		if not frappe.flags.in_test:
 			frappe.db.commit()
+
+
+def remove_attached_file(docname):
+	if file_name := frappe.db.get_value(
+		"File", {"attached_to_name": docname, "attached_to_doctype": "Repost Item Valuation"}, "name"
+	):
+		frappe.delete_doc("File", file_name, ignore_permissions=True, delete_permanently=True)
 
 
 def repost_sl_entries(doc):

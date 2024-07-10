@@ -19,7 +19,6 @@ from erpnext.accounts.report.item_wise_sales_register.item_wise_sales_register i
 from erpnext.accounts.report.utils import get_query_columns, get_values_for_columns
 
 
-
 def execute(filters=None):
 	return _execute(filters)
 
@@ -290,7 +289,7 @@ def get_columns(additional_table_columns, filters):
 
 
 def apply_conditions(query, pi, pii, filters):
-	for opts in ("company", "supplier", "item_code", "mode_of_payment"):
+	for opts in ("company", "supplier", "mode_of_payment"):
 		if filters.get(opts):
 			query = query.where(pi[opts] == filters[opts])
 
@@ -300,6 +299,9 @@ def apply_conditions(query, pi, pii, filters):
 	if filters.get("to_date"):
 		query = query.where(pi.posting_date <= filters.get("to_date"))
 
+	if filters.get("item_code"):
+		query = query.where(pii.item_code == filters.get("item_code"))
+
 	if filters.get("item_group"):
 		query = query.where(pii.item_group == filters.get("item_group"))
 
@@ -307,7 +309,7 @@ def apply_conditions(query, pi, pii, filters):
 		query = query.orderby(pi.posting_date, order=Order.desc)
 		query = query.orderby(pii.item_group, order=Order.desc)
 	else:
-		query = apply_group_by_conditions(filters, "Purchase Invoice")
+		query = apply_group_by_conditions(query, pi, pii, filters)
 
 	return query
 

@@ -219,7 +219,6 @@ def get_report_summary(
 	], (net_asset - net_liability + net_equity)
 
 
-
 def get_chart_data(filters, columns, asset, liability, equity):
 	labels = [d.get("label") for d in columns[2:]]
 

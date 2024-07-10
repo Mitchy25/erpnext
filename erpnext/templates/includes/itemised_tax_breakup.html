@@ -17,7 +17,7 @@
 					<td>{{ taxes.item }}</td>
 					<td class="text-right">
 						{% if doc.get('is_return') %}
-							{{ frappe.utils.fmt_money(taxes.taxable_amount|abs, None, doc.currency) }}
+							{{ frappe.utils.fmt_money(taxes.taxable_amount |abs, None, doc.currency) }}
 						{% else %}
 							{{ frappe.utils.fmt_money(taxes.taxable_amount, None, doc.currency) }}
 						{% endif %}

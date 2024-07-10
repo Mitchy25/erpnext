@@ -14,6 +14,22 @@ from erpnext.erpnext_integrations.doctype.plaid_settings.plaid_connector import 
 
 
 class PlaidSettings(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		automatic_sync: DF.Check
+		enable_european_access: DF.Check
+		enabled: DF.Check
+		plaid_client_id: DF.Data | None
+		plaid_env: DF.Literal["sandbox", "development", "production"]
+		plaid_secret: DF.Password | None
+	# end: auto-generated types
+
 	@staticmethod
 	@frappe.whitelist()
 	def get_link_token():
@@ -179,7 +195,6 @@ def add_account_subtype(account_subtype):
 		frappe.throw(frappe.get_traceback())
 
 
-@frappe.whitelist()
 def sync_transactions(bank, bank_account):
 	"""Sync transactions based on the last integration date as the start date, after sync is completed
 	add the transaction date of the oldest transaction as the last integration date."""
@@ -207,9 +222,7 @@ def sync_transactions(bank, bank_account):
 				f"Plaid added {len(result)} new Bank Transactions from '{bank_account}' between {start_date} and {end_date}"
 			)
 
-			frappe.db.set_value(
-				"Bank Account", bank_account, "last_integration_date", last_transaction_date
-			)
+			frappe.db.set_value("Bank Account", bank_account, "last_integration_date", last_transaction_date)
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), _("Plaid transactions sync error"))
 
@@ -231,9 +244,7 @@ def get_transactions(bank, bank_account=None, start_date=None, end_date=None):
 
 	transactions = []
 	try:
-		transactions = plaid.get_transactions(
-			start_date=start_date, end_date=end_date, account_id=account_id
-		)
+		transactions = plaid.get_transactions(start_date=start_date, end_date=end_date, account_id=account_id)
 	except ItemError as e:
 		if e.code == "ITEM_LOGIN_REQUIRED":
 			msg = _("There was an error syncing transactions.") + " "

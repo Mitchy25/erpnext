@@ -149,8 +149,6 @@ erpnext.stock.ItemDashboard = class ItemDashboard {
 			start: this.start,
 			sort_by: this.sort_by,
 			sort_order: this.sort_order,
-			brand: this.brand,
-			limit_page_length: this.limit_page_length
 		};
 
 		var me = this;
@@ -159,6 +157,9 @@ erpnext.stock.ItemDashboard = class ItemDashboard {
 			args: args,
 			callback: function (r) {
 				me.render(r.message);
+				if (me.after_refresh) {
+					me.after_refresh();
+				}
 			},
 		});
 	}
@@ -175,8 +176,6 @@ erpnext.stock.ItemDashboard = class ItemDashboard {
 		} else {
 			context = this.get_item_dashboard_data(data, this.max_count, true);
 		}
-		
-		this.max_count = this.max_count;
 
 		// show more button
 		if (data && data.length === this.page_length + 1) {

@@ -4,7 +4,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint, cstr
+from frappe.utils import cstr
 
 from erpnext.accounts.report.financial_statements import (
 	get_columns,
@@ -20,11 +20,6 @@ from erpnext.accounts.utils import get_fiscal_year
 
 
 def execute(filters=None):
-	if cint(frappe.db.get_single_value("Accounts Settings", "use_custom_cash_flow")):
-		from erpnext.accounts.report.cash_flow.custom_cash_flow import execute as execute_custom
-
-		return execute_custom(filters=filters)
-
 	period_list = get_period_list(
 		filters.from_fiscal_year,
 		filters.to_fiscal_year,
@@ -180,7 +175,7 @@ def get_account_type_based_gl_data(company, filters=None):
 	filters = frappe._dict(filters or {})
 
 	if filters.include_default_book_entries:
-		company_fb = frappe.db.get_value("Company", company, "default_finance_book")
+		company_fb = frappe.get_cached_value("Company", company, "default_finance_book")
 		cond = """ AND (finance_book in ({}, {}, '') OR finance_book IS NULL)
 			""".format(
 			frappe.db.escape(filters.finance_book),

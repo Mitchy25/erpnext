@@ -10,7 +10,11 @@ from frappe.query_builder.functions import CombineDatetime, IfNull, Sum
 from frappe.utils import cstr, flt, get_link_to_form, get_time, getdate, nowdate, nowtime
 
 import erpnext
+from erpnext.stock.doctype.serial_and_batch_bundle.serial_and_batch_bundle import (
+	get_available_serial_nos,
+)
 from erpnext.stock.doctype.warehouse.warehouse import get_child_warehouses
+from erpnext.stock.serial_batch_bundle import BatchNoValuation, SerialNoValuation
 from erpnext.stock.valuation import FIFOValuation, LIFOValuation
 
 BarcodeScanResult = dict[str, str | None]
@@ -64,8 +68,6 @@ def get_stock_value_on(
 		frappe.qb.from_(sle)
 		.select(IfNull(Sum(sle.stock_value_difference), 0))
 		.where((sle.posting_date <= posting_date) & (sle.is_cancelled == 0))
-		.orderby(CombineDatetime(sle.posting_date, sle.posting_time), order=frappe.qb.desc)
-		.orderby(sle.creation, order=frappe.qb.desc)
 	)
 
 	if warehouses:
@@ -94,8 +96,6 @@ def get_stock_balance(
 	with_valuation_rate=False,
 	with_serial_no=False,
 	inventory_dimensions_dict=None,
-	batch_no=None,
-	voucher_no=None,
 ):
 	"""Returns stock balance quantity at given warehouse on given posting date or current date.
 
@@ -115,9 +115,6 @@ def get_stock_balance(
 		"posting_time": posting_time,
 	}
 
-	if voucher_no:
-		args["voucher_no"] = voucher_no
-
 	extra_cond = ""
 	if inventory_dimensions_dict:
 		for field, value in inventory_dimensions_dict.items():
@@ -128,10 +125,21 @@ def get_stock_balance(
 
 	if with_valuation_rate:
 		if with_serial_no:
-			if batch_no:
-				args["batch_no"] = batch_no
+			serial_no_details = get_available_serial_nos(
+				frappe._dict(
+					{
+						"item_code": item_code,
+						"warehouse": warehouse,
+						"posting_date": posting_date,
+						"posting_time": posting_time,
+						"ignore_warehouse": 1,
+					}
+				)
+			)
 
-			serial_nos = get_serial_nos_data_after_transactions(args)
+			serial_nos = ""
+			if serial_no_details:
+				serial_nos = "\n".join(d.serial_no for d in serial_no_details)
 
 			return (
 				(last_entry.qty_after_transaction, last_entry.valuation_rate, serial_nos)
@@ -142,41 +150,6 @@ def get_stock_balance(
 			return (last_entry.qty_after_transaction, last_entry.valuation_rate) if last_entry else (0.0, 0.0)
 	else:
 		return last_entry.qty_after_transaction if last_entry else 0.0
-
-
-def get_serial_nos_data_after_transactions(args):
-	serial_nos = set()
-	args = frappe._dict(args)
-
-	sle = frappe.qb.DocType("Stock Ledger Entry")
-	query = (
-		frappe.qb.from_(sle)
-		.select(sle.serial_no, sle.actual_qty)
-		.where(
-			(sle.is_cancelled == 0)
-			& (sle.item_code == args.item_code)
-			& (sle.warehouse == args.warehouse)
-			& (
-				CombineDatetime(sle.posting_date, sle.posting_time)
-				< CombineDatetime(args.posting_date, args.posting_time)
-			)
-		)
-		.orderby(sle.posting_date, sle.posting_time, sle.creation)
-	)
-
-	if args.batch_no:
-		query = query.where(sle.batch_no == args.batch_no)
-
-	stock_ledger_entries = query.run(as_dict=True)
-
-	for stock_ledger_entry in stock_ledger_entries:
-		changed_serial_no = get_serial_nos_data(stock_ledger_entry.serial_no)
-		if stock_ledger_entry.actual_qty > 0:
-			serial_nos.update(changed_serial_no)
-		else:
-			serial_nos.difference_update(changed_serial_no)
-
-	return "\n".join(serial_nos)
 
 
 def get_serial_nos_data(serial_nos):
@@ -260,30 +233,58 @@ def _create_bin(item_code, warehouse):
 @frappe.whitelist()
 def get_incoming_rate(args, raise_error_if_no_rate=True):
 	"""Get Incoming Rate based on valuation method"""
-	from erpnext.stock.stock_ledger import (
-		get_batch_incoming_rate,
-		get_previous_sle,
-		get_valuation_rate,
-	)
+	from erpnext.stock.stock_ledger import get_previous_sle, get_valuation_rate
 
 	if isinstance(args, str):
 		args = json.loads(args)
 
-	voucher_no = args.get("voucher_no") or args.get("name")
-
 	in_rate = None
-	if (args.get("serial_no") or "").strip():
-		in_rate = get_avg_purchase_rate(args.get("serial_no"))
-	elif args.get("batch_no") and frappe.db.get_value(
-		"Batch", args.get("batch_no"), "use_batchwise_valuation", cache=True
-	):
-		in_rate = get_batch_incoming_rate(
-			item_code=args.get("item_code"),
+
+	item_details = frappe.get_cached_value(
+		"Item", args.get("item_code"), ["has_serial_no", "has_batch_no"], as_dict=1
+	)
+
+	if isinstance(args, dict):
+		args = frappe._dict(args)
+
+	if item_details and item_details.has_serial_no and args.get("serial_and_batch_bundle"):
+		args.actual_qty = args.qty
+		sn_obj = SerialNoValuation(
+			sle=args,
 			warehouse=args.get("warehouse"),
-			batch_no=args.get("batch_no"),
-			posting_date=args.get("posting_date"),
-			posting_time=args.get("posting_time"),
+			item_code=args.get("item_code"),
 		)
+
+		return sn_obj.get_incoming_rate()
+
+	elif item_details and item_details.has_batch_no and args.get("serial_and_batch_bundle"):
+		args.actual_qty = args.qty
+		batch_obj = BatchNoValuation(
+			sle=args,
+			warehouse=args.get("warehouse"),
+			item_code=args.get("item_code"),
+		)
+
+		return batch_obj.get_incoming_rate()
+
+	elif (args.get("serial_no") or "").strip() and not args.get("serial_and_batch_bundle"):
+		args.actual_qty = args.qty
+		args.serial_nos = get_serial_nos_data(args.get("serial_no"))
+
+		sn_obj = SerialNoValuation(sle=args, warehouse=args.get("warehouse"), item_code=args.get("item_code"))
+
+		return sn_obj.get_incoming_rate()
+	elif args.get("batch_no") and not args.get("serial_and_batch_bundle"):
+		args.actual_qty = args.qty
+		args.batch_nos = frappe._dict({args.batch_no: args})
+
+		batch_obj = BatchNoValuation(
+			sle=args,
+			warehouse=args.get("warehouse"),
+			item_code=args.get("item_code"),
+		)
+
+		return batch_obj.get_incoming_rate()
 	else:
 		valuation_method = get_valuation_method(args.get("item_code"))
 		previous_sle = get_previous_sle(args)
@@ -293,12 +294,13 @@ def get_incoming_rate(args, raise_error_if_no_rate=True):
 				in_rate = (
 					_get_fifo_lifo_rate(previous_stock_queue, args.get("qty") or 0, valuation_method)
 					if previous_stock_queue
-					else 0
+					else None
 				)
 		elif valuation_method == "Moving Average":
-			in_rate = previous_sle.get("valuation_rate") or 0
+			in_rate = previous_sle.get("valuation_rate")
 
 	if in_rate is None:
+		voucher_no = args.get("voucher_no") or args.get("name")
 		in_rate = get_valuation_rate(
 			args.get("item_code"),
 			args.get("warehouse"),
@@ -308,10 +310,37 @@ def get_incoming_rate(args, raise_error_if_no_rate=True):
 			currency=erpnext.get_company_currency(args.get("company")),
 			company=args.get("company"),
 			raise_error_if_no_rate=raise_error_if_no_rate,
-			batch_no=args.get("batch_no"),
 		)
 
 	return flt(in_rate)
+
+
+def get_batch_incoming_rate(item_code, warehouse, batch_no, posting_date, posting_time, creation=None):
+	sle = frappe.qb.DocType("Stock Ledger Entry")
+
+	timestamp_condition = CombineDatetime(sle.posting_date, sle.posting_time) < CombineDatetime(
+		posting_date, posting_time
+	)
+	if creation:
+		timestamp_condition |= (
+			CombineDatetime(sle.posting_date, sle.posting_time) == CombineDatetime(posting_date, posting_time)
+		) & (sle.creation < creation)
+
+	batch_details = (
+		frappe.qb.from_(sle)
+		.select(Sum(sle.stock_value_difference).as_("batch_value"), Sum(sle.actual_qty).as_("batch_qty"))
+		.where(
+			(sle.item_code == item_code)
+			& (sle.warehouse == warehouse)
+			& (sle.batch_no == batch_no)
+			& (sle.serial_and_batch_bundle.isnull())
+			& (sle.is_cancelled == 0)
+		)
+		.where(timestamp_condition)
+	).run(as_dict=True)
+
+	if batch_details and batch_details[0].batch_qty:
+		return batch_details[0].batch_value / batch_details[0].batch_qty
 
 
 def get_avg_purchase_rate(serial_nos):
@@ -453,17 +482,6 @@ def update_included_uom_in_report(columns, result, include_uom, conversion_facto
 		row[key] = value
 
 
-def get_available_serial_nos(args):
-	return frappe.db.sql(
-		""" SELECT name from `tabSerial No`
-		WHERE item_code = %(item_code)s and warehouse = %(warehouse)s
-		 and timestamp(purchase_date, purchase_time) <= timestamp(%(posting_date)s, %(posting_time)s)
-	""",
-		args,
-		as_dict=1,
-	)
-
-
 def add_additional_uom_columns(columns, result, include_uom, conversion_factors):
 	if not include_uom or not conversion_factors:
 		return
@@ -594,6 +612,13 @@ def scan_barcode(search_value: str) -> BarcodeScanResult:
 		as_dict=True,
 	)
 	if batch_no_data:
+		if frappe.get_cached_value("Item", batch_no_data.item_code, "has_serial_no"):
+			frappe.throw(
+				_(
+					"Batch No {0} is linked with Item {1} which has serial no. Please scan serial no instead."
+				).format(search_value, batch_no_data.item_code)
+			)
+
 		_update_item_info(batch_no_data)
 		set_cache(batch_no_data)
 		return batch_no_data

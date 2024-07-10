@@ -12,7 +12,7 @@ frappe.ui.form.ControlData = class ControlData extends frappe.ui.form.ControlDat
 					field.disp_area.style[0] != "display" &&
 					!field.has_icon
 				) {
-					field.setup_phone();
+					field.setup_phone && field.setup_phone();
 					field.has_icon = true;
 				}
 			});

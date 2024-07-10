@@ -53,7 +53,7 @@
    "description": "Items under this warehouse will be suggested",
    "fieldname": "parent_warehouse",
    "fieldtype": "Link",
-   "label": "Parent Warehouse",
+   "label": "Warehouse",
    "options": "Warehouse"
   },
   {

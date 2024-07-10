@@ -133,7 +133,7 @@ def _get_pricing_rules(apply_on, args, values):
 	if not args.get(apply_on_field):
 		return []
 
-	child_doc = "`tabPricing Rule {0}`".format(apply_on)
+	child_doc = f"`tabPricing Rule {apply_on}`"
 
 	conditions = item_variant_condition = item_conditions = ""
 	values[apply_on_field] = args.get(apply_on_field)
@@ -158,11 +158,10 @@ def _get_pricing_rules(apply_on, args, values):
 	elif apply_on_field == "item_group":
 		item_conditions = _get_tree_conditions(args, "Item Group", child_doc, False)
 		if args.get("uom", None):
-			item_conditions += (
-				" and ({child_doc}.uom='{item_uom}' or IFNULL({child_doc}.uom, '')='')".format(
-					child_doc=child_doc, item_uom=args.get("uom")
-				)
+			item_conditions += " and ({child_doc}.uom='{item_uom}' or IFNULL({child_doc}.uom, '')='')".format(
+				child_doc=child_doc, item_uom=args.get("uom")
 			)
+
 	conditions += get_other_conditions(conditions, values, args)
 	warehouse_conditions = _get_tree_conditions(args, "Warehouse", "`tabPricing Rule`")
 	if warehouse_conditions:
@@ -208,12 +207,9 @@ def _get_pricing_rules(apply_on, args, values):
 
 
 def apply_multiple_pricing_rules(pricing_rules):
-	apply_multiple_rule = [
-		d.apply_multiple_pricing_rules for d in pricing_rules if d.apply_multiple_pricing_rules
-	]
-
-	if not apply_multiple_rule:
-		return False
+	for d in pricing_rules:
+		if not d.apply_multiple_pricing_rules:
+			return False
 
 	return True
 
@@ -613,6 +609,7 @@ def apply_pricing_rule_on_transaction(doc):
 
 	if pricing_rules:
 		pricing_rules = filter_pricing_rules_for_qty_amount(doc.total_qty, doc.total, pricing_rules)
+		pricing_rules = filter_pricing_rule_based_on_condition(pricing_rules, doc)
 
 		if not pricing_rules:
 			remove_free_item(doc)
@@ -626,7 +623,9 @@ def apply_pricing_rule_on_transaction(doc):
 					if not d.get(pr_field):
 						continue
 					if (
-						d.validate_applied_rule and doc.get(field) is not None and doc.get(field) < d.get(pr_field)
+						d.validate_applied_rule
+						and doc.get(field) is not None
+						and doc.get(field) < d.get(pr_field)
 					):
 						frappe.msgprint(_("User has not applied rule on the invoice {0}").format(doc.name))
 					else:
@@ -743,7 +742,7 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 	item_details.free_item_data.append(free_item_data_args)
 
 
-def apply_pricing_rule_for_free_items(doc, pricing_rule_args, set_missing_values=False):
+def apply_pricing_rule_for_free_items(doc, pricing_rule_args):
 	if pricing_rule_args:
 		items = []
 		bo_items = []

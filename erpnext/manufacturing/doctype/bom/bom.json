@@ -78,6 +78,10 @@
   "show_items",
   "show_operations",
   "web_long_description",
+  "reference_section",
+  "bom_creator",
+  "bom_creator_item",
+  "column_break_oxbz",
   "amended_from",
   "connections_tab"
  ],
@@ -587,19 +591,45 @@
    "default": "0",
    "fieldname": "fg_based_operating_cost",
    "fieldtype": "Check",
-   "label": "FG based Operating Cost"
+   "label": "Finished Goods based Operating Cost"
   },
   {
    "depends_on": "fg_based_operating_cost",
    "fieldname": "fg_based_section_section",
    "fieldtype": "Section Break",
-   "label": "FG Based Operating Cost Section"
+   "label": "Finished Goods Based Operating Cost"
   },
   {
    "depends_on": "fg_based_operating_cost",
    "fieldname": "operating_cost_per_bom_quantity",
    "fieldtype": "Currency",
    "label": "Operating Cost Per BOM Quantity"
+  },
+  {
+   "fieldname": "reference_section",
+   "fieldtype": "Section Break",
+   "label": "Reference"
+  },
+  {
+   "fieldname": "bom_creator",
+   "fieldtype": "Link",
+   "label": "BOM Creator",
+   "no_copy": 1,
+   "options": "BOM Creator",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "bom_creator_item",
+   "fieldtype": "Data",
+   "label": "BOM Creator Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_oxbz",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-sitemap",
@@ -607,7 +637,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2023-12-26 19:34:08.159312",
+ "modified": "2024-06-03 16:24:47.518411",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM",
