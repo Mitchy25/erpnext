@@ -1225,7 +1225,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 								customer:me.frm.doc.customer || me.frm.doc.party_name,
 								supplier:me.frm.doc.supplier,
 								currency:me.frm.doc.currency,
-								is_pos: false,
 								price_list_uom_dependant: true,
 								update_stock:update_stock,
 								conversion_rate:me.frm.doc.conversion_rate,
