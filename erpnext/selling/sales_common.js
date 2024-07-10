@@ -399,11 +399,11 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 		}
 
 		let me = this
-		let args = {'item_code': doc.item_code, 'warehouse': doc.warehouse, 'qty': flt(doc.qty) * flt(doc.conversion_factor), "cur_batch_no": doc.batch_no};
+		let args = {'item_code': doc.item_code, 'item_name': doc.item_name, 'warehouse': cur_frm.doc.set_warehouse, 'qty': flt(doc.qty) * flt(doc.conversion_factor), "cur_batch_no": doc.batch_no, "accepts_backorders": cur_frm.doc.accepts_backorders, "actual_qty": doc.actual_qty};
 		if (doc.has_serial_no && doc.serial_no) {
 			args['serial_no'] = doc.serial_no
 		}
-		return frappe.call({
+		frappe.call({
 			method: 'erpnext.stock.doctype.batch.batch.get_batch_no',
 			args: args,
 			callback: function(r) {
@@ -415,10 +415,10 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 					frappe.model.set_value(doc.doctype, doc.name, 'shortdated_batch', 0);
 				}
 				frappe.model.set_value(doc.doctype, doc.name, 'batch_no', r.message);
+
 				if (r.content) {
 					me.batch_selection(doc, r.content, r.lock_dialog, r.dialog_type);
 				}
-
 			}
 		});
 	}
@@ -461,36 +461,11 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 				return
 			}
 		}
+		
 		me.batch_dialog_items[doc.item_code] = true
-		let d = new frappe.ui.Dialog({
-			fields: [
-				{
-					fieldname: 'html',
-					fieldtype: 'HTML',
-				}
-			],
-			static: true,
-			primary_action_label: 'Select Batch',
-			primary_action(values) {
 				erpnext.show_serial_batch_selector(me.frm, this_frm, "", undefined, true);
-			},
-			secondary_action_label: secondary_label,
-			secondary_action(values) {
-				d.hide()
-				me.__data['batch_data'][doc.name] = {
-					"item_code": doc.item_code,
-					"qty": doc.qty,
-					"shortdated_batch": doc.shortdated_batch,
-				}
-			},
-			on_hide: () => {
-				delete me.batch_dialog_items[doc.item_code]
-			}
-		});
-		d.fields_dict.html.$wrapper.append(content)
-		d.show();
 	}
-	
+
 	update_auto_repeat_reference (doc) {
 		if (doc.auto_repeat) {
 			frappe.call({
