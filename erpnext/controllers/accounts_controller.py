@@ -2647,6 +2647,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 		return update_supplied_items
 
+	qty_change_items = []
 	data = json.loads(trans_items)
 
 	any_qty_changed = False  # updated to true if any item's qty changes
@@ -2678,6 +2679,12 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 			prev_rate, new_rate = flt(child_item.get("rate")), flt(d.get("rate"))
 			prev_qty, new_qty = flt(child_item.get("qty")), flt(d.get("qty"))
+			if prev_qty > new_qty and parent_doctype == "Purchase Order":
+				# Used for the eta note dialog for purchase invoices
+				eta_note, item_name = frappe.get_value("Item", child_item.get('item_code'), ["eta_note", "item_name"])
+				if not eta_note:
+					eta_note = ""
+				qty_change_items.append({"item_code": child_item.get('item_code'), "prev_qty": prev_qty, "new_qty": new_qty, "eta_note": eta_note, "item_name": item_name})
 			prev_con_fac, new_con_fac = flt(child_item.get("conversion_factor")), flt(
 				d.get("conversion_factor")
 			)
@@ -2830,6 +2837,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 	parent.update_blanket_order()
 	parent.update_billing_percentage()
 	parent.set_status()
+	return qty_change_items
 
 
 @erpnext.allow_regional
