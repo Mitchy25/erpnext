@@ -193,8 +193,7 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"options": "Currency",
 			"width": 120,
-		},
-	]
+		})
 
 	return columns
 
