@@ -74,6 +74,8 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 		limit_start			=	start,
 	)
 
+	items = frappe.db.sql(SQL_query, as_dict=1, debug=0)
+
 	item_code_list = [item_code] if item_code else [i.item_code for i in items]
 	warehouse_list = [warehouse] if warehouse else [i.warehouse for i in items]
 
