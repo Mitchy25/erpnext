@@ -319,7 +319,11 @@ def get_recipients_and_cc(customer, doc):
 	recipients = []
 	for clist in doc.customers:
 		if clist.customer == customer:
-			billingEmails = re.split('; |, |\*|\n', clist.billing_email)
+			try:
+				billingEmails = re.split('; |, |\*|\n', clist.billing_email)
+			except Exception as e:
+				print(clist.customer)
+				continue
 			for billingEmail in billingEmails:
 				recipients.append(billingEmail)
 			
