@@ -178,7 +178,6 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 				return {
 					filters: {
 						"company": doc.company,
-						"report_type": "Profit and Loss",
 						"is_group": 0
 					}
 				};
