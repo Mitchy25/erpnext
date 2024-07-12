@@ -155,13 +155,17 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 	if "description" in searchfields:
 		columns += """, if(length(tabItem.description) > 40, \
 			concat(substr(tabItem.description, 1, 40), "..."), description) as description"""
+	
+	if "item_name" in searchfields:
+		columns += """, if(length(tabItem.item_name) > 40, \
+			concat(substr(tabItem.item_name, 1, 40), "..."), item_name) as item_name"""
 
 	searchfields = searchfields + [
 		field
 		for field in [searchfield or "name", "item_code", "item_group", "item_name"]
 		if field not in searchfields
 	]
-	searchfields = " or ".join([field + " like %(txt)s" for field in searchfields])
+	searchfields = " or ".join(["`tabItem.`" + field + " like %(txt)s" for field in searchfields])
 
 	if filters and isinstance(filters, dict):
 		if filters.get("customer") or filters.get("supplier"):
@@ -201,11 +205,6 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 		"""select
 			tabItem.name
 			if (
-				length(tabItem.item_name) > 60,
-				concat(substr(tabItem.item_name, 1, 60), "..."), 
-				tabItem.item_name
-			) as item_name,
-			if (
 				CAST(COALESCE(SUM(tabBin.actual_qty),0) as int) > 0,
 				CONCAT("Stock: <b style='color:#33cc33;;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>"),
 				CONCAT("Stock: <b style='color:#ff0000;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>")
@@ -213,7 +212,12 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			CONCAT("BO: <b>", CAST(COALESCE(SUM(tabBin.reserved_qty),0) as int),"</b>") as backorder,
 			CONCAT("On Order: <b>", CAST(COALESCE(SUM(tabBin.ordered_qty),0) as int),"</b>") as on_order
 			{columns}
-		from tabItem
+		from 
+			tabItem
+		LEFT JOIN
+			tabBin
+		ON
+			tabItem.item_code = tabBin.item_code
 		where tabItem.docstatus < 2
 			and tabItem.disabled=0
 			and tabItem.has_variants=0
