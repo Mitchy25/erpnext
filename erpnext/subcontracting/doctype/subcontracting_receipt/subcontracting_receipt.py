@@ -186,8 +186,60 @@ class SubcontractingReceipt(SubcontractingController):
 
 	def validate_closed_subcontracting_order(self):
 		for item in self.items:
-			if item.subcontracting_order:
-				check_on_hold_or_closed_status("Subcontracting Order", item.subcontracting_order)
+			if item.qty and item.name in rm_supp_cost:
+				item.rm_supp_cost = rm_supp_cost[item.name]
+				item.rm_cost_per_qty = item.rm_supp_cost / item.qty
+				rm_supp_cost.pop(item.name)
+
+			item.rate = (
+				flt(item.rm_cost_per_qty) + flt(item.service_cost_per_qty) + flt(item.additional_cost_per_qty)
+			)
+
+			item.received_qty = item.qty + flt(item.rejected_qty)
+			item.amount = item.qty * item.rate
+			total_qty += item.qty
+			total_amount += item.amount
+		else:
+			self.total_qty = total_qty
+			self.total = total_amount
+
+	def validate_rejected_warehouse(self):
+		for item in self.items:
+			if flt(item.rejected_qty) and not item.rejected_warehouse:
+				if self.rejected_warehouse:
+					item.rejected_warehouse = self.rejected_warehouse
+
+				if not item.rejected_warehouse:
+					frappe.throw(
+						_("Row #{0}: Rejected Warehouse is mandatory for the rejected Item {1}").format(
+							item.idx, item.item_code
+						)
+					)
+
+			if item.get("rejected_warehouse") and (item.get("rejected_warehouse") == item.get("warehouse")):
+				frappe.throw(
+					_("Row #{0}: Accepted Warehouse and Rejected Warehouse cannot be same").format(item.idx)
+				)
+
+	def validate_available_qty_for_consumption(self):
+		if (
+			frappe.db.get_single_value("Buying Settings", "backflush_raw_materials_of_subcontract_based_on")
+			== "BOM"
+		):
+			return
+
+		for item in self.get("supplied_items"):
+			precision = item.precision("consumed_qty")
+			if (
+				item.available_qty_for_consumption
+				and flt(item.available_qty_for_consumption, precision) - flt(item.consumed_qty, precision) < 0
+			):
+				msg = f"""Row {item.idx}: Consumed Qty {flt(item.consumed_qty, precision)}
+					must be less than or equal to Available Qty For Consumption
+					{flt(item.available_qty_for_consumption, precision)}
+					in Consumed Items Table."""
+
+				frappe.throw(_(msg))
 
 	def validate_items_qty(self):
 		for item in self.items:

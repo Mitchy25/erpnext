@@ -104,8 +104,6 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 				hidden: me.frm.doc.doctype != "Sales Invoice" || me.frm.doc.accepts_backorders == 1,
 				options: __("Customer does not Accept Backorders"),
 			},
-			{fieldtype:'Column Break'},
-			...get_pending_qty_fields(me),
 			{
 				fieldname: 'uom',
 				read_only: 1,
@@ -258,7 +256,6 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 			me.styleQty();
 		});
 	}
-
 	styleQty() {
 		let invoiceQty = $('.frappe-control[data-fieldname="assigned_qty"] .control-value');
 		let backorderQty = $('.frappe-control[data-fieldname="qty_remaining"] .control-value');
@@ -366,7 +363,7 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 	}
 
 	on_close_dialog() {
-		this.dialog.get_close_btn().on("click", () => {
+		this.dialog.get_close_btn().on('click', () => {
 			this.on_close && this.on_close(this.item);
 		});
 	}
@@ -418,12 +415,24 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 			})
 		}
 	}
+
+	format_shortdated_rows(doc) {
+		for (let i = 0; i < doc.items.length; i++) {
+			let child = doc.items[i];
+			if (child.shortdated_batch == 1) {
+				$(`.grid-row[data-name=${child.name}] .row-index .hidden-xs`).css({ "border": "2px solid red", "border-radius": "20px", "padding": "5px 10px" });
+			} else {
+				$(`.grid-row[data-name=${child.name}] .row-index  .hidden-xs`).css({ "border": "", "border-radius": "", "padding": "" });
+			}
+		}
+	}
+
 	update_batch_items() {
 		// clones an items if muliple batches are selected.
 		this.changed_rows = []
 		if(this.has_batch && !this.has_serial_no) {
 			const items = this.values.batches
-			console.log(items)
+
 			items.forEach(item => {
 				if (item.shortdated_batch == undefined) {
 					frappe.call({
@@ -437,7 +446,6 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 						}
 					});
 				}
-				
 
 				let row = ''
 				if (item.row_name != 'new' && !this.changed_rows.some(value => value.name === item.row_name) && item.row_name) {
@@ -466,8 +474,8 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 		}
 	}
 	remove_unchanged_items(changed_rows) {
+		var index = this.frm.doc.items.length;
 
-		var index = this.frm.doc.items.length
 		while (index--) {
 			if (index < 0) {
 				break
@@ -588,6 +596,7 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 		}
 		
 		qty_field.set_input(total_qty);
+		this.styleQty();
 	}
 
 	update_pending_qtys() {
@@ -599,6 +608,7 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 			let qty_remaining = this.dialog.fields_dict.qty_remaining;
 			let assigned_qty = this.dialog.fields_dict.assigned_qty;
 			qty_remaining.set_input(assigned_qty.value - qty_field.value);
+			this.styleQty();
 		}
 
 		if (!pending_qty_field || !total_selected_qty_field) return;
@@ -680,8 +690,7 @@ erpnext.SerialBatchPackageSelector = class SerialNoBatchBundleUpdate {
 								this.set_value("");
 								frappe.throw(__("Please select a warehouse to get available quantities"));
 							}
-							// e.stopImmediatePropagation();
-						},
+						}
 					},
 					{
 						fieldtype: "Float",

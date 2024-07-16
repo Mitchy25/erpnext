@@ -141,6 +141,16 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 		if doc.ignore_exchange_rate_revaluation_journals:
 			filters.update({"ignore_err": True})
 
+			if letter_head.content:
+				letter_head.content = frappe.utils.jinja.render_template(
+					letter_head.content, {"doc": doc.as_dict()}
+				)
+
+			if letter_head.footer:
+				letter_head.footer = frappe.utils.jinja.render_template(
+					letter_head.footer, {"doc": doc.as_dict()}
+				)
+
 		filters= frappe._dict({
 			'from_date': doc.from_date,
 			'to_date': doc.to_date,
@@ -526,7 +536,11 @@ def get_recipients_and_cc(customer, doc):
 	recipients = []
 	for clist in doc.customers:
 		if clist.customer == customer:
-			billingEmails = re.split('; |, |\*|\n', clist.billing_email)
+			try:
+				billingEmails = re.split('; |, |\*|\n', clist.billing_email)
+			except Exception as e:
+				print(clist.customer)
+				continue
 			for billingEmail in billingEmails:
 				recipients.append(billingEmail)
 			

@@ -79,5 +79,5 @@ frappe.query_reports["Item-wise Sales Register"] = {
 			value = value.bold();
 		}
 		return value;
-	},
-};
+	}
+}

@@ -165,7 +165,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 		for field in [searchfield or "name", "item_code", "item_group", "item_name"]
 		if field not in searchfields
 	]
-	searchfields = " or ".join(["`tabItem.`" + field + " like %(txt)s" for field in searchfields])
+	searchfields = " or ".join(["`tabItem`." + field + " like %(txt)s" for field in searchfields])
 
 	if filters and isinstance(filters, dict):
 		if filters.get("customer") or filters.get("supplier"):
@@ -200,10 +200,10 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 	if frappe.db.count(doctype, cache=True) < 50000:
 		# scan description only if items are less than 50000
 		description_cond = "or tabItem.description LIKE %(txt)s"
-
+	
 	return frappe.db.sql(
 		"""select
-			tabItem.name
+			tabItem.name,
 			if (
 				CAST(COALESCE(SUM(tabBin.actual_qty),0) as int) > 0,
 				CONCAT("Stock: <b style='color:#33cc33;;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>"),
@@ -249,7 +249,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			"start": start,
 			"page_len": page_len,
 		},
-		as_dict=as_dict,
+		as_dict=as_dict
 	)
 
 

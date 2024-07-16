@@ -42,7 +42,6 @@ class HolidayList(Document):
 	def validate(self):
 		self.validate_days()
 		self.total_holidays = len(self.holidays)
-		self.validate_duplicate_date()
 		self.sort_holidays()
 
 	@frappe.whitelist()

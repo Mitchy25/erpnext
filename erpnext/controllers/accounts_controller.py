@@ -782,6 +782,9 @@ class AccountsController(TransactionBase):
 								# reset pricing rule fields if pricing_rule_removed
 								item.set(fieldname, value)
 
+							elif fieldname == "expense_account" and not item.get("expense_account"):
+								item.expense_account = value
+
 					if self.doctype in ["Purchase Invoice", "Sales Invoice"] and item.meta.get_field(
 						"is_fixed_asset"
 					):
@@ -3273,29 +3276,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 		return update_supplied_items
 
-	def validate_fg_item_for_subcontracting(new_data, is_new):
-		if is_new:
-			if not new_data.get("fg_item"):
-				frappe.throw(
-					_("Finished Good Item is not specified for service item {0}").format(
-						new_data["item_code"]
-					)
-				)
-			else:
-				is_sub_contracted_item, default_bom = frappe.db.get_value(
-					"Item", new_data["fg_item"], ["is_sub_contracted_item", "default_bom"]
-				)
-
-				if not is_sub_contracted_item:
-					frappe.throw(
-						_("Finished Good Item {0} must be a sub-contracted item").format(new_data["fg_item"])
-					)
-				elif not default_bom:
-					frappe.throw(_("Default BOM not found for FG Item {0}").format(new_data["fg_item"]))
-
-		if not new_data.get("fg_item_qty"):
-			frappe.throw(_("Finished Good Item {0} Qty can not be zero").format(new_data["fg_item"]))
-
+	qty_change_items = []
 	data = json.loads(trans_items)
 
 	any_qty_changed = False  # updated to true if any item's qty changes
@@ -3328,9 +3309,15 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 			prev_rate, new_rate = flt(child_item.get("rate")), flt(d.get("rate"))
 			prev_qty, new_qty = flt(child_item.get("qty")), flt(d.get("qty"))
 			prev_fg_qty, new_fg_qty = flt(child_item.get("fg_item_qty")), flt(d.get("fg_item_qty"))
+			if prev_qty > new_qty and parent_doctype == "Purchase Order":
+				# Used for the eta note dialog for purchase invoices
+				eta_note, item_name = frappe.get_value("Item", child_item.get('item_code'), ["eta_note", "item_name"])
+				if not eta_note:
+					eta_note = ""
+				qty_change_items.append({"item_code": child_item.get('item_code'), "prev_qty": prev_qty, "new_qty": new_qty, "eta_note": eta_note, "item_name": item_name})
 			prev_con_fac, new_con_fac = (
 				flt(child_item.get("conversion_factor")),
-				flt(d.get("conversion_factor")),
+				flt(d.get("conversion_factor"))
 			)
 			prev_uom, new_uom = child_item.get("uom"), d.get("uom")
 
@@ -3510,6 +3497,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 	parent.update_blanket_order()
 	parent.update_billing_percentage()
 	parent.set_status()
+	return qty_change_items
 
 	# Cancel and Recreate Stock Reservation Entries.
 	if parent_doctype == "Sales Order":

@@ -789,6 +789,25 @@ class Asset(AccountsController):
 
 			return flt((100 * (1 - depreciation_rate)), float_precision)
 
+	def get_pro_rata_amt(
+		self,
+		row,
+		depreciation_amount,
+		from_date,
+		to_date,
+		has_wdv_or_dd_non_yearly_pro_rata=False,
+		original_schedule_date=None,
+	):
+		days = date_diff(to_date, from_date)
+		months = month_diff(to_date, from_date)
+		if has_wdv_or_dd_non_yearly_pro_rata:
+			total_days = get_total_days(original_schedule_date or to_date, 12)
+		else:
+			total_days = get_total_days(original_schedule_date or to_date, row.frequency_of_depreciation)
+
+		return (depreciation_amount * (flt(months) / 12)), days, months
+		# return (depreciation_amount * flt(days)) / flt(total_days), days, months
+
 
 def update_maintenance_status():
 	assets = frappe.get_all(

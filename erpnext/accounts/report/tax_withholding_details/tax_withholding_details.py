@@ -70,7 +70,7 @@ def get_result(filters, tds_docs, tds_accounts, tax_category_map, journal_entry_
 
 				rate = tax_rate_map.get(tax_withholding_category)
 			if net_total_map.get((voucher_type, name)):
-				if voucher_type == "Journal Entry":
+				if voucher_type == "Journal Entry" and tax_amount and rate:
 					# back calcalute total amount from rate and tax_amount
 					if rate:
 						total_amount = grand_total = base_total = tax_amount / (rate / 100)
