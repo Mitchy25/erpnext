@@ -751,7 +751,12 @@ erpnext.utils.update_child_items = function (opts) {
 					parent_doctype_name: frm.doc.name,
 					child_docname: child_docname,
 				},
-				callback: function () {
+				callback: function(values) {
+					if (values) {
+							frappe.require('assets/fxnmrnth/js/custom_doctype_assets/purchase_order/getEtaNoteDialog.js').then(() => {
+								exportEtaNoteDialog(frm, values.message);
+							})
+						}
 					frm.reload_doc();
 				},
 			});

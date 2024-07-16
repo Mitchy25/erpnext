@@ -527,53 +527,6 @@ $.extend(erpnext.item, {
 				erpnext.item.item_dashboard.refresh();
 			});
 		}
-
-		// Show Brand and price
-		if (frm.doc.brand){
-			const brand = frm.doc.brand
-
-			// let item_default = frm.doc.item_defaults[0]
-			// const default_price_list = item_default.default_price_list;
-			// const expense_account = item_default.expense_account;
-			// const income_account = item_default.income_account;
-
-			// const item_default_display = `<div class="dashboard-list-item" style="margin-top: 8px;">\
-			// 	<div class="col-sm-3 small">Default price list: ${default_price_list}</div>\
-			// 	<div class="col-sm-3 small">Default Expense Account: ${expense_account}</div>\
-			// 	<div class="col-sm-3 small">Default Income Account: ${income_account}</div>\
-			// </div>`
-
-			// We want to display all the item prices ?
-			let template = `<div class="dashboard-list-item">\
-				<div style="font-size:14px;" class="row" parent="header">\
-					<div class="col-sm-3 bold">Price List</div>\
-					<div class="col-sm-2 bold">Currency</div>\
-					<div class="col-sm-2 bold">Rate</div>\
-					<div class="col-sm-3 bold">Valid From</div>\
-					<div class="col-sm-2 bold">&nbsp;</div>\
-				</div>\
-			</div>`
-			frappe.db.get_list('Item Price', {
-				filters: {item_code: frm.doc.name, selling: 1},
-				fields: ['name', 'price_list', 'price_list_rate', 'valid_from', 'valid_upto', 'currency']
-			}).then(res => {
-				res = res.filter( (item) => {
-					return !item.valid_upto; 
-				})
-				let rows = res.reduce( (accumulator, cur_row) => {
-					return accumulator + (`<div class="row" parent=${cur_row.price_list}>\
-					<div class="col-sm-3" style="margin-top: 2px;">${cur_row.price_list}</div>\
-					<div class="col-sm-2" style="margin-top: 2px;"> ${cur_row.currency}</div>\
-					<div class="col-sm-2" style="margin-top: 2px;"> $ ${cur_row.price_list_rate.toFixed(2)}</div>\
-					<div class="col-sm-3" style="margin-top: 2px;"> ${cur_row.valid_from} To ${(cur_row.valid_upto? cur_row.valid_upto : "Now")}</div>\
-					<div class="col-sm-2"><a href="/app/item-price/${cur_row.name}"><button style="margin-left: 7px;" class="btn btn-default btn-xs">Edit</button></a></div>
-				</div>`)
-				}, "")
-				let item_price_html = template + rows
-				frm.dashboard.add_section(item_price_html,`<a href="/app/brand/${brand}">Brand: ${brand}</a>`);
-			})
-		}
-
 	},
 
 	edit_prices_button: function (frm) {
