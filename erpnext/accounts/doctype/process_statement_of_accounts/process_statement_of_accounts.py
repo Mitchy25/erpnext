@@ -83,6 +83,16 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 
 			letter_head = get_letter_head(doc, 0)
 
+			if letter_head.content:
+				letter_head.content = frappe.utils.jinja.render_template(
+					letter_head.content, {"doc": doc.as_dict()}
+				)
+
+			if letter_head.footer:
+				letter_head.footer = frappe.utils.jinja.render_template(
+					letter_head.footer, {"doc": doc.as_dict()}
+				)
+
 		filters= frappe._dict({
 			'from_date': doc.from_date,
 			'to_date': doc.to_date,
