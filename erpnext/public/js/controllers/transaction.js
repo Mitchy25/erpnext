@@ -1281,7 +1281,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 	get_and_set_item_details: function(doc, cdt, cdn) {
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
-
+		var free_item_data
 		var update_stock = 0
 		var show_batch_dialog = 0
 
@@ -1395,6 +1395,14 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 								() => {
 									var d = locals[cdt][cdn];
 									me.add_taxes_from_item_tax_template(d.item_tax_rate);
+
+									if (d.free_item_data) {
+										if (!d.is_free_item) {
+											free_item_data = d.free_item_data
+											delete d['free_item_data']
+										}
+										
+									}
 								},
 								() => {
 									// for internal customer instead of pricing rule directly apply valuation rate on item
@@ -1487,9 +1495,9 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 										} else {
 											d.pricing_rules = ''
 										}
-										if (d.free_item_data) {
+										if (free_item_data) {
 											if (!d.is_free_item) {
-												me.apply_product_discount(d);
+												me.apply_product_discount(d, free_item_data);
 											} else {
 												delete d['free_item_data']
 											}
@@ -1944,7 +1952,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			}
 			me.apply_pricing_rule_on_item(item_row)
 			if (d.free_item_data) {
-				me.apply_product_discount(d);
+				me.apply_product_discount(d, free_item_data);
 			} else {
 				me.remove_missing_products(d);
 			}
@@ -1998,7 +2006,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 		}
 	},
 
-	apply_product_discount: function(args) {
+	apply_product_discount: function(args, free_item_data) {
 		let repeat = false;
 
 		function apply_discount_once(data, me) {
@@ -2027,8 +2035,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			exist_items = exist_items.flat()
 			cur_frm.refresh_fields()
 			
-			console.log(me.frm.doc.items)
-			data.free_item_data.forEach(pr_row => {
+			free_item_data.forEach(pr_row => {
 				let rows_to_modify = {};
 				let backorder_rows_to_modify = {};
 				var reduce_items = false
