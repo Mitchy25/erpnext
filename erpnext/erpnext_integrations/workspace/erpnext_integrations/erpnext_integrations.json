@@ -252,7 +252,7 @@
    "type": "Link"
   }
  ],
- "modified": "2023-05-24 14:47:25.984717",
+ "modified": "2024-07-11 13:04:54.564456",
  "modified_by": "Administrator",
  "module": "ERPNext Integrations",
  "name": "ERPNext Integrations",
@@ -263,7 +263,7 @@
  "quick_lists": [],
  "restrict_to_domain": "",
  "roles": [],
- "sequence_id": 21.0,
+ "sequence_id": 28.0,
  "shortcuts": [],
  "title": "ERPNext Integrations"
 }
