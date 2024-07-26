@@ -935,6 +935,9 @@ class SerialandBatchBundle(Document):
 		self.validate_voucher_no_docstatus()
 
 	def validate_voucher_no_docstatus(self):
+		if self.voucher_type == "POS Invoice":
+			return
+
 		if frappe.db.get_value(self.voucher_type, self.voucher_no, "docstatus") == 1:
 			msg = f"""The {self.voucher_type} {bold(self.voucher_no)}
 				is in submitted state, please cancel it first"""
@@ -1098,7 +1101,9 @@ def create_serial_nos(item_code, serial_nos):
 
 
 def make_serial_nos(item_code, serial_nos):
-	item = frappe.get_cached_value("Item", item_code, ["description", "item_code"], as_dict=1)
+	item = frappe.get_cached_value(
+		"Item", item_code, ["description", "item_code", "item_name", "warranty_period"], as_dict=1
+	)
 
 	serial_nos = [d.get("serial_no") for d in serial_nos if d.get("serial_no")]
 	existing_serial_nos = frappe.get_all("Serial No", filters={"name": ("in", serial_nos)})
@@ -1123,6 +1128,7 @@ def make_serial_nos(item_code, serial_nos):
 				item.item_code,
 				item.item_name,
 				item.description,
+				item.warranty_period or 0,
 				"Inactive",
 			)
 		)
@@ -1137,6 +1143,7 @@ def make_serial_nos(item_code, serial_nos):
 		"item_code",
 		"item_name",
 		"description",
+		"warranty_period",
 		"status",
 	]
 
@@ -1718,6 +1725,7 @@ def get_reserved_batches_for_pos(kwargs) -> dict:
 			"`tabPOS Invoice Item`.warehouse",
 			"`tabPOS Invoice Item`.name as child_docname",
 			"`tabPOS Invoice`.name as parent_docname",
+			"`tabPOS Invoice Item`.use_serial_batch_fields",
 			"`tabPOS Invoice Item`.serial_and_batch_bundle",
 		],
 		filters=[
@@ -1731,7 +1739,7 @@ def get_reserved_batches_for_pos(kwargs) -> dict:
 	ids = [
 		pos_invoice.serial_and_batch_bundle
 		for pos_invoice in pos_invoices
-		if pos_invoice.serial_and_batch_bundle
+		if pos_invoice.serial_and_batch_bundle and not pos_invoice.use_serial_batch_fields
 	]
 
 	if ids:
@@ -2180,6 +2188,8 @@ def get_stock_ledgers_for_serial_nos(kwargs):
 
 
 def get_stock_ledgers_batches(kwargs):
+	from erpnext.stock.utils import get_combine_datetime
+
 	stock_ledger_entry = frappe.qb.DocType("Stock Ledger Entry")
 	batch_table = frappe.qb.DocType("Batch")
 
@@ -2205,6 +2215,19 @@ def get_stock_ledgers_batches(kwargs):
 			query = query.where(stock_ledger_entry[field].isin(kwargs.get(field)))
 		else:
 			query = query.where(stock_ledger_entry[field] == kwargs.get(field))
+
+	if kwargs.get("posting_date"):
+		if kwargs.get("posting_time") is None:
+			kwargs.posting_time = nowtime()
+
+		timestamp_condition = stock_ledger_entry.posting_datetime <= get_combine_datetime(
+			kwargs.posting_date, kwargs.posting_time
+		)
+
+		query = query.where(timestamp_condition)
+
+	if kwargs.get("ignore_voucher_nos"):
+		query = query.where(stock_ledger_entry.voucher_no.notin(kwargs.get("ignore_voucher_nos")))
 
 	if kwargs.based_on == "LIFO":
 		query = query.orderby(batch_table.creation, order=frappe.qb.desc)
