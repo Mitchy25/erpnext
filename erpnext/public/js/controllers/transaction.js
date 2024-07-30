@@ -1340,6 +1340,13 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 						}
 					})
 				}
+				let qty;
+				if (me.frm.doc.doctype == "Purchase Order") {
+					// Allowing for 0 qty
+					qty = item.qty;
+				} else {
+					qty = item.qty || 1;
+				}
 				return this.frm.call({
 					method: "erpnext.stock.get_item_details.get_item_details",
 					child: item,
@@ -1372,7 +1379,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 							doctype: me.frm.doc.doctype,
 							name: me.frm.doc.name,
 							project: item.project || me.frm.doc.project,
-							qty: item.qty || 1,
+							qty: qty,
 							net_rate: item.rate,
 							stock_qty: item.stock_qty,
 							conversion_factor: item.conversion_factor,

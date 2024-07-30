@@ -372,8 +372,12 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			"uom": args.uom,
 			"stock_uom": item.stock_uom,
 			"min_order_qty": flt(item.min_order_qty) if args.doctype == "Material Request" else "",
-			"qty": flt(args.qty) or 1.0,
-			"stock_qty": flt(args.qty) or 1.0,
+			"qty": flt(args.qty) 
+			if args.get("doctype") == "Purchase Order"
+			else 1,
+			"stock_qty": flt(args.qty) 
+			if args.get("doctype") == "Purchase Order"
+			else 1,
 			"price_list_rate": 0.0,
 			"base_price_list_rate": 0.0,
 			"rate": 0.0,
