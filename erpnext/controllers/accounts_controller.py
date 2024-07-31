@@ -2611,7 +2611,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 		)
 
 	def validate_quantity(child_item, new_data):
-		if not flt(new_data.get("qty")):
+		if not flt(new_data.get("qty")) and child_item.doctype != 'Purchase Order Item':
 			frappe.throw(
 				_("Row # {0}: Quantity for Item {1} cannot be zero").format(
 					new_data.get("idx"), frappe.bold(new_data.get("item_code"))
