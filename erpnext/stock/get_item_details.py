@@ -380,6 +380,13 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 	if args.get("batch_no") and item.name != frappe.get_cached_value("Batch", args.get("batch_no"), "item"):
 		args["batch_no"] = ""
 
+	if args.qty == 0 and args.get('doctype') == "Purchase Order":
+		qty = 0
+	elif args.qty == 0:
+		qty = 1
+	else:
+		qty = flt(args.qty)
+
 	out = frappe._dict(
 		{
 			"item_code": item.name,
@@ -405,8 +412,8 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			"uom": args.uom,
 			"stock_uom": item.stock_uom,
 			"min_order_qty": flt(item.min_order_qty) if args.doctype == "Material Request" else "",
-			"qty": flt(args.qty) or 1.0,
-			"stock_qty": flt(args.qty) or 1.0,
+			"qty": flt(qty), 
+			"stock_qty": flt(qty),
 			"price_list_rate": 0.0,
 			"base_price_list_rate": 0.0,
 			"rate": 0.0,
