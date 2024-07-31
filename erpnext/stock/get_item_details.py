@@ -118,7 +118,7 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 			args.batch_no, args.shortdated_batch = batch_results
 
 	if args.get("update_stock"):
-		data = get_pricing_rule_for_item(args, out.price_list_rate, doc, for_validate=for_validate)
+		data = get_pricing_rule_for_item(args, doc, for_validate=for_validate)
 		
 		out.update(data)
 
