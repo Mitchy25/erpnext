@@ -1195,7 +1195,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	get_and_set_item_details(doc, cdt, cdn) {
 		var me = this;
 		var item = frappe.get_doc(cdt, cdn);
-
+		var free_item_data
 		var update_stock = 0
 		var show_batch_dialog = 0
 
@@ -1253,6 +1253,13 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 						}
 					})
 				}
+				let qty;
+				if (me.frm.doc.doctype == "Purchase Order") {
+					// Allowing for 0 qty
+					qty = item.qty;
+				} else {
+					qty = item.qty || 1;
+				}
 				return this.frm.call({
 					method: "erpnext.stock.get_item_details.get_item_details",
 					child: item,
@@ -1285,7 +1292,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 							doctype: me.frm.doc.doctype,
 							name: me.frm.doc.name,
 							project: item.project || me.frm.doc.project,
-							qty: item.qty || 1,
+							qty: qty,
 							net_rate: item.rate,
 							stock_qty: item.stock_qty,
 							conversion_factor: item.conversion_factor,
@@ -1308,6 +1315,14 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 								() => {
 									var d = locals[cdt][cdn];
 									me.add_taxes_from_item_tax_template(d.item_tax_rate);
+
+									if (d.free_item_data) {
+										if (!d.is_free_item) {
+											free_item_data = d.free_item_data
+											delete d['free_item_data']
+										}
+										
+									}
 								},
 								() => {
 									// for internal customer instead of pricing rule directly apply valuation rate on item
@@ -1400,9 +1415,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 										} else {
 											d.pricing_rules = ''
 										}
-										if (d.free_item_data) {
+										if (free_item_data) {
 											if (!d.is_free_item) {
-												me.apply_product_discount(d);
+												me.apply_product_discount(d, free_item_data);
 											} else {
 												delete d['free_item_data']
 											}
@@ -1880,7 +1895,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			}
 			me.apply_pricing_rule_on_item(item_row)
 			if (d.free_item_data) {
-				me.apply_product_discount(d);
+				me.apply_product_discount(d, free_item_data);
 			} else {
 				me.remove_missing_products(d);
 			}
@@ -1934,38 +1949,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		}
 	}
 
-	// apply_product_discount(args) {
-	// 	const items = this.frm.doc.items.filter(d => (d.is_free_item)) || [];
-
-	// 	const exist_items = items.map(row => { return {item_code: row.item_code, pricing_rules: row.pricing_rules};});
-
-	// 	args.free_item_data.forEach(pr_row => {
-	// 		let row_to_modify = {};
-
-	// 		// If there are no free items, or if the current free item doesn't exist in the table, add it
-	// 		if (!items || !exist_items.filter(e_row => {
-	// 			return e_row.item_code == pr_row.item_code && e_row.pricing_rules == pr_row.pricing_rules;
-	// 		}).length) {
-	// 			row_to_modify = frappe.model.add_child(this.frm.doc,
-	// 				this.frm.doc.doctype + ' Item', 'items');
-
-	// 		} else if(items) {
-	// 			row_to_modify = items.filter(d => (d.item_code === pr_row.item_code
-	// 				&& d.pricing_rules === pr_row.pricing_rules))[0];
-	// 		}
-
-	// 		for (let key in pr_row) {
-	// 			row_to_modify[key] = pr_row[key];
-	// 		}
-	// 		this.frm.script_manager.copy_from_first_row("items", row_to_modify, ["expense_account", "income_account"]);
-	// 	});
-
-	// 	// free_item_data is a temporary variable
-	// 	args.free_item_data = '';
-	// 	refresh_field('items');
-	// }
-
-	apply_product_discount (args) {
+	apply_product_discount (args, free_item_data) {
 		let repeat = false;
 
 		function apply_discount_once(data, me) {
@@ -1994,8 +1978,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			exist_items = exist_items.flat()
 			cur_frm.refresh_fields()
 			
-			console.log(me.frm.doc.items)
-			data.free_item_data.forEach(pr_row => {
+			free_item_data.forEach(pr_row => {
 				let rows_to_modify = {};
 				let backorder_rows_to_modify = {};
 				var reduce_items = false

@@ -64,6 +64,12 @@ def get_data():
 			'label': 'Testing DB',
 			'items': ['Medical Objects', 'Sample', 'Customer']
 		})
+		for item in dashboardData['transactions']:
+			if item['label'] == 'Pricing/Payments':
+				item['items'].append("Rebate Statement")
+				break
+		dashboardData['non_standard_fieldnames']['Rebate Statement'] = "sales_partner_customer"
+
 
 		#TODO: Placeholder so link will render
 	
