@@ -1,7 +1,7 @@
 {% for d in data %}
 	<div class="dashboard-list-item">
-		<div class="row">
-			<div class="col-sm-3" style="margin-top: 8px;">
+		<div class="row" parent="{{ d.item_code }}">
+			<div class="col-sm-3 small" style="margin-top: 8px;">
 				<a data-type="warehouse" data-name="{{ d.warehouse }}">{{ d.warehouse }}</a>
 			</div>
 			<div class="col-sm-3" style="margin-top: 8px;">
@@ -12,10 +12,10 @@
 					</a>
 				{% endif %}
 			</div>
-			<div class="col-sm-4">
+			<div class="col-sm-3 small">
 				<span class="inline-graph">
 					<span class="inline-graph-half" title="{{ __("Reserved Qty") }}">
-						<span class="inline-graph-count">{{ d.total_reserved }}</span>
+						<span class="inline-graph-count">{{"Backordered: "+ d.total_reserved }}</span>
 						<span class="inline-graph-bar">
 							<span class="inline-graph-bar-inner"
 								style="width: {{ cint(Math.abs(d.total_reserved)/max_count * 100) || 5 }}%">
@@ -23,8 +23,8 @@
 						</span>
 					</span>
 					<span class="inline-graph-half" title="{{ __("Actual Qty {0} / Waiting Qty {1}", [d.actual_qty, d.pending_qty]) }}">
-						<span class="inline-graph-count">
-							{{ d.actual_qty }} {{ (d.pending_qty > 0) ? ("(" + d.pending_qty+ ")") : "" }}
+						<span class="inline-graph-count" style="white-space: nowrap;">
+							{{"Actual: " + d.actual_qty }} {{ (d.pending_qty > 0) ? ("| Pending: " + d.pending_qty) : "" }}
 						</span>
 						<span class="inline-graph-bar">
 							<span class="inline-graph-bar-inner dark"
@@ -38,6 +38,14 @@
 						</span>
 					</span>
 				</span>
+			</div>
+			<div class="col-sm-1 small" style="margin: 10px auto">
+				<a class="fas fa-chevron-circle-down pending-breakdown" data-item="{{ d.item_code }}" 
+				data-warehouse="{{ d.warehouse }}">
+				</a>
+				<a class="fas fa-chevron-circle-up to-collapse" data-item="{{ d.item_code }}" 
+				data-warehouse="{{ d.warehouse }}">
+				</a>
 			</div>
 			{% if can_write %}
 			<div class="col-sm-2 text-right" style="margin: var(--margin-sm) 0;">

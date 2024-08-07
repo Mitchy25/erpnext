@@ -82,6 +82,7 @@ class TestAccountingDimension(unittest.TestCase):
 		frappe.flags.dimension_filter_map = None
 
 
+
 def create_dimension():
 	frappe.set_user("Administrator")
 

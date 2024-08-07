@@ -76,15 +76,24 @@ class ShippingRule(Document):
 		elif self.calculate_based_on == "Fixed":
 			shipping_amount = self.shipping_amount
 
+		elif self.calculate_based_on == "Ignore":
+			return
+
 		# shipping amount by value, apply conditions
 		if by_value:
 			shipping_amount = self.get_shipping_amount_from_rules(value)
 
 		# convert to order currency
 		if doc.currency != doc.company_currency:
-			shipping_amount = flt(shipping_amount / doc.conversion_rate, 2)
+			# shipping_amount = flt(shipping_amount / doc.conversion_rate, 2)
+			shipping_amount = flt(shipping_amount, 2)
 
 		self.add_shipping_rule_to_tax_table(doc, shipping_amount)
+
+		# add gst for shipping charges
+		if hasattr(self, "apply_gst") and self.apply_gst:
+			self.add_gst_for_shipping_charges(doc)
+		
 
 	def get_shipping_amount_from_rules(self, value):
 		for condition in self.get("conditions"):
@@ -136,6 +145,39 @@ class ShippingRule(Document):
 			shipping_charge["tax_amount"] = shipping_amount
 			shipping_charge["description"] = self.label
 			doc.append("taxes", shipping_charge)
+
+	def add_gst_for_shipping_charges(self, doc):
+		gst_for_shipping_charge = {
+			"charge_type": "On Previous Row Amount",
+			"account_head": self.tax_account,
+			"cost_center": self.cost_center,
+			"from_shipping_rule": 1
+		}
+		if self.shipping_rule_type == "Selling":
+			# check if not applied on purchase
+			if not doc.meta.get_field('taxes').options == 'Sales Taxes and Charges':
+				frappe.throw(_('Shipping rule only applicable for Selling'))
+			gst_for_shipping_charge["doctype"] = "Sales Taxes and Charges"
+		else:
+			# check if not applied on sales, pass for now
+			pass
+		
+		from erpnext.controllers.accounts_controller import get_tax_rate
+		tax_rate = ""
+		tax_rate_dict = get_tax_rate(self.tax_account)
+
+		if tax_rate_dict:
+			tax_rate = tax_rate_dict.tax_rate
+
+		existing_shipping_charge = doc.get("taxes", filters=gst_for_shipping_charge)
+		if existing_shipping_charge:
+			existing_shipping_charge[-1].rate = tax_rate
+		else:
+			gst_for_shipping_charge["description"] = "Shipping charge GST"
+			gst_for_shipping_charge["row_id"] = len(doc.taxes)
+			gst_for_shipping_charge["rate"] = tax_rate
+			doc.append("taxes", gst_for_shipping_charge)
+
 
 	def sort_shipping_rule_conditions(self):
 		"""Sort Shipping Rule Conditions based on increasing From Value"""

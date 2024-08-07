@@ -151,6 +151,7 @@ def get_conditions(filters):
 	return conditions
 
 
+
 def get_entries(filters):
 	ple = qb.DocType("Payment Ledger Entry")
 	conditions = get_conditions(filters)

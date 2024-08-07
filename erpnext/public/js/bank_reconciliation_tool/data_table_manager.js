@@ -41,20 +41,20 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 				width: 100,
 			},
 
-			{
-				name: __("Party Type"),
-				editable: false,
-				width: 95,
-			},
-			{
-				name: __("Party"),
-				editable: false,
-				width: 100,
-			},
+			// {
+			// 	name: "Party Type",
+			// 	editable: false,
+			// 	width: 40,
+			// },
+			// {
+			// 	name: "Party",
+			// 	editable: false,
+			// 	width: 40,
+			// },
 			{
 				name: __("Description"),
 				editable: false,
-				width: 350,
+				width: 400,
 			},
 			{
 				name: __("Deposit"),
@@ -82,7 +82,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			{
 				name: __("Reference Number"),
 				editable: false,
-				width: 140,
+				width: 400,
 			},
 			{
 				name: __("Actions"),
@@ -111,8 +111,8 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 	format_row(row) {
 		return [
 			row["date"],
-			row["party_type"],
-			row["party"],
+			// row["party_type"],
+			// row["party"],
 			row["description"],
 			row["deposit"],
 			row["withdrawal"],
@@ -157,7 +157,10 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 	}
 
 	update_dt_cards(bank_transaction) {
-		const transaction_index = this.transaction_dt_map[bank_transaction.name];
+		this.make_dt();
+		const transaction_index = this.transaction_dt_map[
+			bank_transaction.name
+		];
 		if (bank_transaction.unallocated_amount > 0) {
 			this.transactions[transaction_index] = this.format_row(bank_transaction);
 		} else {
@@ -166,6 +169,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 				if (v > transaction_index) this.transaction_dt_map[k] = v - 1;
 			}
 		}
+
 		this.datatable.refresh(this.transactions, this.columns);
 
 		if (this.transactions.length == 0) {
@@ -173,7 +177,9 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			this.$no_bank_transactions.show();
 		}
 
+		
 		// this.make_dt();
+		this.cards_manager = cur_frm.cards_manager
 		this.get_cleared_balance().then(() => {
 			this.cards_manager.$cards[1].set_value(format_currency(this.cleared_balance), this.currency);
 			this.cards_manager.$cards[2].set_value(
@@ -181,7 +187,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 				this.currency
 			);
 			this.cards_manager.$cards[2].set_value_color(
-				this.bank_statement_closing_balance - this.cleared_balance == 0
+				(this.bank_statement_closing_balance - this.cleared_balance).toFixed(2) == 0
 					? "text-success"
 					: "text-danger"
 			);

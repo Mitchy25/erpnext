@@ -131,32 +131,35 @@ frappe.ui.form.on("Batch", {
 
 					// split - ask for new qty and batch ID (optional)
 					// and make stock entry via batch.batch_split
-					rows.find(".btn-split").on("click", function () {
-						const $btn = $(this);
-						frappe.prompt(
-							[
-								{
-									fieldname: "qty",
-									label: __("New Batch Qty"),
-									fieldtype: "Float",
-									default: $btn.attr("data-qty"),
-								},
-								{
-									fieldname: "new_batch_id",
-									label: __("New Batch ID (Optional)"),
-									fieldtype: "Data",
-								},
-							],
-							(data) => {
-								frappe
-									.xcall("erpnext.stock.doctype.batch.batch.split_batch", {
-										item_code: frm.doc.item,
-										batch_no: frm.doc.name,
-										qty: data.qty,
-										warehouse: $btn.attr("data-warehouse"),
-										new_batch_id: data.new_batch_id,
-									})
-									.then(() => frm.reload_doc());
+					rows.find('.btn-split').on('click', function() {
+						var $btn = $(this);
+						frappe.prompt([{
+							fieldname: 'qty',
+							label: __('New Batch Qty'),
+							fieldtype: 'Float',
+							'default': $btn.attr('data-qty')
+						},
+						{
+							fieldname: 'new_batch_id',
+							label: __('New Batch ID (Optional)'),
+							fieldtype: 'Data',
+						},
+						{
+							fieldname: 'new_batch_expiry',
+							label: __('New Batch Expiry'),
+							fieldtype: 'Date',
+						}],
+						(data) => {
+							frappe.call({
+								method: 'erpnext.stock.doctype.batch.batch.split_batch',
+								args: {
+									item_code: frm.doc.item,
+									batch_no: frm.doc.name,
+									qty: data.qty,
+									warehouse: $btn.attr('data-warehouse'),
+									new_batch_id: data.new_batch_id,
+									new_batch_expiry: data.new_batch_expiry
+								}).then(() => frm.reload_doc());
 							},
 							__("Split Batch"),
 							__("Split")

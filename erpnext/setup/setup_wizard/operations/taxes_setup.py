@@ -199,6 +199,7 @@ def make_item_tax_template(company_name, template):
 	return doc
 
 
+
 def get_or_create_account(company_name, account):
 	"""
 	Check if account already exists. If not, create it.

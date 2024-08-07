@@ -17,6 +17,9 @@ class RootNotEditable(frappe.ValidationError):
 class BalanceMismatchError(frappe.ValidationError):
 	pass
 
+class InvalidAccountMergeError(frappe.ValidationError):
+	pass
+
 
 class InvalidAccountMergeError(frappe.ValidationError):
 	pass

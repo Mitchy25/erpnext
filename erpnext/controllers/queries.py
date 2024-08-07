@@ -97,7 +97,7 @@ def customer_query(doctype, txt, searchfield, start, page_len, filters, as_dict=
 	return frappe.db.sql(
 		"""select {fields} from `tabCustomer`
 		where docstatus < 2
-			and ({scond}) and disabled=0
+			and ({scond}) and disabled=0 and customer_status != "Closed"
 			{fcond} {mcond}
 		order by
 			(case when locate(%(_txt)s, name) > 0 then locate(%(_txt)s, name) else 99999 end),
@@ -219,13 +219,17 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 	if "description" in searchfields:
 		columns += """, if(length(tabItem.description) > 40, \
 			concat(substr(tabItem.description, 1, 40), "..."), description) as description"""
+	
+	if "item_name" in searchfields:
+		columns += """, if(length(tabItem.item_name) > 40, \
+			concat(substr(tabItem.item_name, 1, 40), "..."), item_name) as item_name"""
 
 	searchfields = searchfields + [
 		field
 		for field in [searchfield or "name", "item_code", "item_group", "item_name"]
 		if field not in searchfields
 	]
-	searchfields = " or ".join([field + " like %(txt)s" for field in searchfields])
+	searchfields = " or ".join(["`tabItem`." + field + " like %(txt)s" for field in searchfields])
 
 	if filters and isinstance(filters, dict):
 		if filters.get("customer") or filters.get("supplier"):
@@ -260,11 +264,24 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 	if frappe.db.count(doctype, cache=True) < 50000:
 		# scan description only if items are less than 50000
 		description_cond = "or tabItem.description LIKE %(txt)s"
-
+	
 	return frappe.db.sql(
 		"""select
-			tabItem.name {columns}
-		from tabItem
+			tabItem.name,
+			if (
+				CAST(COALESCE(SUM(tabBin.actual_qty),0) as int) > 0,
+				CONCAT("Stock: <b style='color:#33cc33;;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>"),
+				CONCAT("Stock: <b style='color:#ff0000;'>", CAST(COALESCE(SUM(tabBin.actual_qty),0) as int),"</b>")
+			) as available,
+			CONCAT("BO: <b>", CAST(COALESCE(SUM(tabBin.reserved_qty),0) as int),"</b>") as backorder,
+			CONCAT("On Order: <b>", CAST(COALESCE(SUM(tabBin.ordered_qty),0) as int),"</b>") as on_order
+			{columns}
+		from 
+			tabItem
+		LEFT JOIN
+			tabBin
+		ON
+			tabItem.item_code = tabBin.item_code
 		where tabItem.docstatus < 2
 			and tabItem.disabled=0
 			and tabItem.has_variants=0
@@ -272,11 +289,16 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			and ({scond} or tabItem.item_code IN (select parent from `tabItem Barcode` where barcode LIKE %(txt)s)
 				{description_cond})
 			{fcond} {mcond}
+		group by
+			tabItem.item_code,
+			tabBin.item_code
 		order by
-			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
-			if(locate(%(_txt)s, item_name), locate(%(_txt)s, item_name), 99999),
-			idx desc,
-			name, item_name
+			if(locate(%(_txt)s, tabItem.name), locate(%(_txt)s, tabItem.name), 99999),
+			if(locate(%(_txt)s, tabItem.item_name), locate(%(_txt)s, tabItem.item_name), 99999),
+			tabItem.brand,
+			tabItem.idx asc,
+			tabItem.name, 
+			tabItem.item_name
 		limit %(start)s, %(page_len)s """.format(
 			columns=columns,
 			scond=searchfields,
@@ -291,7 +313,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			"start": start,
 			"page_len": page_len,
 		},
-		as_dict=as_dict,
+		as_dict=as_dict
 	)
 
 

@@ -145,7 +145,6 @@ def _execute(filters=None, additional_table_columns=None, additional_conditions=
 		add_sub_total_row(total_row, total_row_map, "total_row", tax_columns)
 		data.append(total_row_map.get("total_row"))
 		skip_total_row = 1
-
 	return columns, data, None, None, None, skip_total_row
 
 
@@ -514,7 +513,6 @@ def get_grand_total(filters, doctype):
 			"sum(base_grand_total)",
 		)
 	)
-
 
 def get_tax_accounts(
 	item_list,

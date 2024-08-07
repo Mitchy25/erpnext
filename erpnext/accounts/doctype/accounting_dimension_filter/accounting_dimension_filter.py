@@ -75,6 +75,7 @@ def get_dimension_filter_map():
 	return frappe.flags.dimension_filter_map
 
 
+
 def build_map(map_object, dimension, account, filter_value, allow_or_restrict, is_mandatory):
 	map_object.setdefault(
 		(dimension, account),

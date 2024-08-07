@@ -32,6 +32,7 @@ from erpnext.accounts.utils import get_currency_precision
 # 10. This report is based on Payment Ledger Entries
 
 
+
 def execute(filters=None):
 	args = {
 		"account_type": "Receivable",
@@ -53,7 +54,9 @@ class ReceivablePayableReport:
 	def run(self, args):
 		self.filters.update(args)
 		self.set_defaults()
-		self.party_naming_by = frappe.db.get_value(args.get("naming_by")[0], None, args.get("naming_by")[1])
+		self.party_naming_by = frappe.db.get_value(
+			args.get("naming_by")[0], None, args.get("naming_by")[1]
+		)
 		self.get_columns()
 		self.get_data()
 		self.get_chart_data()
@@ -723,7 +726,8 @@ class ReceivablePayableReport:
 
 	def get_ageing_data(self, entry_date, row):
 		# [0-30, 30-60, 60-90, 90-120, 120-above]
-		row.range1 = row.range2 = row.range3 = row.range4 = row.range5 = 0.0
+
+		row.not_yet_due = row.range1 = row.range2 = row.range3 = row.range4 = row.range5 = 0.0
 
 		if not (self.age_as_on and entry_date):
 			return
@@ -743,7 +747,10 @@ class ReceivablePayableReport:
 			[self.filters.range1, self.filters.range2, self.filters.range3, self.filters.range4]
 		):
 			if cint(row.age) <= cint(days):
-				index = i
+				if self.filters.show_not_yet_due and cint(row.age) < 0:
+					index = 10
+				else:
+					index = i
 				break
 
 		if index is None:
@@ -1050,7 +1057,8 @@ class ReceivablePayableReport:
 			self.add_column(label=_("Payment Term"), fieldname="payment_term", fieldtype="Data")
 			self.add_column(label=_("Invoice Grand Total"), fieldname="invoice_grand_total")
 
-		self.add_column(_("Invoiced Amount"), fieldname="invoiced")
+		self.add_column(_("Invoiced Amount in Base Currency"), fieldname="invoiced", width=150)
+		self.add_column(_("Invoiced Amount in Payment Currency"), fieldname="invoiced_in_account_currency", width=150)
 		self.add_column(_("Paid Amount"), fieldname="paid")
 		if self.account_type == "Receivable":
 			self.add_column(_("Credit Note"), fieldname="credit_note")
@@ -1138,6 +1146,10 @@ class ReceivablePayableReport:
 			self.ageing_column_labels.append(label)
 
 	def get_chart_data(self):
+		if not self.filters.get('show_chart'):
+			self.chart = None
+			return
+
 		rows = []
 		for row in self.data:
 			row = frappe._dict(row)

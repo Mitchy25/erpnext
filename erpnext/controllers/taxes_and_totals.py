@@ -350,8 +350,15 @@ class calculate_taxes_and_totals:
 			return
 
 		if hasattr(self.doc, "shipping_rule") and self.doc.shipping_rule:
-			shipping_rule = frappe.get_doc("Shipping Rule", self.doc.shipping_rule)
-			shipping_rule.apply(self.doc)
+			apply_rule = 1
+			for item in self.doc.taxes:
+				if item.from_shipping_rule == 1:
+					apply_rule = 0
+					break
+			
+			if apply_rule:
+				shipping_rule = frappe.get_doc("Shipping Rule", self.doc.shipping_rule)
+				shipping_rule.apply(self.doc)
 
 			self._calculate()
 
@@ -985,6 +992,7 @@ def get_round_off_applicable_accounts(company, account_list):
 		return get_regional_round_off_accounts(company, account_list)
 
 
+
 @erpnext.allow_regional
 def get_regional_round_off_accounts(company, account_list):
 	pass
@@ -999,6 +1007,7 @@ def update_itemised_tax_data(doc):
 @erpnext.allow_regional
 def get_itemised_tax_breakup_header(item_doctype, tax_accounts):
 	return [_("Item"), _("Taxable Amount"), *tax_accounts]
+
 
 
 @erpnext.allow_regional
@@ -1016,6 +1025,7 @@ def get_itemised_tax_breakup_data(doc):
 		)
 
 	return itemised_tax_data
+
 
 
 def get_itemised_tax(taxes, with_tax_account=False):

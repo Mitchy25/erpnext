@@ -112,9 +112,15 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		if args.get(key) is None:
 			args[key] = value
 
-	data = get_pricing_rule_for_item(args, doc=doc, for_validate=for_validate)
+	if frappe.get_cached_value("Item", args.get("item_code"), "has_batch_no") and not args.batch_no:
+		batch_results = get_batch_no(args.get("item_code"), args.get("warehouse"), args.get("qty"), cur_batch_no=args.get(args.batch_no), return_error=False, return_shortdated=True)
+		if batch_results:
+			args.batch_no, args.shortdated_batch = batch_results
 
-	out.update(data)
+	if args.get("update_stock"):
+		data = get_pricing_rule_for_item(args, doc, for_validate=for_validate)
+		
+		out.update(data)
 
 	update_stock(args, out)
 
@@ -152,6 +158,7 @@ def update_stock(args, out):
 
 		if out.has_batch_no and not args.get("batch_no"):
 			out.batch_no = get_batch_no(out.item_code, out.warehouse, out.qty)
+			
 			actual_batch_qty = get_batch_qty(out.batch_no, out.warehouse, out.item_code)
 			if actual_batch_qty:
 				out.update(actual_batch_qty)
@@ -261,6 +268,14 @@ def validate_item_details(args, item):
 				if item.is_stock_item:
 					throw(_("Item {0} must be a Non-Stock Item").format(item.name))
 
+@frappe.whitelist()
+def get_basic_details_si(args, item):
+	item = frappe.get_doc("Item", item)
+	args = process_args(args)
+	out = get_basic_details(args, item)
+	out.update(get_price_list_rate(args, item))
+	out.rate = out.price_list_rate
+	return out
 
 def get_basic_details(args, item, overwrite_warehouse=True):
 	"""
@@ -365,6 +380,13 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 	if args.get("batch_no") and item.name != frappe.get_cached_value("Batch", args.get("batch_no"), "item"):
 		args["batch_no"] = ""
 
+	if args.qty == 0 and args.get('doctype') == "Purchase Order":
+		qty = 0
+	elif args.qty == 0:
+		qty = 1
+	else:
+		qty = flt(args.qty)
+
 	out = frappe._dict(
 		{
 			"item_code": item.name,
@@ -390,8 +412,8 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			"uom": args.uom,
 			"stock_uom": item.stock_uom,
 			"min_order_qty": flt(item.min_order_qty) if args.doctype == "Material Request" else "",
-			"qty": flt(args.qty) or 1.0,
-			"stock_qty": flt(args.qty) or 1.0,
+			"qty": flt(qty), 
+			"stock_qty": flt(qty),
 			"price_list_rate": 0.0,
 			"base_price_list_rate": 0.0,
 			"rate": 0.0,
@@ -416,6 +438,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			"weight_per_unit": args.get("weight_per_unit") or item.get("weight_per_unit"),
 			"weight_uom": args.get("weight_uom") or item.get("weight_uom"),
 			"grant_commission": item.get("grant_commission"),
+			"is_coldship_item": item.get('is_coldship_item')
 		}
 	)
 
@@ -480,8 +503,11 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 					"manufacturer_part_no": data.default_manufacturer_part_no,
 				}
 			)
-
-	child_doctype = args.doctype + " Item"
+	if "Item" in args.doctype:
+		raise
+		child_doctype = args.doctype
+	else:
+		child_doctype = args.doctype + " Item"
 	meta = frappe.get_meta(child_doctype)
 	if meta.get_field("barcode"):
 		update_barcode_value(out)
@@ -1260,7 +1286,6 @@ def get_serial_no_details(item_code, warehouse, stock_qty, serial_no):
 		{"item_code": item_code, "warehouse": warehouse, "stock_qty": stock_qty, "serial_no": serial_no}
 	)
 	serial_no = get_serial_no(args)
-
 	return {"serial_no": serial_no}
 
 
@@ -1291,7 +1316,6 @@ def get_batch_qty_and_serial_no(batch_no, stock_qty, warehouse, item_code, has_s
 		)
 		serial_no = get_serial_no(args)
 		batch_qty_and_serial_no.update({"serial_no": serial_no})
-
 	return batch_qty_and_serial_no
 
 
@@ -1331,6 +1355,7 @@ def apply_price_list(args, as_doc=False, doc=None):
 	"""
 	args = process_args(args)
 
+
 	parent = get_price_list_currency_and_exchange_rate(args)
 	args.update(parent)
 
@@ -1364,8 +1389,7 @@ def apply_price_list(args, as_doc=False, doc=None):
 def apply_price_list_on_item(args, doc=None):
 	item_doc = frappe.db.get_value("Item", args.item_code, ["name", "variant_of"], as_dict=1)
 	item_details = get_price_list_rate(args, item_doc)
-	item_details.update(get_pricing_rule_for_item(args, doc=doc))
-
+	item_details.update(get_pricing_rule_for_item(args, item_details.price_list_rate, doc=doc))
 	return item_details
 
 
@@ -1510,7 +1534,6 @@ def get_blanket_order_details(args):
 		args = frappe._dict(json.loads(args))
 
 	blanket_order_details = None
-
 	if args.item_code:
 		bo = frappe.qb.DocType("Blanket Order")
 		bo_item = frappe.qb.DocType("Blanket Order Item")

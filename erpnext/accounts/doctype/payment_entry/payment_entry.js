@@ -650,17 +650,23 @@ frappe.ui.form.on('Payment Entry', {
 		const today = frappe.datetime.get_today();
 		let fields = [
 			{fieldtype:"Section Break", label: __("Posting Date")},
-			{fieldtype:"Date", label: __("From Date"),
-				fieldname:"from_posting_date", default:frappe.datetime.add_days(today, -30)},
+			{fieldtype:"Date", label: __("From Date"),fieldname:"from_posting_date", default:frappe.datetime.add_days(today, -30)},
 			{fieldtype:"Column Break"},
 			{fieldtype:"Date", label: __("To Date"), fieldname:"to_posting_date", default:today},
 			{fieldtype:"Section Break", label: __("Due Date")},
 			{fieldtype:"Date", label: __("From Date"), fieldname:"from_due_date"},
 			{fieldtype:"Column Break"},
 			{fieldtype:"Date", label: __("To Date"), fieldname:"to_due_date"},
+			{fieldtype:"Section Break", label: __("Due Date")},
+			{fieldtype:"Button", label: __("Due Today"), fieldname:"today_overdue"},
+			{fieldtype:"Column Break"},
+			{fieldtype:"Button", label: __("30 Days"), fieldname:"thirty_days_overdue"},
+			{fieldtype:"Column Break"},
+			{fieldtype:"Button", label: __("60 Days"), fieldname:"sixty_days_overdue"},
+			{fieldtype:"Column Break"},
+			{fieldtype:"Button", label: __("90+ Days"), fieldname:"ninety_days_overdue"},
 			{fieldtype:"Section Break", label: __("Outstanding Amount")},
-			{fieldtype:"Float", label: __("Greater Than Amount"),
-				fieldname:"outstanding_amt_greater_than", default: 0},
+			{fieldtype:"Float", label: __("Greater Than Amount"),fieldname:"outstanding_amt_greater_than", default: 0},
 			{fieldtype:"Column Break"},
 			{fieldtype:"Float", label: __("Less Than Amount"), fieldname:"outstanding_amt_less_than"},
 		];
@@ -750,7 +756,7 @@ frappe.ui.form.on('Payment Entry', {
 			"company": frm.doc.company,
 			"party_type": frm.doc.party_type,
 			"payment_type": frm.doc.payment_type,
-			"party": frm.doc.party,
+			"party": frm.doc.party.replace(/'/g, "\'"),
 			"party_account": frm.doc.payment_type=="Receive" ? frm.doc.paid_from : frm.doc.paid_to,
 			"cost_center": frm.doc.cost_center
 		}
@@ -782,10 +788,12 @@ frappe.ui.form.on('Payment Entry', {
 						var c = frm.add_child("references");
 						c.reference_doctype = d.voucher_type;
 						c.reference_name = d.voucher_no;
-						c.due_date = d.due_date
+						c.due_date = d.due_date;
+						c.posting_date = d.posting_date;
 						c.total_amount = d.invoice_amount;
 						c.outstanding_amount = d.outstanding_amount;
 						c.bill_no = d.bill_no;
+						c.customer_purchase_no = d.customer_purchase_no;
 						c.payment_term = d.payment_term;
 						c.allocated_amount = d.allocated_amount;
 
@@ -932,6 +940,7 @@ frappe.ui.form.on('Payment Entry', {
 					precision("base_paid_amount"));
 			}
 		});
+
 		frm.set_value("total_allocated_amount", Math.abs(total_allocated_amount));
 		frm.set_value("base_total_allocated_amount", Math.abs(base_total_allocated_amount));
 

@@ -601,6 +601,7 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 	fields = {
 		"Purchase Order": {
 			"doctype": "Purchase Invoice",
+			"source_po": source_name,
 			"field_map": {
 				"party_account_currency": "party_account_currency",
 				"supplier_warehouse": "supplier_warehouse",
@@ -633,6 +634,7 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 	)
 
 	return doc
+
 
 
 def get_list_context(context=None):

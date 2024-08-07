@@ -120,6 +120,7 @@ class MpesaSettings(Document):
 			frappe.throw(_(response.errorMessage), title=_("Transaction Error"))
 
 
+
 def generate_stk_push(**kwargs):
 	"""Generate stk push by making a API call to the stk push API."""
 	args = frappe._dict(kwargs)

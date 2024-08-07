@@ -120,7 +120,6 @@ class ItemPrice(Document):
 			self.reference = self.customer
 		if self.buying:
 			self.reference = self.supplier
-
 		if self.selling and not self.buying:
 			# if only selling then remove supplier
 			self.supplier = None

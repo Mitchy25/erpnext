@@ -73,8 +73,12 @@ frappe.query_reports["General Ledger"] = {
 
 				let party_type = frappe.query_report.get_filter_value("party_type");
 				if (!party_type) return;
-
-				return frappe.db.get_link_options(party_type, txt);
+				let filters = {}
+				if (party_type == "Customer") {
+					let check = frappe.query_report.get_filter_value('hide_inactive_customers');
+					filters = (check ? {'customer_status': ["!=","Disabled"]} : {'disabled': [">=","0"]})
+				};
+				return frappe.db.get_link_options(party_type, txt, filters);
 			},
 			on_change: function () {
 				var party_type = frappe.query_report.get_filter_value("party_type");
@@ -185,9 +189,27 @@ frappe.query_reports["General Ledger"] = {
 			fieldtype: "Check",
 		},
 		{
-			fieldname: "show_net_values_in_party_account",
-			label: __("Show Net Values in Party Account"),
-			fieldtype: "Check",
+			"fieldname": "show_net_values_in_party_account",
+			"label": __("Show Net Values in Party Account"),
+			"fieldtype": "Check"
+		},
+		{
+			"fieldname": "hide_inactive_customers",
+			"label": __("Hide Inactive Customers"),
+			"fieldtype": "Check",
+			"default": 1
+		},
+		{
+			"fieldname": "show_outstanding_amount",
+			"label": __("Show Outstanding Amount"),
+			"fieldtype": "Check",
+			"default": 1
+		},
+		{
+			"fieldname": "show_due_date",
+			"label": __("Show Due Date"),
+			"fieldtype": "Check",
+			"default": 0
 		},
 		{
 			fieldname: "show_remarks",
@@ -207,4 +229,5 @@ frappe.query_reports["General Ledger"] = {
 	],
 };
 
-erpnext.utils.add_dimensions("General Ledger", 15);
+
+erpnext.utils.add_dimensions('General Ledger', 15)

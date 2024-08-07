@@ -583,7 +583,7 @@ class GrossProfitGenerator:
 		returned_invoices = frappe.db.sql(
 			"""
 			select
-				si.name, si_item.item_code, si_item.stock_qty as qty, si_item.base_net_amount as base_amount, si.return_against
+				si.name, si_item.cost_center, si_item.item_code, si_item.stock_qty as qty, si_item.base_net_amount as base_amount, si.return_against
 			from
 				`tabSales Invoice` si, `tabSales Invoice Item` si_item
 			where
@@ -746,6 +746,8 @@ class GrossProfitGenerator:
 			conditions += " and posting_date >= %(from_date)s"
 		if self.filters.to_date:
 			conditions += " and posting_date <= %(to_date)s"
+		if self.filters.cost_center:
+			conditions += " and `tabSales Invoice Item`.cost_center = %(cost_center)s"
 
 		conditions += " and (is_return = 0 or (is_return=1 and return_against is null))"
 

@@ -105,6 +105,8 @@ class TestPricingRule(unittest.TestCase):
 	def test_pricing_rule_for_margin(self):
 		from erpnext.stock.get_item_details import get_item_details
 
+		from erpnext.stock.get_item_details import get_item_details
+
 		test_record = {
 			"doctype": "Pricing Rule",
 			"title": "_Test Pricing Rule",
@@ -200,9 +202,11 @@ class TestPricingRule(unittest.TestCase):
 			}
 		)
 		details = get_item_details(args)
-		self.assertEqual(details.get("discount_percentage"), 10)
+		self.assertEquals(details.get("discount_percentage"), 10)
 
 	def test_pricing_rule_for_variants(self):
+		from erpnext.stock.get_item_details import get_item_details
+
 		from erpnext.stock.get_item_details import get_item_details
 
 		if not frappe.db.exists("Item", "Test Variant PRT"):

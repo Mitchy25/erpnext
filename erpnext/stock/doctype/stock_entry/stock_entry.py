@@ -1531,7 +1531,6 @@ class StockEntry(StockController):
 					and frappe.db.get_single_value("Manufacturing Settings", "material_consumption") == 1
 				):
 					self.get_unconsumed_raw_materials()
-
 				else:
 					if not self.fg_completed_qty:
 						frappe.throw(_("Manufacturing Quantity is mandatory"))
@@ -1671,6 +1670,8 @@ class StockEntry(StockController):
 			"cost_center": item.get("buying_cost_center"),
 			"is_finished_item": 1,
 		}
+		if not args['expense_account']:
+			args['expense_account'] = frappe.db.get_value('Company', frappe.defaults.get_user_default("Company"), 'stock_adjustment_account')
 
 		if (
 			self.work_order

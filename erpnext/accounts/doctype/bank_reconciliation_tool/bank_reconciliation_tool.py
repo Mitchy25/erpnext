@@ -59,6 +59,7 @@ def get_bank_transactions(bank_account, from_date=None, to_date=None):
 
 @frappe.whitelist()
 def get_account_balance(bank_account, till_date):
+
 	# returns account balance till the specified date
 	account = frappe.db.get_value("Bank Account", bank_account, "account")
 	filters = frappe._dict({"account": account, "report_date": till_date, "include_pos_transactions": 1})
@@ -78,7 +79,6 @@ def get_account_balance(bank_account, till_date):
 	)
 
 	return bank_bal
-
 
 @frappe.whitelist()
 def update_bank_transaction(bank_transaction_name, reference_number, party_type=None, party=None):
@@ -119,7 +119,9 @@ def create_journal_entry_bts(
 	mode_of_payment=None,
 	party_type=None,
 	party=None,
+	cost_center = None,
 	allow_edit=None,
+	multi_currency=None
 ):
 	# Create a new journal entry based on the bank transaction
 	bank_transaction = frappe.db.get_values(
@@ -245,6 +247,7 @@ def create_journal_entry_bts(
 
 	if allow_edit:
 		return journal_entry
+	
 
 	journal_entry.insert()
 	journal_entry.submit()
@@ -265,6 +268,7 @@ def create_journal_entry_bts(
 	)
 
 	return reconcile_vouchers(bank_transaction_name, vouchers)
+
 
 
 @frappe.whitelist()
@@ -294,6 +298,7 @@ def create_payment_entry_bts(
 	company = frappe.get_value("Account", company_account, "company")
 	payment_entry_dict = {
 		"company": company,
+		"bank_account": bank_transaction.bank_account,
 		"payment_type": payment_type,
 		"reference_no": reference_number,
 		"reference_date": reference_date,
@@ -411,6 +416,7 @@ def auto_reconcile_vouchers(
 	frappe.flags.auto_reconcile_vouchers = False
 
 	return frappe.get_doc("Bank Transaction", transaction.name)
+
 
 
 @frappe.whitelist()
@@ -844,6 +850,51 @@ def get_je_matching_query(
 			{filter_by_reference_no}
 			order by {order_by}
 	"""
+
+	if amount_condition == "=":
+		sql += f"""AND jea.{cr_or_dr}_in_account_currency {amount_condition} %(amount)s"""
+
+	return sql
+
+def get_pg_matching_query(amount_condition, transaction):
+	# get matching payment groups query
+	
+	if transaction.deposit > 0:
+		currency_field = "paid_to_account_currency as currency"
+	else:
+		currency_field = "paid_from_account_currency as currency"
+	sql = f"""
+	SELECT
+		0 AS rank,
+		'Payment Group' as doctype,
+		pg.name,
+		pg.total,
+		pg.name as reference_no,
+		pg.date as reference_date,
+		null as party,
+		null as party_type,
+		pg.date as posting_date,
+		acc.account_currency as currency
+	FROM
+		`tabPayment Group` pg
+	JOIN
+		`tabBank Account` as bankAcc
+	ON
+		bankAcc.name = pg.bank_account
+	JOIN
+		`tabAccount` as acc
+	ON
+		bankAcc.account = acc.name
+	WHERE
+		pg.docstatus = 1
+		AND ifnull(pg.clearance_date, '') = ""
+		AND bankAcc.account = %(bank_account)s
+	"""
+
+	if amount_condition == "=":
+		sql += f"""AND pg.total {amount_condition} %(amount)s"""
+
+	return sql
 
 
 def get_si_matching_query(exact_match):

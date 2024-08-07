@@ -2,13 +2,12 @@
 # For license information, please see license.txt
 
 
-from urllib.parse import urlparse
-
 import frappe
 from frappe import _
-from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from frappe.custom.doctype.custom_field.custom_field import create_custom_field
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_root_of
+from six.moves.urllib.parse import urlparse
 
 
 class WoocommerceSettings(Document):
@@ -19,24 +18,27 @@ class WoocommerceSettings(Document):
 
 	def create_delete_custom_fields(self):
 		if self.enable_sync:
-			create_custom_fields(
-				{
-					("Customer", "Sales Order", "Item", "Address"): dict(
-						fieldname="woocommerce_id",
-						label="Woocommerce ID",
-						fieldtype="Data",
-						read_only=1,
-						print_hide=1,
-					),
-					("Customer", "Address"): dict(
-						fieldname="woocommerce_email",
-						label="Woocommerce Email",
-						fieldtype="Data",
-						read_only=1,
-						print_hide=1,
-					),
-				}
-			)
+			custom_fields = {}
+			# create
+			for doctype in ["Customer", "Sales Order", "Item", "Address"]:
+				df = dict(
+					fieldname="woocommerce_id",
+					label="Woocommerce ID",
+					fieldtype="Data",
+					read_only=1,
+					print_hide=1,
+				)
+				create_custom_field(doctype, df)
+
+			for doctype in ["Customer", "Address"]:
+				df = dict(
+					fieldname="woocommerce_email",
+					label="Woocommerce Email",
+					fieldtype="Data",
+					read_only=1,
+					print_hide=1,
+				)
+				create_custom_field(doctype, df)
 
 			if not frappe.get_value("Item Group", {"name": _("WooCommerce Products")}):
 				item_group = frappe.new_doc("Item Group")
@@ -67,7 +69,7 @@ class WoocommerceSettings(Document):
 			# for CI Test to work
 			url = "http://localhost:8000"
 
-		server_url = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+		server_url = "{uri.scheme}://{uri.netloc}".format(uri=urlparse(url))
 
 		delivery_url = server_url + endpoint
 		self.endpoint = delivery_url

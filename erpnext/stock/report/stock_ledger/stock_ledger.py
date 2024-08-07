@@ -332,6 +332,9 @@ def get_items(filters):
 			if condition := get_item_group_condition(item_group, item):
 				conditions.append(condition)
 
+	if filters.get("exclude_non_sale_items"):
+		conditions.append("item.is_sales_item=%(exclude_non_sale_items)s")
+
 	items = []
 	if conditions:
 		for condition in conditions:

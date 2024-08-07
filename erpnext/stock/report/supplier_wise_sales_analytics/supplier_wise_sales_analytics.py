@@ -8,6 +8,7 @@ from frappe.query_builder.functions import IfNull
 from frappe.utils import flt
 
 
+
 def execute(filters=None):
 	columns = get_columns(filters)
 	consumed_details = get_consumed_details(filters)
@@ -68,6 +69,7 @@ def get_columns(filters):
 	]
 
 	return columns
+
 
 
 def get_consumed_details(filters):

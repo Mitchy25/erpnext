@@ -19,6 +19,7 @@ from erpnext.accounts.report.item_wise_sales_register.item_wise_sales_register i
 from erpnext.accounts.report.utils import get_query_columns, get_values_for_columns
 
 
+
 def execute(filters=None):
 	return _execute(filters)
 

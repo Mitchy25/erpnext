@@ -698,6 +698,8 @@ class AccountsController(TransactionBase):
 					args["ignore_pricing_rule"] = (
 						self.ignore_pricing_rule if hasattr(self, "ignore_pricing_rule") else 0
 					)
+					args["shortdated_batch"] = item.get("shortdated_batch")
+					
 					args["ignore_serial_nos"] = selected_serial_nos_map.get(item.get("item_code"))
 
 					if not args.get("transaction_date"):
@@ -1015,6 +1017,15 @@ class AccountsController(TransactionBase):
 	@frappe.whitelist()
 	def apply_shipping_rule(self):
 		if self.shipping_rule:
+			apply_rule = 1
+			for item in self.taxes:
+				if item.from_shipping_rule == 1:
+					apply_rule = 0
+					break
+			
+			if not apply_rule:
+				return
+
 			shipping_rule = frappe.get_doc("Shipping Rule", self.shipping_rule)
 			shipping_rule.apply(self)
 			self.calculate_taxes_and_totals()
@@ -1864,7 +1875,11 @@ class AccountsController(TransactionBase):
 
 	def validate_party(self):
 		party_type, party = self.get_party()
-		validate_party_frozen_disabled(party_type, party)
+		# Allow staff to create payment entry for frozen customer
+		if self.doctype == "Payment Entry":
+			pass
+		else:
+			validate_party_frozen_disabled(party_type, party)
 
 	def get_party(self):
 		party_type = None
@@ -3056,7 +3071,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 		return set_order_defaults(parent_doctype, parent_doctype_name, child_doctype, child_docname, item_row)
 
 	def validate_quantity(child_item, new_data):
-		if not flt(new_data.get("qty")):
+		if not flt(new_data.get("qty")) and child_item.doctype != 'Purchase Order Item':
 			frappe.throw(
 				_("Row # {0}: Quantity for Item {1} cannot be zero").format(
 					new_data.get("idx"), frappe.bold(new_data.get("item_code"))
@@ -3088,6 +3103,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 		return update_supplied_items
 
+	qty_change_items = []
 	data = json.loads(trans_items)
 
 	any_qty_changed = False  # updated to true if any item's qty changes
@@ -3119,9 +3135,15 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 			prev_rate, new_rate = flt(child_item.get("rate")), flt(d.get("rate"))
 			prev_qty, new_qty = flt(child_item.get("qty")), flt(d.get("qty"))
+			if prev_qty > new_qty and parent_doctype == "Purchase Order":
+				# Used for the eta note dialog for purchase invoices
+				eta_note, item_name = frappe.get_value("Item", child_item.get('item_code'), ["eta_note", "item_name"])
+				if not eta_note:
+					eta_note = ""
+				qty_change_items.append({"item_code": child_item.get('item_code'), "prev_qty": prev_qty, "new_qty": new_qty, "eta_note": eta_note, "item_name": item_name})
 			prev_con_fac, new_con_fac = (
 				flt(child_item.get("conversion_factor")),
-				flt(d.get("conversion_factor")),
+				flt(d.get("conversion_factor"))
 			)
 			prev_uom, new_uom = child_item.get("uom"), d.get("uom")
 
@@ -3279,6 +3301,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 	parent.update_blanket_order()
 	parent.update_billing_percentage()
 	parent.set_status()
+	return qty_change_items
 
 
 def check_if_child_table_updated(child_table_before_update, child_table_after_update, fields_to_check):

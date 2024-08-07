@@ -10,6 +10,7 @@ from frappe.utils.nestedset import get_root_of
 from erpnext import get_default_company
 
 
+
 def before_tests():
 	frappe.clear_cache()
 	# complete setup if missing
@@ -159,6 +160,7 @@ def insert_record(records):
 	from frappe.desk.page.setup_wizard.setup_wizard import make_records
 
 	make_records(records)
+
 
 
 def welcome_email():

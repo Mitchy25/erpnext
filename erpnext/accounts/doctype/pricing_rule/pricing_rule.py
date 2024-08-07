@@ -99,6 +99,7 @@ class PricingRule(Document):
 			"Territory",
 			"Sales Partner",
 			"Campaign",
+			"Modality"
 		]:
 			throw(
 				_("Selling must be checked, if Applicable For is selected as {0}").format(self.applicable_for)
@@ -291,9 +292,12 @@ def get_serial_no_for_item(args):
 
 
 def update_pricing_rule_uom(pricing_rule, args):
-	child_doc = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands"}.get(
+	child_doc = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands", "Batch No": "apply_rule_on_batch"}.get(
 		pricing_rule.apply_on
 	)
+
+	if not child_doc:
+		frappe.throw(f"Unable to find the 'apply on' child table for this pricing rule. Please reach out to a member of the IT Team for help.<br><br><b>Pricing Rule:</b> {pricing_rule.name}<br><b>Fieldname:</b> {pricing_rule.apply_on}")
 
 	apply_on_field = frappe.scrub(pricing_rule.apply_on)
 
@@ -318,6 +322,13 @@ def get_pricing_rule_for_item(args, doc=None, for_validate=False):
 
 	if args.get("is_free_item") or args.get("parenttype") == "Material Request":
 		return {}
+
+	test = args
+	if doc and doc.get("backorder_items"):
+		for bo_item in doc.get("backorder_items"):
+			if bo_item.derived_from == args.child_docname:
+				args.qty += bo_item.qty
+
 
 	item_details = frappe._dict(
 		{
@@ -433,10 +444,10 @@ def update_args_for_pricing_rule(args):
 			if args.quotation_to and args.quotation_to != "Customer":
 				customer = frappe._dict()
 			else:
-				customer = frappe.get_cached_value("Customer", args.customer, ["customer_group", "territory"])
+				customer = frappe.get_cached_value("Customer", args.customer, ["customer_group", "territory", "modality"])
 
 			if customer:
-				args.customer_group, args.territory = customer
+				args.customer_group, args.territory, args.modality = customer
 
 		args.supplier = args.supplier_group = None
 

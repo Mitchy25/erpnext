@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-
 from collections import OrderedDict
 
 import frappe
@@ -178,7 +177,12 @@ def get_gl_entries(filters, accounting_dimensions):
 		order_by_statement = "order by account, posting_date, creation"
 
 	if filters.get("include_default_book_entries"):
-		filters["company_fb"] = frappe.db.get_value("Company", filters.get("company"), "default_finance_book")
+		filters["company_fb"] = frappe.db.get_value(
+			"Company", filters.get("company"), "default_finance_book"
+		)
+
+	if filters.get("show_outstanding_amount"):
+		filters["show_outstanding_amount"] = 1
 
 	dimension_fields = ""
 	if accounting_dimensions:
@@ -332,6 +336,7 @@ def get_accounts_with_children(accounts):
 			frappe.throw(_("Account: {0} does not exist").format(d))
 
 	return list(set(all_accounts)) if all_accounts else None
+
 
 
 def get_data_with_opening_closing(filters, account_details, accounting_dimensions, gl_entries):
@@ -509,30 +514,113 @@ def get_account_type_map(company):
 
 
 def get_result_as_list(data, filters):
-	balance, _balance_in_account_currency = 0, 0
-	inv_details = get_supplier_invoice_details()
+	balance, balance_in_account_currency = 0, 0
+	inv_details = get_supplier_invoice_details(filters)
+	si_details = get_sales_invoice_details(filters)
+	if filters.get("company") == "RN Labs":
+		si_patient_details = get_sales_invoice_patient_details()
 
 	for d in data:
 		if not d.get("posting_date"):
-			balance, _balance_in_account_currency = 0, 0
+			balance, balance_in_account_currency = 0, 0
 
 		balance = get_balance(d, balance, "debit", "credit")
 		d["balance"] = balance
 
 		d["account_currency"] = filters.account_currency
-		d["bill_no"] = inv_details.get(d.get("against_voucher"), "")
+		d["bill_no"] = ""
+		d["outstanding_amount"] = ""
+		if inv_details.get(d.get("against_voucher")):
+			d["bill_no"] = inv_details.get(d.get("against_voucher"), "")['bill_no']
+			d["outstanding_amount"] = inv_details.get(d.get("against_voucher"), "")['outstanding_amount']
+			d["due_date"] = inv_details.get(d.get("against_voucher"), "")['due_date']
+				
+		d["po_no"] = ""
+
+		if si_details.get(d.get("against_voucher")):
+			d["po_no"] = si_details.get(d.get("against_voucher"), "")["po_no"]
+			d["outstanding_amount"] = si_details.get(d.get("against_voucher"), "")['outstanding_amount']
+			d["due_date"] = si_details.get(d.get("against_voucher"), "")['due_date']
+		
+		if d["outstanding_amount"] == 0:
+			d["outstanding_amount"] = ""
+
+		if filters.get("company") == "RN Labs":
+			d["patient_name"] = si_patient_details.get(d.get("against_voucher"), "")
 
 	return data
 
 
-def get_supplier_invoice_details():
+def get_supplier_invoice_details(filters):
 	inv_details = {}
+	inv_filters = ""
+	if 'from_date' in filters and filters['from_date']:
+		inv_filters += " AND posting_date >= '" + str(filters['from_date']) + "'"
+	if 'to_date' in filters and filters['to_date']:
+		inv_filters += " AND posting_date <= '" + str(filters['to_date']) + "'"
+	if 'party' in filters and filters['party']:
+		inv_filters += " AND supplier IN ('" + "','".join(filters['party']) + "')"
+
 	for d in frappe.db.sql(
-		""" select name, bill_no from `tabPurchase Invoice`
-		where docstatus = 1 and bill_no is not null and bill_no != '' """,
+		""" 
+		select 
+			name, 
+			bill_no,
+			outstanding_amount,
+			due_date
+		from 
+			`tabPurchase Invoice`
+		where 
+			docstatus = 1 {inv_filters}""".format(
+			inv_filters=inv_filters),
 		as_dict=1,
 	):
-		inv_details[d.name] = d.bill_no
+		inv_details[d.name] = {"bill_no":d.bill_no,"outstanding_amount":d.outstanding_amount,"due_date":d.due_date}
+
+	return inv_details
+
+def get_sales_invoice_details(filters):
+	inv_details = {}
+	inv_filters = ""
+	if 'from_date' in filters and filters['from_date']:
+		inv_filters += " AND posting_date >= '" + str(filters['from_date']) + "'"
+	if 'to_date' in filters and filters['to_date']:
+		inv_filters += " AND posting_date <= '" + str(filters['to_date']) + "'"
+	if 'party' in filters and filters['party']:
+		inv_filters += " AND customer IN ('" + "','".join(filters['party']) + "')"
+
+	for d in frappe.db.sql(
+		"""SELECT 
+			name,
+			po_no,
+			outstanding_amount,
+			due_date
+		FROM 
+			`tabSales Invoice`
+		WHERE 
+			docstatus = 1 {inv_filters}""".format(
+			inv_filters=inv_filters),
+		as_dict=1
+	):
+		inv_details[d.name] = {"po_no":d.po_no,"outstanding_amount":d.outstanding_amount,"due_date":d.due_date}
+
+	return inv_details
+
+def get_sales_invoice_patient_details():
+	inv_details = {}
+	for d in frappe.db.sql(
+		"""SELECT 
+			name, 
+			temporary_delivery_address_line_1
+		FROM 
+			`tabSales Invoice`
+		WHERE 
+			docstatus = 1 and 
+			temporary_delivery_address_line_1 is not null and 
+			temporary_delivery_address_line_1 != '' """,
+		as_dict=1,
+	):
+		inv_details[d.name] = d.temporary_delivery_address_line_1
 
 	return inv_details
 
@@ -601,6 +689,33 @@ def get_columns(filters):
 		{"label": _("Project"), "options": "Project", "fieldname": "project", "width": 100},
 	]
 
+	if filters.get("show_outstanding_amount"):
+		columns.append(
+			{"label": _("Outstanding Amount ({0})").format(currency),  "fieldname": "outstanding_amount", "fieldtype":"Float", "width": 150}
+		)
+	
+	if filters.get("show_due_date"):
+		columns.append(
+			{"label": _("Due Date"),  "fieldname": "due_date", "fieldtype":"Date", "width": 150}
+		)
+
+	columns.extend(
+		[
+			{"label": _("Voucher Type"), "fieldname": "voucher_type", "width": 120},
+			{
+				"label": _("Voucher No"),
+				"fieldname": "voucher_no",
+				"fieldtype": "Dynamic Link",
+				"options": "voucher_type",
+				"width": 180,
+			},
+			{"label": _("Against Account"), "fieldname": "against", "width": 120},
+			# {"label": _("Party Type"), "fieldname": "party_type", "width": 100},
+			# {"label": _("Party"), "fieldname": "party", "width": 100},
+			# {"label": _("Project"), "options": "Project", "fieldname": "project", "width": 100},
+		]
+	)
+
 	if filters.get("include_dimensions"):
 		for dim in get_accounting_dimensions(as_list=False):
 			columns.append(
@@ -621,10 +736,10 @@ def get_columns(filters):
 				"width": 100,
 			},
 			{"label": _("Supplier Invoice No"), "fieldname": "bill_no", "fieldtype": "Data", "width": 100},
+			{"label": _("Remarks"), "fieldname": "remarks", "width": 400},
+			{"label": _("Purchase Order No"), "fieldname": "po_no", "fieldtype": "Data", "width": 200},
 		]
 	)
 
-	if filters.get("show_remarks"):
-		columns.extend([{"label": _("Remarks"), "fieldname": "remarks", "width": 400}])
-
+	
 	return columns

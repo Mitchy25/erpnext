@@ -24,41 +24,56 @@ class MultiplePricingRuleConflict(frappe.ValidationError):
 apply_on_table = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands"}
 
 
-def get_pricing_rules(args, doc=None):
+class MultiplePricingRuleConflict(frappe.ValidationError):
+	pass
+
+
+apply_on_table = {"Item Code": "items", "Item Group": "item_groups", "Brand": "brands", "Batch No": "apply_rule_on_batch"}
+
+
+def get_pricing_rules(args, doc=None, returnAll=False):
 	pricing_rules = []
 	values = {}
 
 	if not frappe.db.exists("Pricing Rule", {"disable": 0, args.transaction_type: 1}):
-		return
+		return []
 
-	for apply_on in ["Item Code", "Item Group", "Brand"]:
+	for apply_on in ["Item Code", "Item Group", "Brand", "Batch No"]:
 		pricing_rules.extend(_get_pricing_rules(apply_on, args, values))
-		if pricing_rules and pricing_rules[0].has_priority:
-			continue
-
-		if pricing_rules and not apply_multiple_pricing_rules(pricing_rules):
-			break
+		# if pricing_rules and not apply_multiple_pricing_rules(pricing_rules):
+		# 	break
 
 	rules = []
-
-	pricing_rules = filter_pricing_rule_based_on_condition(pricing_rules, doc)
+	pricing_rules = filter_pricing_rule_based_on_condition(pricing_rules, doc, args)
 
 	if not pricing_rules:
 		return []
-
-	if apply_multiple_pricing_rules(pricing_rules):
-		pricing_rules = sorted_by_priority(pricing_rules, args, doc)
+	
+	if returnAll:
+		pricing_rules = filter_pricing_rules_for_qty_amount(
+			args.qty, args.rate, pricing_rules
+		)
 		for pricing_rule in pricing_rules:
 			if isinstance(pricing_rule, list):
 				rules.extend(pricing_rule)
 			else:
 				rules.append(pricing_rule)
-	else:
-		pricing_rule = filter_pricing_rules(args, pricing_rules, doc)
-		if pricing_rule:
+		return rules
+	pricing_rules = sorted_by_priority(pricing_rules, args, doc)
+	for pricing_rule in pricing_rules:
+		if isinstance(pricing_rule, list):
+			rules.extend(pricing_rule)
+		else:
 			rules.append(pricing_rule)
 
-	return rules
+	if apply_multiple_pricing_rules(pricing_rules):
+		return rules
+	else:
+		if rules:
+			return [rules[0]]
+		else:
+			return []
+
 
 
 def sorted_by_priority(pricing_rules, args, doc=None):
@@ -66,28 +81,41 @@ def sorted_by_priority(pricing_rules, args, doc=None):
 	pricing_rules_list = []
 	pricing_rule_dict = {}
 
+	filtered_pricing_rules = []
+
 	for pricing_rule in pricing_rules:
 		pricing_rule = filter_pricing_rules(args, pricing_rule, doc)
 		if pricing_rule:
 			if not pricing_rule.get("priority"):
-				pricing_rule["priority"] = 1
-
-			if pricing_rule.get("apply_multiple_pricing_rules"):
-				pricing_rule_dict.setdefault(cint(pricing_rule.get("priority")), []).append(pricing_rule)
-
-	for key in sorted(pricing_rule_dict):
+				pricing_rule["priority"] = 0
+			else:
+				pricing_rule["priority"] = float(pricing_rule["priority"])
+			filtered_pricing_rules.append(pricing_rule)
+	
+	filtered_pricing_rules = sorted(filtered_pricing_rules, key=lambda d: d['priority'], reverse=True)
+	if filtered_pricing_rules:
+		apply_multiple = apply_multiple_pricing_rules([filtered_pricing_rules[0]])
+	else:
+		apply_multiple = False
+	for pricing_rule in filtered_pricing_rules:
+		if pricing_rule.get("apply_multiple_pricing_rules") == apply_multiple:
+			pricing_rule_dict.setdefault(cint(pricing_rule.get("priority")), []).append(pricing_rule)
+	for key in sorted(pricing_rule_dict, reverse=True):
 		pricing_rules_list.extend(pricing_rule_dict.get(key))
-
 	return pricing_rules_list
 
 
-def filter_pricing_rule_based_on_condition(pricing_rules, doc=None):
+def filter_pricing_rule_based_on_condition(pricing_rules, doc=None, args = None):
 	filtered_pricing_rules = []
 	if doc:
 		for pricing_rule in pricing_rules:
 			if pricing_rule.condition:
+				if type(frappe._dict()) == type(doc):
+					doc = doc
+				else:
+					doc = doc.as_dict()
 				try:
-					if frappe.safe_eval(pricing_rule.condition, None, doc.as_dict()):
+					if frappe.safe_eval(pricing_rule.condition, None, {'doc': doc, 'args': args}):
 						filtered_pricing_rules.append(pricing_rule)
 				except Exception:
 					pass
@@ -105,12 +133,14 @@ def _get_pricing_rules(apply_on, args, values):
 	if not args.get(apply_on_field):
 		return []
 
-	child_doc = f"`tabPricing Rule {apply_on}`"
+	child_doc = "`tabPricing Rule {0}`".format(apply_on)
 
 	conditions = item_variant_condition = item_conditions = ""
 	values[apply_on_field] = args.get(apply_on_field)
-	if apply_on_field in ["item_code", "brand"]:
-		item_conditions = f"{child_doc}.{apply_on_field}= %({apply_on_field})s"
+	if apply_on_field in ["item_code", "brand", "batch_no"]:
+		item_conditions = "{child_doc}.{apply_on_field}= %({apply_on_field})s".format(
+			child_doc=child_doc, apply_on_field=apply_on_field
+		)
 
 		if apply_on_field == "item_code":
 			if args.get("uom", None):
@@ -127,7 +157,12 @@ def _get_pricing_rules(apply_on, args, values):
 				values["variant_of"] = args.variant_of
 	elif apply_on_field == "item_group":
 		item_conditions = _get_tree_conditions(args, "Item Group", child_doc, False)
-
+		if args.get("uom", None):
+			item_conditions += (
+				" and ({child_doc}.uom='{item_uom}' or IFNULL({child_doc}.uom, '')='')".format(
+					child_doc=child_doc, item_uom=args.get("uom")
+				)
+			)
 	conditions += get_other_conditions(conditions, values, args)
 	warehouse_conditions = _get_tree_conditions(args, "Warehouse", "`tabPricing Rule`")
 	if warehouse_conditions:
@@ -165,6 +200,9 @@ def _get_pricing_rules(apply_on, args, values):
 		)
 		or []
 	)
+	for rule in pricing_rules:
+		if rule[apply_on_field] != args[apply_on_field]:
+			rule['apply_on_rule'] = True
 
 	return pricing_rules
 
@@ -226,7 +264,7 @@ def _get_tree_conditions(args, parenttype, table, allow_blank=True):
 
 
 def get_other_conditions(conditions, values, args):
-	for field in ["company", "customer", "supplier", "campaign", "sales_partner"]:
+	for field in ["company", "customer", "supplier", "modality", "campaign", "sales_partner"]:
 		if args.get(field):
 			conditions += f" and ifnull(`tabPricing Rule`.{field}, '') in (%({field})s, '')"
 			values[field] = args.get(field)
@@ -263,6 +301,7 @@ def get_other_conditions(conditions, values, args):
 
 
 def filter_pricing_rules(args, pricing_rules, doc=None):
+	#Changed to filter one rule at a time.
 	if not isinstance(pricing_rules, list):
 		pricing_rules = [pricing_rules]
 
@@ -272,6 +311,11 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 	if pricing_rules:
 		stock_qty = flt(args.get("stock_qty"))
 		amount = flt(args.get("price_list_rate")) * flt(args.get("qty"))
+
+		if pricing_rules[0].apply_rule_on_other:
+			field = frappe.scrub(pricing_rules[0].apply_rule_on_other)
+			if field and pricing_rules[0].get("other_" + field) and pricing_rules[0].get("other_" + field) != args.get(field):
+				return
 
 		pr_doc = frappe.get_cached_doc("Pricing Rule", pricing_rules[0].name)
 
@@ -317,6 +361,15 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 		if filtered_rules:
 			pricing_rules = filtered_rules
 
+	# Filter out pricing rules only for shortdated
+	test = args
+	if pricing_rules and not args.shortdated_batch:
+		pricing_rules = [pricing_rule for pricing_rule in pricing_rules if pricing_rule.is_shortdated != 1]
+
+	if pricing_rules and args.shortdated_batch:
+		if args.shortdated_batch == 0:
+			pricing_rules = [pricing_rule for pricing_rule in pricing_rules if pricing_rule.is_shortdated != 1]
+
 	# find pricing rule with highest priority
 	if pricing_rules:
 		max_priority = max(cint(p.priority) for p in pricing_rules)
@@ -334,12 +387,14 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 			)
 
 	if len(pricing_rules) > 1 and not args.for_shopping_cart:
-		frappe.throw(
-			_(
-				"Multiple Price Rules exists with same criteria, please resolve conflict by assigning priority. Price Rules: {0}"
-			).format("\n".join(d.name for d in pricing_rules)),
-			MultiplePricingRuleConflict,
-		)
+		# frappe.throw(
+		# 	_(
+		# 		"Multiple Price Rules exists with same criteria, please resolve conflict by assigning priority. Price Rules: {0}"
+		# 	).format("\n".join(d.name for d in pricing_rules)),
+		# 	MultiplePricingRuleConflict,
+		# )
+		# send_email(pricing_rules)
+		return pricing_rules[0]
 	elif pricing_rules:
 		return pricing_rules[0]
 
@@ -441,56 +496,54 @@ def apply_internal_priority(pricing_rules, field_set, args):
 
 def get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args):
 	sum_qty, sum_amt = [0, 0]
-	items = get_pricing_rule_items(pr_doc) or []
+	items = get_pricing_rule_items(pr_doc)['items'] or []
 	apply_on = frappe.scrub(pr_doc.get("apply_on"))
+	
+	for field in ["items", "backorder_items"]:
+		if items and doc.get(field):
+			for row in doc.get(field):
+				if args.child_docname == row.name:
+					row.batch_no = args.batch_no
+				if (row.get(apply_on)) not in items or row.is_free_item:
+					continue
+				if (row.pricing_rules and pr_doc.name not in row.pricing_rules):
+					row_rules = json.loads(row.pricing_rules)
+					max_priority = -9999
+					for i in row_rules:
+						max_priority = max(max_priority, float(frappe.get_value("Pricing Rule", i, 'priority')))
+					if float(pr_doc.priority) < max_priority:
+						continue
+				if pr_doc.mixed_conditions:
+					amt = args.get("qty") * args.get("price_list_rate", 0)
+					if args.get("item_code") != row.get("item_code"):
+						amt = flt(row.get("qty")) * flt(row.get("price_list_rate", 0) or args.get("rate", 0))
 
-	if items and doc.get("items"):
-		for row in doc.get("items"):
-			if (row.get(apply_on) or args.get(apply_on)) not in items:
-				continue
+					sum_qty += flt(row.get("stock_qty")) or flt(args.get("stock_qty")) or flt(args.get("qty"))
+					sum_amt += amt
 
-			if pr_doc.mixed_conditions:
-				amt = args.get("qty") * args.get("price_list_rate")
-				if args.get("item_code") != row.get("item_code"):
-					amt = flt(row.get("qty")) * flt(row.get("price_list_rate") or args.get("rate"))
+			if pr_doc.is_cumulative:
+				data = get_qty_amount_data_for_cumulative(pr_doc, doc, items)
 
-				sum_qty += flt(row.get("stock_qty")) or flt(args.get("stock_qty")) or flt(args.get("qty"))
-				sum_amt += amt
-
-		if pr_doc.is_cumulative:
-			data = get_qty_amount_data_for_cumulative(pr_doc, doc, items)
-
-			if data and data[0]:
-				sum_qty += data[0]
-				sum_amt += data[1]
-
+				if data and data[0]:
+					sum_qty += data[0]
+					sum_amt += data[1]
 	return sum_qty, sum_amt, items
 
 
-def get_qty_and_rate_for_other_item(doc, pr_doc, pricing_rules, row_item):
-	other_items = get_pricing_rule_items(pr_doc, other_items=True)
-	pricing_rule_apply_on = apply_on_table.get(pr_doc.get("apply_on"))
-	apply_on = frappe.scrub(pr_doc.get("apply_on"))
-
-	items = []
-	for d in pr_doc.get(pricing_rule_apply_on):
-		if apply_on == "item_group":
-			items.extend(get_child_item_groups(d.get(apply_on)))
-		else:
-			items.append(d.get(apply_on))
-
+def get_qty_and_rate_for_other_item(doc, pr_doc, pricing_rules):
+	items = get_pricing_rule_items(pr_doc)
+	apply_on_other = False
+	original_pricing_rules = pricing_rules
+	pricing_rules = []
 	for row in doc.items:
-		if row.get(apply_on) in items:
-			if not row.get("qty"):
-				continue
-
-			stock_qty = row.get("qty") * (row.get("conversion_factor") or 1.0)
-			amount = stock_qty * (row.get("price_list_rate") or row.get("rate"))
-			pricing_rules = filter_pricing_rules_for_qty_amount(stock_qty, amount, pricing_rules, row)
-
+		if row.item_code in items['items']:
+			pricing_rules = filter_pricing_rules_for_qty_amount(
+				row.get("stock_qty"), row.get("amount"), original_pricing_rules, row
+			)
 			if pricing_rules and pricing_rules[0]:
-				pricing_rules[0].apply_rule_on_other_items = other_items
-				return pricing_rules
+				break
+	
+	return pricing_rules
 
 
 def get_qty_amount_data_for_cumulative(pr_doc, doc, items=None):
@@ -566,24 +619,20 @@ def apply_pricing_rule_on_transaction(doc):
 
 		for d in pricing_rules:
 			if d.price_or_product_discount == "Price":
-				if d.apply_discount_on:
-					doc.set("apply_discount_on", d.apply_discount_on)
-
+				set_discount = False
 				for field in ["additional_discount_percentage", "discount_amount"]:
+					
 					pr_field = "discount_percentage" if field == "additional_discount_percentage" else field
-
 					if not d.get(pr_field):
 						continue
-
 					if (
-						d.validate_applied_rule
-						and doc.get(field) is not None
-						and doc.get(field) < d.get(pr_field)
+						d.validate_applied_rule and doc.get(field) is not None and doc.get(field) < d.get(pr_field)
 					):
 						frappe.msgprint(_("User has not applied rule on the invoice {0}").format(doc.name))
 					else:
 						if not d.coupon_code_based:
 							doc.set(field, d.get(pr_field))
+							set_discount = True
 						elif doc.get("coupon_code"):
 							# coupon code based pricing rule
 							coupon_code_pricing_rule = frappe.db.get_value(
@@ -592,6 +641,7 @@ def apply_pricing_rule_on_transaction(doc):
 							if coupon_code_pricing_rule == d.name:
 								# if selected coupon code is linked with pricing rule
 								doc.set(field, d.get(pr_field))
+								set_discount = True
 							else:
 								# reset discount if not linked
 								doc.set(field, 0)
@@ -599,7 +649,10 @@ def apply_pricing_rule_on_transaction(doc):
 							# if coupon code based but no coupon code selected
 							doc.set(field, 0)
 
-				doc.calculate_taxes_and_totals()
+				if set_discount:
+					if d.apply_discount_on and d.apply_discount_on != doc.apply_discount_on:
+						doc.set("apply_discount_on", d.apply_discount_on)
+					doc.calculate_taxes_and_totals()
 			elif d.price_or_product_discount == "Product":
 				item_details = frappe._dict({"parenttype": doc.doctype, "free_item_data": []})
 				get_product_discount_rule(d, item_details, doc=doc)
@@ -638,12 +691,18 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 
 	qty = pricing_rule.free_qty or 1
 	if pricing_rule.is_recursive:
-		transaction_qty = (args.get("qty") if args else doc.total_qty) - pricing_rule.apply_recursion_over
+		if pricing_rule.mixed_conditions:
+			pr_doc = frappe.get_doc("Pricing Rule", pricing_rule.name)
+			transaction_qty, item_amt, items = get_qty_and_rate_for_mixed_conditions(doc, pr_doc, args)
+		else:
+			transaction_qty = args.get("qty") if args else doc.total_qty
 		if transaction_qty:
-			qty = flt(transaction_qty) * qty / pricing_rule.recurse_for
-			if pricing_rule.round_free_qty:
-				qty = math.floor(qty)
-
+			if pricing_rule.item_ratio_based_on_min_qty_sets:
+				qty = math.floor((flt(transaction_qty) /pricing_rule.min_qty)) * qty
+			else:
+				qty = math.floor((flt(transaction_qty) * qty)/pricing_rule.min_qty)
+	
+	free_item_doc = frappe.get_doc("Item", free_item)
 	free_item_data_args = {
 		"item_code": free_item,
 		"qty": qty,
@@ -651,7 +710,19 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 		"rate": pricing_rule.free_item_rate or 0,
 		"price_list_rate": pricing_rule.free_item_rate or 0,
 		"is_free_item": 1,
+		"has_batch_no": free_item_doc.has_batch_no
 	}
+	if free_item_data_args["rate"] == 0:
+		free_item_data_args["discount_percentage"] = 100
+	basic_args = frappe._dict({
+		'item_code': free_item, 
+		"company": args.company,
+		"doctype": args.doctype
+	})
+	if "Item" in basic_args.doctype:
+		basic_args.doctype = " ".join(basic_args.doctype.split(" ")[:-1])
+
+	free_item_data_args = get_basic_details(basic_args, None).update(free_item_data_args)
 
 	item_data = frappe.get_cached_value(
 		"Item", free_item, ["item_name", "description", "stock_uom"], as_dict=1
@@ -672,42 +743,63 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 	item_details.free_item_data.append(free_item_data_args)
 
 
-def apply_pricing_rule_for_free_items(doc, pricing_rule_args):
+def apply_pricing_rule_for_free_items(doc, pricing_rule_args, set_missing_values=False):
 	if pricing_rule_args:
-		args = {(d["item_code"], d["pricing_rules"]): d for d in pricing_rule_args}
+		items = []
+		bo_items = []
+		for d in doc.items:
+			if d.is_free_item:
+				try:
+					data = (d.item_code, json.dumps(json.loads(d.pricing_rules)))
+					items.append(data)
+				except ValueError:
+					items.append((d.item_code, f'["{d.pricing_rules}"]'))
+		for d in doc.backorder_items:
+			if d.is_free_item:
+				try:
+					data = (d.item_code, json.dumps(json.loads(d.pricing_rules)))
+					bo_items.append(data)
+				except ValueError:
+					bo_items.append((d.item_code, f'["{d.pricing_rules}"]'))
+		for args in pricing_rule_args:
+			if args.get("pricing_rules") :
+				args["pricing_rules"] = json.dumps([args.get("pricing_rules")])
+				test = args["pricing_rules"]
 
-		for item in doc.items:
-			if not item.is_free_item:
-				continue
+			for bo_item in doc.backorder_items:
+				if bo_item.pricing_rules:
+					try:
+						data = (bo_item.item_code, json.dumps(json.loads(bo_item.pricing_rules)))
+					except ValueError:
+						data = (bo_item.item_code, f'["{bo_item.pricing_rules}"]')
 
-			free_item_data = args.get((item.item_code, item.pricing_rules))
-			if free_item_data:
-				free_item_data.pop("item_name")
-				free_item_data.pop("description")
-				item.update(free_item_data)
-				args.pop((item.item_code, item.pricing_rules))
+					if (args.get("item_code"), args.get("pricing_rules")) == data:
+						args["qty"] -= bo_item.qty
 
-		for free_item in args.values():
-			doc.append("items", free_item)
+			if not items or (args.get("item_code"), args.get("pricing_rules")) not in items:
+				doc.append("items", args)
 
 
-def get_pricing_rule_items(pr_doc, other_items=False) -> list:
-	apply_on_data = []
+def get_pricing_rule_items(pr_doc):
+	apply_on_data = {}
+	apply_on_data['items'] = []
+	apply_on_data['apply_on_items'] = []
 	apply_on = frappe.scrub(pr_doc.get("apply_on"))
 
 	pricing_rule_apply_on = apply_on_table.get(pr_doc.get("apply_on"))
 
-	if pr_doc.apply_rule_on_other and other_items:
-		apply_on = frappe.scrub(pr_doc.apply_rule_on_other)
-		apply_on_data.append(pr_doc.get("other_" + apply_on))
-	else:
-		for d in pr_doc.get(pricing_rule_apply_on):
-			if apply_on == "item_group":
-				apply_on_data.extend(get_child_item_groups(d.get(apply_on)))
-			else:
-				apply_on_data.append(d.get(apply_on))
+	for d in pr_doc.get(pricing_rule_apply_on):
+		if apply_on == "item_group":
+			apply_on_data['items'].extend(get_child_item_groups(d.get(apply_on)))
+		else:
+			apply_on_data['items'].append(d.get(apply_on))
 
-	return list(set(apply_on_data))
+	if pr_doc.apply_rule_on_other:
+		apply_on = frappe.scrub(pr_doc.apply_rule_on_other)
+		apply_on_data['apply_on_items'].append(pr_doc.get("other_" + apply_on))
+	apply_on_data['items'] = list(set(apply_on_data['items']))
+	return apply_on_data
+
 
 
 def validate_coupon_code(coupon_name):

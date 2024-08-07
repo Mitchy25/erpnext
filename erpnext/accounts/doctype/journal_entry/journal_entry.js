@@ -393,7 +393,7 @@ cur_frm.cscript.update_totals = function (doc) {
 		td += flt(accounts[i].debit, precision("debit", accounts[i]));
 		tc += flt(accounts[i].credit, precision("credit", accounts[i]));
 	}
-	var doc = locals[doc.doctype][doc.name];
+	doc = locals[doc.doctype][doc.name];
 	doc.total_debit = td;
 	doc.total_credit = tc;
 	doc.difference = flt(td - tc, precision("difference"));
@@ -425,6 +425,46 @@ frappe.ui.form.on("Journal Entry Account", {
 					party: d.party,
 				},
 			});
+		}
+
+		let child  = locals[cdt][cdn];
+		let cust_currency;
+		let account_currency;
+		if (child.party_type == "Customer") {
+			frappe.call({
+				method: "frappe.client.get_value",
+				async: false,
+				args: {
+					doctype: "Customer",
+					filters: {"name": child.party},
+					fieldname: "default_currency"
+				},
+				callback: function(r){
+					if (r.message) {
+						cust_currency = r.message.default_currency;
+					}
+				}
+			});
+	
+			frappe.call({
+				method: "frappe.client.get_value",
+				async: false,
+				args: {
+					doctype: "Account",
+					filters: {'name': child.account},
+					fieldname: "account_currency"
+				},
+				callback: function (r) {
+					if (r.message) {
+						account_currency = r.message.account_currency;
+					}
+				}
+			})
+	
+			if (cust_currency != account_currency) {
+				frappe.msgprint(`This customer has a default currency of ${cust_currency}, which does not allow Journal Entry to be raised against ${child.account} which, has currency ${account_currency}. Please select another account.`);
+				child.party = null;
+			}
 		}
 	},
 	cost_center: function (frm, dt, dn) {

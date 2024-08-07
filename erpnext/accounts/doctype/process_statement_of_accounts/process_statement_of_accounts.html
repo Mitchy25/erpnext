@@ -1,26 +1,36 @@
-<div class="page-break">
+{% if filters.company == "NaturalMeds" %}
+	{% set brandColour = '#FF5F4E' %}
+	{% set brandHeader = 'background-color:#FF5F4E!important;color:white!important;' %}
+{% elif filters.company == "FxMed" %}
+	{% set brandColour = '#3B4D5C' %}
+	{% set brandHeader = 'background-color:#3B4D5C!important;color:white!important;' %}
+{% elif filters.company == "RN Labs" %}
+	{% set brandColour = '#0671b9' %}
+	{% set brandHeader = 'background-color:#0671b9!important;color:white!important;' %}
+{% elif filters.company == "Therahealth" %}
+	{% set brandColour = '#F0AA44' %}
+	{% set brandHeader = 'background-color:#F0AA44!important;color:white!important;' %}
+{% endif %}
+
+
+<div>
 	<div id="header-html" class="hidden-pdf">
 		{% if letter_head.content %}
 		<div class="letter-head text-center">{{ letter_head.content }}</div>
-		<hr style="height:2px;border-width:0;color:black;background-color:black;">
+		<hr style="height:2px;border-width:0;margin-bottom:0px;margin-top:10px;">
 		{% endif %}
 	</div>
 	<div id="footer-html" class="visible-pdf">
 		{% if letter_head.footer %}
 		<div class="letter-head-footer">
-			<hr style="border-width:0;color:black;background-color:black;padding-bottom:2px;">
+			<hr style="border-width:0;padding-bottom:2px;">
 			{{ letter_head.footer }}
 		</div>
 		{% endif %}
 	</div>
-	<h2 class="text-center">{{ _("STATEMENTS OF ACCOUNTS") }}</h2>
-	<div>
-		{% if filters.party[0] == filters.party_name[0] %}
-			<h5 style="float: left;">{{ _("Customer: ") }} <b>{{ filters.party_name[0] }}</b></h5>
-		{% else %}
-			<h5 style="float: left;">{{ _("Customer: ") }} <b>{{ filters.party[0] }}</b></h5>
-			<h5 style="float: left; margin-left:15px">{{ _("Customer Name: ") }} <b>{{filters.party_name[0] }}</b></h5>
-		{% endif %}
+	<h2 style="margin-top:-5px;" class="text-center">{{ _("Statement of Account") }}</h2>
+	<div style="margin-top:-5px;">
+		<h5 style="float: left;">{{ _("Customer: ") }} <b>{{filters.party[0] }} - {{filters.party_name[0] }}</b></h5>
 		<h5 style="float: right;">
 			{{ _("Date: ") }}
 			<b>{{ frappe.format(filters.from_date, 'Date')}}
@@ -29,87 +39,357 @@
 			</h5>
 	</div>
 	<br>
+	
+	<style>
+		hr {
+			color: {{brandColour}}!important;
+			background-color: {{brandColour}}!important;
+		}
 
-	<table class="table table-bordered" style="font-size: 10px">
+		.statementTable, .overdueTable, #summaryTable {
+			border: 0px solid #d1d8dd!important;
+  			border-radius: 10px!important;
+			border-collapse: separate !important;
+			border-spacing: 0;
+			min-width: 350px;
+		}
+
+		/* .overdueTable > tbody > tr > td, .overdueTable > thead > tr > th {
+			line-height:20px!important;
+			padding:3px!important;
+		} */
+
+		.statementTable > tbody > tr:last-child > td, .statementTable > tbody > tr:first-child > td, .statementTable > thead > tr > th, .overdueTable > tbody > tr:last-child > td, .statementTable > thead > tr > th, .overdueTable > thead > tr > th {
+			color:white!important;
+			font-weight:bold!important;
+			background-color:{{brandColour}}!important;
+		}
+
+		.statementTable > tbody > tr:last-child > td > b, .statementTable > tbody > tr:first-child > td > b, .overdueTable > tbody > tr:last-child > td > b {
+			color:white!important;
+		}
+
+		.statementTable tr th,
+		.statementTable tr td,
+		.overdueTable tr th,
+		.overdueTable tr td,
+		#summaryTable tr th,
+		#summaryTable tr td {
+			line-height:20px!important;
+			border-right: 1px solid #d1d8dd;
+			border-bottom: 1px solid #d1d8dd;
+			/* padding: 5px; */
+			line-height:20px!important;
+			padding:3px 5px!important;
+			font-size:12px;
+		}
+
+
+		.statementTable tr th:first-child,
+		.statementTable tr td:first-child,
+		.overdueTable tr th:first-child,
+		.overdueTable tr td:first-child,
+		#summaryTable tr th:first-child,
+		#summaryTable tr td:first-child {
+			border-left: 1px solid #d1d8dd;
+		}
+
+		.statementTable tr th:first-child,
+		.statementTable tr td:first-child,
+		.overdueTable tr th:first-child,
+		.overdueTable tr td:first-child,
+		#summaryTable tr th:first-child,
+		#summaryTable tr td:first-child {
+			border-left: 1px solid #d1d8dd;
+		}
+		.statementTable tr th,
+		.overdueTable tr th,
+		#summaryTable tr th {
+			text-align: left;
+			border-top: solid 1px #d1d8dd;
+		}
+
+		/* top-left border-radius */
+		.statementTable tr:first-child th:first-child,
+		.overdueTable tr:first-child th:first-child,
+		#summaryTable tr:first-child th:first-child {
+			border-top-left-radius: 10px;
+		}
+
+		/* top-right border-radius */
+		.statementTable tr:first-child th:last-child,
+		.overdueTable tr:first-child th:last-child,
+		#summaryTable tr:first-child th:last-child {
+			border-top-right-radius: 10px;
+		}
+
+		/* bottom-left border-radius */
+		.statementTable tr:last-child td:first-child,
+		.overdueTable tr:last-child td:first-child,
+		#summaryTable tr:last-child td:first-child {
+			border-bottom-left-radius: 10px;
+		}
+
+		/* bottom-right border-radius */
+		.statementTable tr:last-child td:last-child,
+		.overdueTable tr:last-child td:last-child,
+		#summaryTable tr:last-child td:last-child {
+			border-bottom-right-radius: 10px;
+		}
+
+	</style>
+	<table class="statementTable table">
 		<thead>
 			<tr>
-				<th style="width: 12%">{{ _("Date") }}</th>
-				<th style="width: 15%">{{ _("Reference") }}</th>
-				<th style="width: 25%">{{ _("Remarks") }}</th>
-				<th style="width: 15%">{{ _("Debit") }}</th>
-				<th style="width: 15%">{{ _("Credit") }}</th>
-				<th style="width: 18%">{{ _("Balance (Dr - Cr)") }}</th>
+				<th style="width: 10%;">{{ _("Date") }}</th>
+				<th style="width: 10%;">{{ _("Due") }}</th>
+				<th style="width: 22%;">{{ _("Invoice/Payment") }}</th>
+				{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
+					<th style="width: 25%;">{{ _("Reference") }}</th>
+				{% endif %}
+				<th style="width: 10%; text-align:right;">{{ _("Debit") }}</th>
+				<th style="width: 10%; text-align:right;">{{ _("Credit") }}</th>
+				<th style="width: 15%; text-align:right;">{{ _("Balance") }}</th>
 			</tr>
 		</thead>
 		<tbody>
 		{% for row in data %}
-			<tr>
-			{% if(row.posting_date) %}
-				<td>{{ frappe.format(row.posting_date, 'Date') }}</td>
-				<td>{{ row.voucher_type }}
-					<br>{{ row.voucher_no }}</td>
-				<td>
-					{% if not (filters.party or filters.account)  %}
-						{{ row.party or row.account }}
-						<br>
-					{% endif %}
 
-					<br>{{ _("Remarks") }}: {{ row.remarks }}
-					{% if row.bill_no %}
-						<br>{{ _("Supplier Invoice No") }}: {{ row.bill_no }}
+			{% if not (row.account == "Total") %}
+				<tr>
+				{% if(row.posting_date) %}
+					<td>
+						{{ frappe.format(row.posting_date, 'Date') }}
+					</td>
+					<td>
+						{% if row.outstanding_amount and row.outstanding_amount != "" and row.outstanding_amount != 0 and row.due_date %}
+							{{ frappe.format(row.due_date, 'Date') }}
+						{% else %}
+							&nbsp;
+						{% endif %}
+					</td>
+					<td>
+						{% if filters.company == "NaturalMeds" and row.voucher_type == "Sales Invoice" %}
+							<a style="cursor:pointer;color:blue;text-decoration:underline;" target="_blank" href="https://naturalmeds.co.nz/my-account/sales-invoices/?invoiceID={{ row.voucher_no }}">{{ row.voucher_no }}</a>
+						{% else %}
+							{{ row.voucher_no }}
+						{% endif %}
+					</td>
+					{% if filters.company == "RN Labs" or filters.company == "FxMed"  %}
+						<td>
+							{% if not (filters.party or filters.account)  %}
+								{{ row.party or row.account }}
+								<br>
+							{% endif %}
+							{% if row.voucher_type == "Sales Invoice" %}
+								{% if row.patient_name %}
+									{{ row.patient_name}} - {{ row.po_no }}
+								{% else %}
+									{{ row.po_no }}
+								{% endif %}
+							{% elif row.remarks == "No Remarks" %}
+								&nbsp;
+							{% elif row.voucher_type == "Journal Entry" %}
+								{{ row.remarks }}
+							{% else %}
+								&nbsp;
+							{% endif %}
+							{% if row.bill_no %}
+								<br>{{ _("Supplier Invoice No") }}: {{ row.bill_no }}
+							{% endif %}
+						</td>
 					{% endif %}
+					<td style="text-align: right">
+						{% if not (row.remarks == "Total") %}
+							{% if row.debit != 0 %}
+								{{ frappe.utils.fmt_money(row.debit, currency=filters.presentation_currency) }}
+							{% endif %}
+						{% endif %}
 					</td>
 					<td style="text-align: right">
-						{{ frappe.utils.fmt_money(row.debit, currency=filters.presentation_currency) }}</td>
+						{% if not (row.remarks == "Total") %}
+							{% if row.credit != 0 %}
+								{{ frappe.utils.fmt_money(row.credit, currency=filters.presentation_currency) }}
+							{% endif %}
+						{% endif %}
+					</td>
+				{% else %}
+					<td>
+						{% if (row.account == "Opening") %} 
+							{{row.account}}
+						{% elif (row.account == "Closing (Opening + Total)") %}
+							Closing
+						{% endif %}
+					</td>
+					<td>
+						&nbsp;
+					</td>
+					<td>
+						{% if (row.account == "No transactions during the period") %}
+							No transactions during the period
+						{% endif %}
+					</td>
+					{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
+						<td>
+							{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)") %}
+								&nbsp;
+							{% else %}
+								<b>{{ frappe.format(row.account, {fieldtype: "Link"}) or "&nbsp;" }}</b>
+							{% endif %}
+						</td>
+					{% endif %}
 					<td style="text-align: right">
-						{{ frappe.utils.fmt_money(row.credit, currency=filters.presentation_currency) }}</td>
-			{% else %}
-				<td></td>
-				<td></td>
-				<td><b>{{ frappe.format(row.account, {fieldtype: "Link"}) or "&nbsp;" }}</b></td>
-				<td style="text-align: right">
-					{{ row.get('account', '') and frappe.utils.fmt_money(row.debit, currency=filters.presentation_currency) }}
-				</td>
-				<td style="text-align: right">
-					{{ row.get('account', '') and frappe.utils.fmt_money(row.credit, currency=filters.presentation_currency) }}
-				</td>
+						{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)" or row.account == "No transactions during the period")  %}
+							&nbsp;
+						{% else %}
+							{{ row.account and frappe.utils.fmt_money(row.debit, currency=filters.presentation_currency) }}
+						{% endif %}
+					</td>
+					<td style="text-align: right;">
+						{% if (row.account == "Opening" or row.account == "Closing (Opening + Total)" or row.account == "No transactions during the period")  %}
+							&nbsp;
+						{% else %}
+							{{ row.account and frappe.utils.fmt_money(row.credit, currency=filters.presentation_currency) }}
+						{% endif %}
+					</td>
+				{% endif %}
+					<td style="text-align: right">
+						{{ frappe.utils.fmt_money(row.balance, currency=filters.presentation_currency) }}
+					</td>
+				</tr>
 			{% endif %}
-				<td style="text-align: right">
-					{{ frappe.utils.fmt_money(row.balance, currency=filters.presentation_currency) }}
-				</td>
-			</tr>
 		{% endfor %}
 		</tbody>
 	</table>
 	<br>
 	{% if ageing %}
-	<h4 class="text-center">{{ _("Ageing Report based on ") }} {{ ageing.ageing_based_on }}
+	<h4 class="text-center">{{ _("Ageing based on ") }} {{ ageing.ageing_based_on }}
 		{{ _("up to " ) }}  {{ frappe.format(filters.to_date, 'Date')}}
 	</h4>
-	<table class="table table-bordered">
+	<table style="width:60%;margin:auto;" class="table" id="summaryTable">
 		<thead>
 			<tr>
-				<th style="width: 20%">0 - 30 Days</th>
-				<th style="width: 20%">30 - 60 Days</th>
-				<th style="width: 20%">60 - 90 Days</th>
-				<th style="width: 20%">90 - 120 Days</th>
-				<th style="width: 20%">Above 120 Days</th>
+				{% if ageing.not_yet_due %}
+					{% set colWidth = 20 %}
+					<th style="border-radius:10px 0px 0px 0px; width: {{colWidth}}%; text-align:center;{{brandHeader}}">Current</th>
+					<th style="width: {{colWidth}}%; text-align:center;{{brandHeader}}">0-30 Days</th>
+				{% else %}
+					{% set colWidth = 25 %}
+					<th style="border-radius:10px 0px 0px 0px; width: {{colWidth}}%; text-align:center;{{brandHeader}}">0 - 30 Days</th>
+				{% endif %}
+				<th style="width: {{colWidth}}%; text-align:center;{{brandHeader}}">30 - 60 Days</th>
+				<th style="width: {{colWidth}}%; text-align:center;{{brandHeader}}">60 - 90 Days</th>
+				<th style="width: {{colWidth}}%; text-align:center;{{brandHeader}}">90 Days +</th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>{{ frappe.utils.fmt_money(ageing.range1, currency=filters.presentation_currency) }}</td>
-				<td>{{ frappe.utils.fmt_money(ageing.range2, currency=filters.presentation_currency) }}</td>
-				<td>{{ frappe.utils.fmt_money(ageing.range3, currency=filters.presentation_currency) }}</td>
-				<td>{{ frappe.utils.fmt_money(ageing.range4, currency=filters.presentation_currency) }}</td>
-				<td>{{ frappe.utils.fmt_money(ageing.range5, currency=filters.presentation_currency) }}</td>
+				{% if ageing.not_yet_due %}
+					<td style="border-radius: 0px 0px 0px 10px!important;text-align:center;">{{ frappe.utils.fmt_money(ageing.not_yet_due, currency=filters.presentation_currency) }}</td>
+					<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range1, currency=filters.presentation_currency) }}</td>
+				{% else %}
+					<td style="border-radius: 0px 0px 0px 10px!important;text-align:center;">{{ frappe.utils.fmt_money(ageing.range1, currency=filters.presentation_currency) }}</td>
+				{% endif %}
+				
+				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range2, currency=filters.presentation_currency) }}</td>
+				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range3, currency=filters.presentation_currency) }}</td>
+				<td style="text-align:center;">{{ frappe.utils.fmt_money(ageing.range4 + ageing.range5, currency=filters.presentation_currency) }}</td>
+				
 			</tr>
 		</tbody>
 	</table>
 	{% endif %}
-	{% if terms_and_conditions %}
-	<div>
-		{{ terms_and_conditions }}
-	</div>
+
+	{% if outstandingDocs %}
+	{% set ns = namespace(outstandingBalance=0) %}
+	<h4 style="page-break-before:always;" class="text-center">Pending items before {{ frappe.format(filters.from_date, 'Date')}}</h4>
+	<h6 style="text-align:center;margin:auto; margin-bottom:10px;">This table lists all 'open' items before the start of this statement period.</h6>
+	<table class="overdueTable table">
+		<thead>
+			<tr>
+				<th style="width: 10%;">{{ _("Date") }}</th>
+				<th style="width: 10%;">{{ _("Due") }}</th>
+				<th style="width: 22%;">{{ _("Invoice/Payment") }}</th>
+				{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
+					<th style="width: 25%;">{{ _("Reference") }}</th>
+				{% endif %}
+				<th style="width: 10%; text-align:right;">{{ _("Debit") }}</th>
+				<th style="width: 10%; text-align:right;">{{ _("Credit") }}</th>
+				<th style="width: 15%; text-align:right;">{{ _("Balance") }}</th>
+			</tr>
+		</thead>
+		<tbody>
+		{% for row in outstandingDocs|sort(attribute='due_date') %}
+			<tr>
+				<td>
+					{{ frappe.format(row.posting_date, 'Date') }}
+				</td>
+				<td>
+					{% if row.outstanding and row.outstanding != "" and row.outstanding != 0 and row.due_date %}
+						{{ frappe.format(row.due_date, 'Date') }}
+					{% else %}
+						&nbsp;
+					{% endif %}
+				</td>
+				<td>
+					{% if filters.company == "NaturalMeds" and row.voucher_type == "Sales Invoice" %}
+						<a style="cursor:pointer;color:blue;text-decoration:underline;" target="_blank" href="https://naturalmeds.co.nz/my-account/sales-invoices/?invoiceID={{ row.voucher_no }}">{{ row.voucher_no }}</a>
+					{% else %}
+						{{ row.voucher_no }}
+					{% endif %}
+				</td>
+				{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
+					<td>
+						{% if not (filters.party or filters.account)  %}
+							{{ row.party or row.account }}
+							<br>
+						{% endif %}
+						{% if row.voucher_type == "Sales Invoice" %}
+							{% if row.order_type == "On Behalf" %}
+								{{ row.temporary_delivery_address_line_1}} - {{ row.po_no }}
+							{% else %}
+								{{ row.po_no }}
+							{% endif %}
+						{% elif row.remarks == "No Remarks" %}
+							&nbsp;
+						{% elif row.voucher_type == "Journal Entry" %}
+							{{ row.remarks }}
+						{% else %}
+							&nbsp;
+						{% endif %}
+						{% if row.bill_no %}
+							<br>{{ _("Supplier Invoice No") }}: {{ row.bill_no }}
+						{% endif %}
+					</td>
+				{% endif %}
+				<td style="text-align: right">
+					{% if row.outstanding > 0 %}
+						{{ frappe.utils.fmt_money(row.outstanding, currency=filters.presentation_currency) }}
+					{% endif %}
+				</td>
+				<td style="text-align: right">
+					{% if row.outstanding < 0 %}
+						{{ frappe.utils.fmt_money(row.outstanding|abs, currency=filters.presentation_currency) }}
+					{% endif %}
+				</td>
+				<td style="text-align: right">
+					{% set ns.outstandingBalance = ns.outstandingBalance + row.outstanding %}
+					{{ frappe.utils.fmt_money(ns.outstandingBalance, currency=filters.presentation_currency) }}
+				</td>
+			</tr>
+		{% endfor %}
+			<tr>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				{% if filters.company == "RN Labs" or filters.company == "FxMed" %}
+					<td>&nbsp;</td>
+				{% endif %}
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+			</tr>
+		</tbody>
+	</table>
 	{% endif %}
 </div>

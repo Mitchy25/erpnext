@@ -9,6 +9,7 @@ from frappe.utils import set_request
 from frappe.website.serve import get_response
 
 
+
 class TestHomepageSection(unittest.TestCase):
 	def test_homepage_section_custom_html(self):
 		frappe.get_doc(

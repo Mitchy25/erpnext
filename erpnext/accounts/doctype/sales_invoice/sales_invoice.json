@@ -186,6 +186,7 @@
   "sales_partner",
   "amount_eligible_for_commission",
   "column_break10",
+  "amount_eligible_for_commission",
   "commission_rate",
   "total_commission",
   "section_break2",
@@ -499,16 +500,19 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "contact_person",
    "fieldtype": "Link",
    "hide_days": 1,
    "hide_seconds": 1,
    "in_global_search": 1,
+   "in_preview": 1,
    "label": "Contact Person",
    "options": "Contact",
    "print_hide": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "contact_display",
    "fieldtype": "Small Text",
    "hide_days": 1,
@@ -2231,6 +2235,7 @@
  "quick_entry": 1,
  "search_fields": "posting_date, due_date, customer, base_grand_total, outstanding_amount",
  "show_name_in_global_search": 1,
+ "show_preview_popup": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

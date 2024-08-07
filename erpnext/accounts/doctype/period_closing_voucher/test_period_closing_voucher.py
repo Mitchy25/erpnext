@@ -85,6 +85,7 @@ class TestPeriodClosingVoucher(unittest.TestCase):
 			customer="_Test Customer USD",
 			posting_date="2021-03-15",
 		)
+
 		create_sales_invoice(
 			company=company,
 			cost_center=cost_center2,

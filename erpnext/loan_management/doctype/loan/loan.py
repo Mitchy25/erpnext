@@ -410,6 +410,7 @@ def close_unsecured_term_loan(loan):
 		frappe.throw(_("Cannot close this loan until full repayment"))
 
 
+
 @frappe.whitelist()
 def make_loan_disbursement(loan, company, applicant_type, applicant, pending_amount=0, as_dict=0):
 	disbursement_entry = frappe.new_doc("Loan Disbursement")

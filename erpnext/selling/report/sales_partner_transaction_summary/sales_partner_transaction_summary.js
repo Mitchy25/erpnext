@@ -15,7 +15,7 @@ frappe.query_reports["Sales Partner Transaction Summary"] = {
 			label: __("Document Type"),
 			fieldtype: "Select",
 			options: "Sales Order\nDelivery Note\nSales Invoice",
-			default: "Sales Order",
+			default: "Sales Invoice"
 		},
 		{
 			fieldname: "from_date",
@@ -62,8 +62,35 @@ frappe.query_reports["Sales Partner Transaction Summary"] = {
 			options: "Territory",
 		},
 		{
-			fieldname: "show_return_entries",
+			fieldname:"group_by",
+			label: __("Group By"),
+			fieldtype: "Select",
+			options:["Default (Document type)", "Customer Name"],
+			default: "Default (Document type)",
+			reqd: 1
+		},
+		{
+			fieldname:"currency",
+			label: __("Currency"),
+			fieldtype: "Select",
+			options:["", "NZD", "AUD"],
+			default: ""
+		},
+		{
+			fieldname:"show_return_entries",
 			label: __("Show Return Entries"),
+			fieldtype: "Check",
+			default: 1,
+		},
+		{
+			fieldname:"get_products",
+			label: __("Get Products"),
+			fieldtype: "Check",
+			default: 1,
+		},
+		{
+			fieldname:"get_tests",
+			label: __("Get Tests and Test Kits"),
 			fieldtype: "Check",
 			default: 0,
 		},

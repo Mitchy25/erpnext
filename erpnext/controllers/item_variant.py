@@ -394,6 +394,7 @@ def make_variant_item_code(template_item_code, template_item_name, variant):
 		variant.item_name = "{}-{}".format(template_item_name, "-".join(abbreviations))
 
 
+
 @frappe.whitelist()
 def create_variant_doc_for_quick_entry(template, args):
 	variant_based_on = frappe.db.get_value("Item", template, "variant_based_on")

@@ -987,8 +987,11 @@ class TestSalesInvoice(FrappeTestCase):
 		pos.insert()
 		pos.submit()
 
-		pos_return = make_sales_return(pos.name)
+		pos_return = create_sales_invoice(is_return=1,
+			return_against=pos.name, qty=-5, do_not_save=True)
 
+		pos_return.is_pos = 1
+		pos_return.pos_profile = pos_profile.name
 		pos_return.insert()
 		pos_return.submit()
 
@@ -2349,6 +2352,9 @@ class TestSalesInvoice(FrappeTestCase):
 
 		for gle in gl_entries:
 			self.assertEqual(expected_values[gle.account]["cost_center"], gle.cost_center)
+	
+	def test_sales_invoice_with_project_link(self):
+		from erpnext.projects.doctype.project.test_project import make_project
 
 	def test_sales_invoice_with_project_link(self):
 		from erpnext.projects.doctype.project.test_project import make_project
@@ -2487,7 +2493,9 @@ class TestSalesInvoice(FrappeTestCase):
 		item.no_of_months = 12
 		item.save()
 
-		si = create_sales_invoice(item=item.name, posting_date="2019-01-16", rate=50000, do_not_submit=True)
+		si = create_sales_invoice(
+			item=item.name, posting_date="2019-01-16", rate=50000, do_not_submit=True
+		)
 		si.items[0].enable_deferred_revenue = 1
 		si.items[0].service_start_date = "2019-01-16"
 		si.items[0].service_end_date = "2019-03-31"
@@ -2782,6 +2790,287 @@ class TestSalesInvoice(FrappeTestCase):
 			)
 		)
 
+	def test_einvoice_discounts(self):
+		from erpnext.regional.india.e_invoice.utils import make_einvoice, validate_totals
+
+		frappe.db.set_single_value("E Invoice Settings", "dont_show_discounts_in_e_invoice", False)
+
+		# Normal Itemized Discount
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = ""
+		si.items[0].price_list_rate = 12
+		si.items[0].discount_percentage = 16.6666666667
+		si.items[0].rate = 10
+
+		si.items[1].price_list_rate = 15
+		si.items[1].discount_amount = 5
+		si.items[1].rate = 10
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][0]["Discount"], 4000)
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 2100)
+		self.assertEqual(einvoice["ItemList"][2]["Discount"], 222)
+		self.assertEqual(einvoice["ItemList"][3]["Discount"], 5555)
+		self.assertEqual(einvoice["ValDtls"]["Discount"], 0)
+
+		self.assertEqual(einvoice["ItemList"][0]["UnitPrice"], 12)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 15)
+		self.assertEqual(einvoice["ItemList"][2]["UnitPrice"], 20)
+		self.assertEqual(einvoice["ItemList"][3]["UnitPrice"], 10)
+
+		# Invoice Discount on net total
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = "Net Total"
+		si.discount_amount = 400
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][0]["Discount"], 253.61)
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 66.57)
+		self.assertEqual(einvoice["ItemList"][2]["Discount"], 243.11)
+		self.assertEqual(einvoice["ItemList"][3]["Discount"], 5613.71)
+		self.assertEqual(einvoice["ValDtls"]["Discount"], 0)
+
+		self.assertEqual(einvoice["ItemList"][0]["UnitPrice"], 12)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 15)
+		self.assertEqual(einvoice["ItemList"][2]["UnitPrice"], 20)
+		self.assertEqual(einvoice["ItemList"][3]["UnitPrice"], 10)
+
+		# Invoice Discount on grand total (Itemized Discount)
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = "Grand Total"
+		si.discount_amount = 400
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][0]["Discount"], 214.93)
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 56.42)
+		self.assertEqual(einvoice["ItemList"][2]["Discount"], 239.89)
+		self.assertEqual(einvoice["ItemList"][3]["Discount"], 5604.75)
+		self.assertEqual(einvoice["ValDtls"]["Discount"], 0)
+
+		self.assertEqual(einvoice["ItemList"][0]["UnitPrice"], 12)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 15)
+		self.assertEqual(einvoice["ItemList"][2]["UnitPrice"], 20)
+		self.assertEqual(einvoice["ItemList"][3]["UnitPrice"], 10)
+
+		# Invoice Discount on grand total (Cash/Non-Trade Discount)
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = "Grand Total"
+		si.is_cash_or_non_trade_discount = 1
+		si.discount_amount = 400
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][0]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][2]["Discount"], 222.0)
+		self.assertEqual(einvoice["ItemList"][3]["Discount"], 5555.0)
+		self.assertEqual(einvoice["ValDtls"]["Discount"], 400)
+
+		self.assertEqual(einvoice["ItemList"][0]["UnitPrice"], 12)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 15)
+		self.assertEqual(einvoice["ItemList"][2]["UnitPrice"], 20)
+		self.assertEqual(einvoice["ItemList"][3]["UnitPrice"], 10)
+
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = ""
+		si.items[1].price_list_rate = 15
+		si.items[1].discount_amount = -5
+		si.items[1].rate = 20
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 20)
+
+	def test_einvoice_without_discounts(self):
+		from erpnext.regional.india.e_invoice.utils import make_einvoice, validate_totals
+
+		frappe.db.set_single_value("E Invoice Settings", "dont_show_discounts_in_e_invoice", True)
+
+		# Normal Itemized Discount
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = ""
+		si.items[0].price_list_rate = 12
+		si.items[0].discount_percentage = 16.6666666667
+		si.items[0].rate = 10
+
+		si.items[1].price_list_rate = 15
+		si.items[1].discount_amount = 5
+		si.items[1].rate = 10
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][0]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][2]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][3]["Discount"], 0)
+		self.assertEqual(einvoice["ValDtls"]["Discount"], 0)
+
+		self.assertEqual(einvoice["ItemList"][0]["UnitPrice"], 10)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 10)
+		self.assertEqual(einvoice["ItemList"][2]["UnitPrice"], 18)
+		self.assertEqual(einvoice["ItemList"][3]["UnitPrice"], 5)
+
+		# Invoice Discount on net total
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = "Net Total"
+		si.discount_amount = 400
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][0]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][2]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][3]["Discount"], 0)
+		self.assertEqual(einvoice["ValDtls"]["Discount"], 0)
+
+		self.assertEqual(einvoice["ItemList"][0]["UnitPrice"], 11.87)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 14.84)
+		self.assertEqual(einvoice["ItemList"][2]["UnitPrice"], 17.81)
+		self.assertEqual(einvoice["ItemList"][3]["UnitPrice"], 4.95)
+
+		# Invoice Discount on grand total (Itemized Discount)
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = "Grand Total"
+		si.discount_amount = 400
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][0]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][2]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][3]["Discount"], 0)
+		self.assertEqual(einvoice["ValDtls"]["Discount"], 0)
+
+		self.assertEqual(einvoice["ItemList"][0]["UnitPrice"], 11.89)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 14.87)
+		self.assertEqual(einvoice["ItemList"][2]["UnitPrice"], 17.84)
+		self.assertEqual(einvoice["ItemList"][3]["UnitPrice"], 4.96)
+
+		# Invoice Discount on grand total (Cash/Non-Trade Discount)
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = "Grand Total"
+		si.is_cash_or_non_trade_discount = 1
+		si.discount_amount = 400
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][0]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][2]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][3]["Discount"], 0)
+		self.assertEqual(einvoice["ValDtls"]["Discount"], 400)
+
+		self.assertEqual(einvoice["ItemList"][0]["UnitPrice"], 12)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 15)
+		self.assertEqual(einvoice["ItemList"][2]["UnitPrice"], 18)
+		self.assertEqual(einvoice["ItemList"][3]["UnitPrice"], 5)
+
+		si = get_sales_invoice_for_e_invoice()
+		si.apply_discount_on = ""
+		si.items[1].price_list_rate = 15
+		si.items[1].discount_amount = -5
+		si.items[1].rate = 20
+		si.save()
+
+		einvoice = make_einvoice(si)
+		validate_totals(einvoice)
+
+		self.assertEqual(einvoice["ItemList"][1]["Discount"], 0)
+		self.assertEqual(einvoice["ItemList"][1]["UnitPrice"], 20)
+
+	def test_internal_transfer_gl_precision_issues(self):
+		# Make a stock queue of an item with two valuations
+
+		# Remove all existing stock for this
+		if get_stock_balance("_Test Internal Transfer Item", "Stores - TCP1", "2022-04-10"):
+			create_stock_reconciliation(
+				item_code="_Test Internal Transfer Item",
+				warehouse="Stores - TCP1",
+				qty=0,
+				rate=0,
+				company="_Test Company with perpetual inventory",
+				expense_account="Stock Adjustment - TCP1"
+				if frappe.get_all("Stock Ledger Entry")
+				else "Temporary Opening - TCP1",
+				posting_date="2020-04-10",
+				posting_time="14:00",
+			)
+
+		make_stock_entry(
+			item_code="_Test Internal Transfer Item",
+			target="Stores - TCP1",
+			qty=9000000,
+			basic_rate=52.0,
+			posting_date="2020-04-10",
+			posting_time="14:00",
+		)
+		make_stock_entry(
+			item_code="_Test Internal Transfer Item",
+			target="Stores - TCP1",
+			qty=60000000,
+			basic_rate=52.349777,
+			posting_date="2020-04-10",
+			posting_time="14:00",
+		)
+
+		# Make an internal transfer Sales Invoice Stock in non stock uom to check
+		# for rounding errors while converting to stock uom
+		si = create_sales_invoice(
+			company="_Test Company with perpetual inventory",
+			customer="_Test Internal Customer 2",
+			item_code="_Test Internal Transfer Item",
+			qty=5000000,
+			uom="Box",
+			debit_to="Debtors - TCP1",
+			warehouse="Stores - TCP1",
+			income_account="Sales - TCP1",
+			expense_account="Cost of Goods Sold - TCP1",
+			cost_center="Main - TCP1",
+			currency="INR",
+			do_not_save=1,
+		)
+
+		# Check GL Entries with precision
+		si.update_stock = 1
+		si.items[0].target_warehouse = "Work In Progress - TCP1"
+		si.items[0].conversion_factor = 10
+		si.save()
+		si.submit()
+
+		# Check if adjustment entry is created
+		self.assertTrue(
+			frappe.db.exists(
+				"GL Entry",
+				{
+					"voucher_type": "Sales Invoice",
+					"voucher_no": si.name,
+					"remarks": "Rounding gain/loss Entry for Stock Transfer",
+				},
+			)
+		)
+
 	def test_item_tax_net_range(self):
 		item = create_item("T Shirt")
 
@@ -2813,7 +3102,9 @@ class TestSalesInvoice(FrappeTestCase):
 		sales_invoice.apply_discount_on = "Net Total"
 		sales_invoice.discount_amount = 300
 		sales_invoice.save()
-		self.assertEqual(sales_invoice.items[0].item_tax_template, "_Test Account Excise Duty @ 10 - _TC")
+		self.assertEqual(
+			sales_invoice.items[0].item_tax_template, "_Test Account Excise Duty @ 10 - _TC"
+		)
 
 	@change_settings("Selling Settings", {"enable_discount_accounting": 1})
 	def test_sales_invoice_with_discount_accounting_enabled(self):
@@ -3511,6 +3802,7 @@ class TestSalesInvoice(FrappeTestCase):
 			for x in si.taxes
 		]
 		self.assertEqual(expected, actual)
+
 
 
 def check_gl_entries(doc, voucher_no, expected_gle, posting_date):

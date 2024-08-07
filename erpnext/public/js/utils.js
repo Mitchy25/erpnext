@@ -712,8 +712,36 @@ erpnext.utils.update_child_items = function (opts) {
 				fields: fields,
 			},
 		],
-		primary_action: function () {
+		primary_action: function() {
+			let temp_items = {}
+			let to_change = []
 			const trans_items = this.get_values()["trans_items"].filter((item) => !!item.item_code);
+			//Backorder ETA Code Start
+			frm.doc.items.forEach(element => {
+				temp_items[element["name"]] = {
+					"item_code": element["item_code"],
+					"qty": element["qty"],
+					"schedule_date": element["schedule_date"],
+					"expected_delivery_date": element["expected_delivery_date"],
+					"found":false
+				}
+			});
+			trans_items.forEach(element => {
+				if(element.name in temp_items){
+					temp_items[element.name]["found"] = true
+					
+					if (element.qty != temp_items[element.name].qty) {
+						to_change.push([element.item_code, element["schedule_date"]])
+					}
+				} else{ 
+					to_change.push([element.item_code, element["schedule_date"]])
+				}
+			});
+			for (const [key, value] of Object.entries(temp_items)) {
+				if(value["found"] == false) {
+					to_change.push([value.item_code, value["schedule_date"]])
+				}
+			}
 			frappe.call({
 				method: "erpnext.controllers.accounts_controller.update_child_qty_rate",
 				freeze: true,
@@ -723,7 +751,12 @@ erpnext.utils.update_child_items = function (opts) {
 					parent_doctype_name: frm.doc.name,
 					child_docname: child_docname,
 				},
-				callback: function () {
+				callback: function(values) {
+					if (values) {
+							frappe.require('assets/fxnmrnth/js/custom_doctype_assets/purchase_order/getEtaNoteDialog.js').then(() => {
+								exportEtaNoteDialog(frm, values.message);
+							})
+						}
 					frm.reload_doc();
 				},
 			});

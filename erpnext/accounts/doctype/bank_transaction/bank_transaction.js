@@ -35,7 +35,7 @@ frappe.ui.form.on("Bank Transaction", {
 
 	get_payment_doctypes: function () {
 		// get payment doctypes from all the apps
-		return ["Payment Entry", "Journal Entry", "Sales Invoice", "Purchase Invoice", "Bank Transaction"];
+		return ["Payment Entry", "Payment Group", "Journal Entry", "Sales Invoice", "Purchase Invoice", "Bank Transaction"];
 	},
 });
 

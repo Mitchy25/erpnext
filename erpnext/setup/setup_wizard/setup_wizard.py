@@ -58,9 +58,11 @@ def setup_defaults(args):
 	fixtures.install_defaults(frappe._dict(args))
 
 
+
 def fin(args):
 	frappe.local.message_log = []
 	login_as_first_user(args)
+
 
 
 def login_as_first_user(args):

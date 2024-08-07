@@ -1703,6 +1703,9 @@ class SalesInvoice(SellingController):
 		outstanding_amount = flt(self.outstanding_amount, self.precision("outstanding_amount"))
 		total = get_total_in_party_account_currency(self)
 
+		# Adding leeway to account for write-off amounts
+		leeway = 0.02
+
 		if not status:
 			if self.docstatus == 2:
 				status = "Cancelled"
@@ -1711,7 +1714,7 @@ class SalesInvoice(SellingController):
 					self.status = "Internal Transfer"
 				elif is_overdue(self, total):
 					self.status = "Overdue"
-				elif 0 < outstanding_amount < total:
+				elif 0 < outstanding_amount < total and abs(total - outstanding_amount) > leeway:
 					self.status = "Partly Paid"
 				elif outstanding_amount > 0 and getdate(self.due_date) >= getdate():
 					self.status = "Unpaid"
@@ -1769,7 +1772,9 @@ def is_overdue(doc, total):
 		if getdate(payment.due_date) < today
 	)
 
-	return (total - outstanding_amount) < payable_amount
+	write_off_total = flt((total + (doc.write_off_amount * -1)), doc.precision("outstanding_amount"))
+	
+	return (total - outstanding_amount) < payable_amount and (write_off_total - outstanding_amount) < payable_amount
 
 
 def get_discounting_status(sales_invoice):
@@ -1959,6 +1964,7 @@ def make_sales_return(source_name, target_doc=None):
 	from erpnext.controllers.sales_and_purchase_return import make_return_doc
 
 	return make_return_doc("Sales Invoice", source_name, target_doc)
+
 
 
 def get_inter_company_details(doc, doctype):
@@ -2265,7 +2271,6 @@ def set_purchase_references(doc):
 					warehouse_map,
 				)
 
-
 def update_pi_items(
 	doc,
 	detail_field,
@@ -2286,11 +2291,13 @@ def update_pi_items(
 				)
 
 
+
 def update_pr_items(doc, sales_item_map, purchase_item_map, parent_child_map, warehouse_map):
 	for item in doc.get("items"):
 		item.warehouse = warehouse_map.get(sales_item_map.get(item.delivery_note_item))
 		if not item.warehouse and item.get("purchase_order") and item.get("purchase_order_item"):
 			item.warehouse = frappe.db.get_value("Purchase Order Item", item.purchase_order_item, "warehouse")
+
 
 
 def get_delivery_note_details(internal_reference):
@@ -2392,6 +2399,7 @@ def get_loyalty_programs(customer):
 		return lp_details
 	else:
 		return lp_details
+
 
 
 @frappe.whitelist()

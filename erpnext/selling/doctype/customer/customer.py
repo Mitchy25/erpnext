@@ -775,8 +775,8 @@ def get_customer_primary_contact(doctype, txt, searchfield, start, page_len, fil
 		qb.from_(con)
 		.join(dlink)
 		.on(con.name == dlink.parent)
-		.select(con.name, con.email_id)
-		.where((dlink.link_name == customer) & (con.name.like(f"%{txt}%")))
+		.select(con.name, con.full_name, con.email_id, con.mobile_no, con.phone)
+		.where((dlink.link_name == customer) & (con.name.like(f"%{txt}%") or con.full_name.like(f"%{txt}%")))
 		.run()
 	)
 

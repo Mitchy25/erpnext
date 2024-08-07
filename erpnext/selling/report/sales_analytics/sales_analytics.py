@@ -265,6 +265,7 @@ class Analytics:
 
 			if self.filters.tree_type == "Item":
 				row["stock_uom"] = period_data.get("stock_uom")
+				row["item_brand"] = period_data.get("item_brand")
 
 			self.data.append(row)
 

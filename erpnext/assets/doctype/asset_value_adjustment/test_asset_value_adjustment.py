@@ -118,6 +118,7 @@ class TestAssetValueAdjustment(unittest.TestCase):
 		self.assertEqual(schedules, expected_schedules)
 
 
+
 def make_asset_value_adjustment(**args):
 	args = frappe._dict(args)
 

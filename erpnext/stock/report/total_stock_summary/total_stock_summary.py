@@ -7,6 +7,7 @@ from frappe import _
 from frappe.query_builder.functions import Sum
 
 
+
 def execute(filters=None):
 	if not filters:
 		filters = {}
@@ -21,6 +22,7 @@ def get_columns(filters):
 		_("Item") + ":Link/Item:150",
 		_("Description") + "::300",
 		_("Current Qty") + ":Float:100",
+		_("Brand") + ":Link/Brand:150",
 	]
 
 	if filters.get("group_by") == "Warehouse":

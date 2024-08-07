@@ -73,7 +73,10 @@ frappe.ui.form.on("Pricing Rule", {
 							{{__('Pricing Rules are further filtered based on quantity.')}}
 						</li>
 						<li>
-							{{__('If two or more Pricing Rules are found based on the above conditions, Priority is applied. Priority is a number between 0 to 20 while default value is zero (blank). Higher number means it will take precedence if there are multiple Pricing Rules with same conditions.')}}
+							{{__('If two or more Pricing Rules are found based on the above conditions, Priority is applied. Priority is any number including decimals or negatives while the default value is zero (blank). <br>Higher number means it will take precedence if there are multiple Pricing Rules with same conditions.')}}
+						</li>
+						<li>
+						{{__('Our priority system for percentages sets it so that discount percent = priority. If a price rule with the same percentage as another needs to be used then please modify percentage in increments of 1')}}
 						</li>
 						<li>
 							{{__('Even if there are multiple Pricing Rules with highest priority, then following internal priorities are applied:')}}
@@ -148,6 +151,7 @@ frappe.ui.form.on("Pricing Rule", {
 			options = $.merge(options, [
 				"Customer",
 				"Customer Group",
+				"Modality",
 				"Territory",
 				"Sales Partner",
 				"Campaign",

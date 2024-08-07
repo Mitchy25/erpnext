@@ -1146,7 +1146,8 @@ class Asset(AccountsController):
 		else:
 			total_days = get_total_days(original_schedule_date or to_date, row.frequency_of_depreciation)
 
-		return (depreciation_amount * flt(days)) / flt(total_days), days, months
+		return (depreciation_amount * (flt(months) / 12)), days, months
+		# return (depreciation_amount * flt(days)) / flt(total_days), days, months
 
 
 def update_maintenance_status():

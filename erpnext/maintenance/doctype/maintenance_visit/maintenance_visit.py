@@ -72,7 +72,6 @@ class MaintenanceVisit(TransactionBase):
 		if not cancel:
 			status = self.completion_status
 			actual_date = self.mntc_date
-
 		if self.maintenance_schedule_detail:
 			frappe.db.set_value(
 				"Maintenance Schedule Detail", self.maintenance_schedule_detail, "completion_status", status
