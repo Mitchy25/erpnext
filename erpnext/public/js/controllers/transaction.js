@@ -1985,7 +1985,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			me.frm.doc.items.forEach(item => {
 				if(item["ignore_pricing_rules"] != 1 && item["is_free_item"] != 1){
 					if(!me.set_items.includes(item.name) && data.apply_rule_on_other_items.includes(item[data.apply_rule_on])){
-						me.get_and_set_item_details(me.frm.doc, data.doctype, item.name)
+						me.get_and_set_item_details(me.frm.doc, item.doctype, item.name)
 						me.set_items.push(item.name)
 					}
 					
