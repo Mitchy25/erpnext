@@ -2121,12 +2121,10 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 						if (reduce_qty >= row_to_modify.qty) {
 							if (use_backorder) {
 								var item_row = me.frm.doc.backorder_items.indexOf(row_to_modify)
-								console.log(me.frm.doc.backorder_items[item_row])
 								me.frm.doc.backorder_items.splice(item_row, 1);
 								
 							} else {
 								var item_row = me.frm.doc.items.indexOf(row_to_modify)
-								console.log(me.frm.doc.items[item_row])
 								me.frm.doc.items.splice(item_row, 1);
 							}
 							removed = true
