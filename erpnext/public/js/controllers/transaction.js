@@ -1856,8 +1856,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	_set_values_for_item_list(children) {
 		const items_rule_dict = {};
-
+		let me = this
 		for (const child of children) {
+			let item_row = frappe.get_doc(child.doctype, child.name);
 			const existing_pricing_rule = frappe.model.get_value(child.doctype, child.name, "pricing_rules");
 
 			for (const [key, value] of Object.entries(child)) {
@@ -1895,9 +1896,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			}
 			me.apply_pricing_rule_on_item(item_row)
 			if (child.free_item_data && child.free_item_data.length > 0) {
-				me.apply_product_discount(d, free_item_data);
+				me.apply_product_discount(child, child.free_item_data);
 			} else {
-				me.remove_missing_products(d);
+				me.remove_missing_products(child);
 			}
 
 			if (child.apply_rule_on_other_items && JSON.parse(child.apply_rule_on_other_items).length) {
