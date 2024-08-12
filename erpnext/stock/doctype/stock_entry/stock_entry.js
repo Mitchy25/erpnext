@@ -111,7 +111,7 @@ frappe.ui.form.on('Stock Entry', {
 		// 		frappe.flags.hide_serial_batch_dialog = true;
 		// 	}
 		// });
-				frappe.flags.hide_serial_batch_dialog = true;
+		frappe.flags.hide_serial_batch_dialog = true;
 		attach_bom_items(frm.doc.bom_no);
 	},
 
