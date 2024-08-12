@@ -1429,7 +1429,8 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									me.toggle_conversion_factor(item);
 									var d = locals[cdt][cdn]
 										if (d['rate'] == 0 && d['discount_percentage'] == 0){
-											frappe.confirm(__("The item price is zero, do you wish to proceed?"), 
+											let item_row = me.frm.doc.items.indexOf(d)
+											frappe.confirm(__(`The item price of ${d['item_code']} is zero at row ${item_row}, do you wish to proceed?`), 
 												function() {
 													//If Yes
 													run_batch_functions()
