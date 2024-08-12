@@ -1415,7 +1415,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 										} else {
 											d.pricing_rules = ''
 										}
-										if (free_item_data) {
+										if (free_item_data && free_item_data.length > 0) {
 											if (!d.is_free_item) {
 												me.apply_product_discount(d, free_item_data);
 											} else {
@@ -1894,7 +1894,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				this.remove_pricing_rule(frappe.get_doc(child.doctype, child.name));
 			}
 			me.apply_pricing_rule_on_item(item_row)
-			if (d.free_item_data) {
+			if (child.free_item_data && child.free_item_data.length > 0) {
 				me.apply_product_discount(d, free_item_data);
 			} else {
 				me.remove_missing_products(d);
