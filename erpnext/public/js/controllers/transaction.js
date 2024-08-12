@@ -445,7 +445,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		// var me = this;
 		// var item = frappe.get_doc(cdt, cdn);
 		// var update_stock = 0, show_batch_dialog = 0;
-
 		// item.weight_per_unit = 0;
 		// item.weight_uom = '';
 		// item.conversion_factor = 0;
@@ -1805,7 +1804,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			"update_stock": ['Sales Invoice', 'Purchase Invoice'].includes(me.frm.doc.doctype) ? cint(me.frm.doc.update_stock) : 0,
 			"conversion_factor": me.frm.doc.conversion_factor,
 			"pos_profile": me.frm.doc.doctype == 'Sales Invoice' ? me.frm.doc.pos_profile : '',
-			"coupon_code": me.frm.doc.coupon_code
+			"coupon_code": me.frm.doc.coupon_code,
+			"is_internal_supplier": me.frm.doc.is_internal_supplier,
+			"is_internal_customer": me.frm.doc.is_internal_customer,
 		};
 	}
 
