@@ -89,6 +89,8 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 	items = frappe.db.sql(SQL_query, as_dict=1, debug=0)
 	precision = cint(frappe.db.get_single_value("System Settings", "float_precision"))
 	current_site_qty = 0
+	show_button = "Administrator" in frappe.get_roles() or "Stock Manager" in frappe.get_roles()
+
 	for item in items:
 		item.update(
 			{
@@ -102,6 +104,7 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 				"reserved_qty_for_production": flt(item.reserved_qty_for_production, precision),
 				"reserved_qty_for_sub_contract": flt(item.reserved_qty_for_sub_contract, precision),
 				"actual_qty": flt(item.actual_qty, precision),
+				"show_stock_buttons": show_button
 			}
 		)
 		current_site_qty = flt(item.actual_qty, precision)
@@ -125,6 +128,7 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 		else:
 			for item in intersite_items:
 				item["current_site_qty"] = current_site_qty
+				item["show_stock_buttons"] = show_button
 			items = items + intersite_items
 
 	return items
