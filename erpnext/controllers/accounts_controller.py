@@ -2185,7 +2185,7 @@ def get_advance_payment_entries(
 			"""
 			select
 				"Payment Entry" as reference_type, t1.name as reference_name,
-				t1.remarks, t2.allocated_amount as amount, t2.name as reference_row,
+				t1.remarks, t2.allocated_amount as amount, t1.unallocated_amount as 'outstanding_amount', t2.name as reference_row,
 				t2.reference_name as against_order, t1.posting_date,
 				t1.{0} as currency, t1.{4} as exchange_rate
 			from `tabPayment Entry` t1, `tabPayment Entry Reference` t2

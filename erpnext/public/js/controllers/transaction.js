@@ -1429,7 +1429,8 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 									me.toggle_conversion_factor(item);
 									var d = locals[cdt][cdn]
 										if (d['rate'] == 0 && d['discount_percentage'] == 0){
-											frappe.confirm(__("The item price is zero, do you wish to proceed?"), 
+											let item_row = me.frm.doc.items.indexOf(d)
+											frappe.confirm(__(`The item price of ${d['item_code']} is zero at row ${item_row}, do you wish to proceed?`), 
 												function() {
 													//If Yes
 													run_batch_functions()
@@ -1959,7 +1960,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			}
 			me.apply_pricing_rule_on_item(item_row)
 			if (d.free_item_data) {
-				me.apply_product_discount(d, free_item_data);
+				me.apply_product_discount(d, d.free_item_data);
 			} else {
 				me.remove_missing_products(d);
 			}
@@ -1984,7 +1985,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			me.frm.doc.items.forEach(item => {
 				if(item["ignore_pricing_rules"] != 1 && item["is_free_item"] != 1){
 					if(!me.set_items.includes(item.name) && data.apply_rule_on_other_items.includes(item[data.apply_rule_on])){
-						me.get_and_set_item_details(me.frm.doc, data.doctype, item.name)
+						me.get_and_set_item_details(me.frm.doc, item.doctype, item.name)
 						me.set_items.push(item.name)
 					}
 					
@@ -2121,12 +2122,10 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 						if (reduce_qty >= row_to_modify.qty) {
 							if (use_backorder) {
 								var item_row = me.frm.doc.backorder_items.indexOf(row_to_modify)
-								console.log(me.frm.doc.backorder_items[item_row])
 								me.frm.doc.backorder_items.splice(item_row, 1);
 								
 							} else {
 								var item_row = me.frm.doc.items.indexOf(row_to_modify)
-								console.log(me.frm.doc.items[item_row])
 								me.frm.doc.items.splice(item_row, 1);
 							}
 							removed = true
