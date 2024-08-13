@@ -35,6 +35,14 @@ erpnext.stock.ItemDashboard = Class.extend({
 			handle_move_add($(this), "Add");
 		});
 
+		this.content.on('click', '.btn-transfer', function () {
+			handle_stock($(this), "transfer");
+		})
+
+		this.content.on('click', '.btn-send-stock', function () {
+			handle_stock($(this), "pull");
+		})
+
 		this.content.on('click', '.btn-edit', function () {
 			let item = unescape($(this).attr('data-item'));
 			let warehouse = unescape($(this).attr('data-warehouse'));
@@ -103,6 +111,106 @@ erpnext.stock.ItemDashboard = Class.extend({
 						me.refresh();
 					});
 				}
+			}
+		}
+
+		function handle_stock(element, action) {
+			let item = unescape(element.attr('data-item'));
+			let current_site_qty = Number(unescape(element.attr('data-current_site_qty')));
+			let target_site = unescape(element.attr('data-target_site'));
+			let current_site = unescape(element.attr('data-current_site'));
+			let has_batch_no = Number(unescape(element.attr('data-has_batch_no')));
+			let price_data = [];
+			let tar_batch_data = [];
+			let cur_batch_data = [];
+			
+			frappe.call({
+				method: 'fxnmrnth.utils.stock_receiver.fetch_item_price',
+				args: {
+					params: {
+						method: 'item_price',
+						action: action,
+						item_code: item,
+						target_site: target_site,
+						current_site: current_site,
+					}
+				},
+				async: false,
+				callback: function (r) {
+					if (r.message.message) {
+						price_data = r.message.message;
+					}
+				}
+			});
+		
+			if (price_data && price_data.length > 0) {
+				let price_message = price_data.map(data => 
+					`<li>${data.message}</li>`
+				).join('');
+		
+				let dialog = new frappe.ui.Dialog({
+					title: 'Intersite Price Discrepancies Found',
+					fields: [
+						{
+							label: 'Price Discrepancies',
+							fieldname: 'price_discrepancies',
+							fieldtype: 'HTML',
+							options: `
+								<div style="padding: 10px; max-height: 200px; overflow-y: auto;">
+									<p style="margin-bottom: 10px;">The following price discrepancies have been found between the <b>${current_site}</b> and the <b>${target_site}</b> for ${item}. Please review them carefully before continuing.</p>
+									<br>
+									<ul style="list-style-type: disc; padding-left: 20px;">
+										${price_message}
+									</ul>
+								</div>
+							`
+						}
+					],
+					primary_action_label: 'Continue',
+					primary_action(values) {
+						dialog.hide();
+						proceed_with_transfer(action);	
+					},
+					secondary_action_label: "Close"
+				});
+		
+				dialog.show();
+		
+				dialog.set_secondary_action(() => {
+					dialog.hide();
+				});
+		
+				return; 
+			}
+
+			proceed_with_transfer(action);	
+			
+			function proceed_with_transfer(action) {
+				frappe.call({
+					method: 'fxnmrnth.utils.stock_receiver.fetch_batch_data',
+					args: {
+						params: {
+							method: 'batch_data',
+							action: action,
+							item_code: item,
+							target_site: target_site,
+							current_site: current_site,
+							has_batch_no: has_batch_no
+						}
+					},
+					async: false,
+					callback: function (r) {
+						if (r.message) {
+							cur_batch_data = r.message.current_batch_data;
+							tar_batch_data = r.message.target_batch_data;
+						}
+					}
+				});
+
+				stock_transfer_dialog(item, cur_batch_data, tar_batch_data, current_site, target_site, current_site_qty, has_batch_no, action, function (values) {
+					create_stock_entry(item, current_site, target_site, values, action, has_batch_no);
+					me.refresh();
+				});
 			}
 		}
 
@@ -589,4 +697,344 @@ function setup(number_data, label_data, backgroundColor, dataset_label, options)
 		options: options,
 	};
 	return config
+}
+
+
+function stock_transfer_dialog(item_code, cur_batch_data, tar_batch_data, current_site, target_site, actual_qty, has_batch_no, action,callback) {
+	let batchLabel;
+	let batchReqd;
+	let batchDesc;
+
+	if (action == "transfer") {
+		batchLabel = "From Batch"
+		batchReqd = 1;
+		batchDesc = `
+		The top table contains the batches that are currently in <b>${target_site}</b>. Use the select button and the quantity field to transfer stock directly into that batch.
+		<br><br>
+		Alternatively, use the "Add Row" button and enter the item code, quantity, and expiry date to create a new batch in <b>${target_site}</b>. The batch name will be automatically created using the item code with the expiry date.`
+	} else {
+		batchLabel = "To Batch"
+		batchReqd = 0;
+
+		batchDesc = `
+			The top table contains the batches that are currently in <b>${target_site}</b>. Use the select button and the quantity field to take stock directly from that batch and set the expiry date for the batch in <b>${current_site}</b>.
+			<br><br>
+			This tool will automatically look up batches in <b>${current_site}</b> to assign the qty to. A new one will be created if a batch with the same expiration date cannot be found.
+		`
+	}
+
+	let d = new frappe.ui.Dialog({
+		title: 'Stock Handler',
+		fields: [
+			{
+				fieldname: "tar_batch_data",
+				fieldtype: "HTML"
+			},
+			{
+				fieldname: "cur_batch_data",
+				fieldtype: "HTML",
+				hidden: !batchReqd
+			},
+			{
+				fieldname: 'stock_items',
+				label: 'Items',
+				fieldtype: 'Table',
+				in_place_edit: true,
+				cannot_add_rows: !batchReqd,
+				data: [],
+				fields: [
+					{
+						fieldname: "batch_no",
+						fieldtype: "Data",
+						label: "Batch Name or Item Code",
+						reqd: 1,
+						read_only: 1,
+						in_list_view: 1
+					},
+					{
+						fieldname: 'qty',
+						label: 'Quantity',
+						fieldtype: 'Int',
+						in_list_view: 1,
+						reqd: 1
+					},
+					{
+						fieldname: 'date',
+						label: 'Expiry Date',
+						fieldtype: 'Date',
+						in_list_view: 1,
+						reqd: 1
+					},
+					{
+						fieldname: "from_batch",
+						label: batchLabel,
+						fieldtype: "Link",
+						options: "Batch",
+						in_list_view: batchReqd,
+						reqd: batchReqd,
+						get_query: function (doc, cdt, cdn) {
+							let grid = d.fields_dict['stock_items'].grid;
+							let row = grid.get_row(cdn);
+							let expiry_date = row ? row.doc.date : null;
+							
+							if (!expiry_date) {
+								return {
+									filters: {
+										item: item_code,
+										batch_qty: 1
+									}
+								};
+							}
+	
+							return {
+								filters: {
+									item: item_code,
+									batch_qty: 1,
+									expiry_date: expiry_date
+								}
+							};
+						}
+					}
+				]
+			}
+		],
+		size: "large",
+		"static": true,
+		primary_action_label: 'Submit',
+		primary_action: function (values) {
+			if (!values || !values.stock_items) {
+				d.hide();
+				return;
+			}
+
+			let submit_button = d.get_primary_btn();
+			submit_button.prop("disabled", true);
+
+			let stockItems = values.stock_items.filter(item => item.qty > 0 && item.qty != undefined && item.qty != '');
+			let rowsValid;
+
+			if (batchReqd) {
+				rowsValid = stockItems.every(item => item.date != undefined && item.date != null && item.date.trim() != '' && item.from_batch != undefined && item.from_batch != null && item.from_batch.trim() != '');
+			} else {
+				rowsValid = stockItems.every(item => {
+					const isDateValid = item.date !== undefined && item.date !== null && item.date.trim() !== '';
+					const isQtyValid = item.qty <= item.batch_qty;
+					return isDateValid && isQtyValid;
+				});
+			}
+
+			let totalQty = stockItems.reduce((sum, item) => sum + item.qty, 0);
+
+			if (!rowsValid) {
+				if (batchReqd) {
+					frappe.msgprint(__('Please ensure that each row has an expiry date and batch number set.'));
+					submit_button.prop("disabled", false);
+				} else {
+					frappe.msgprint(__('Please ensure that each row has an expiration date and that the selected quantity is less than the available quantity of batches.'));
+					submit_button.prop("disabled", false);
+				}
+				
+				return;
+			}
+
+			if (batchReqd && totalQty > actual_qty) {
+				frappe.msgprint(__(`There are currently ${actual_qty} units available in <b>${current_site}</b>, and you are trying to transfer ${totalQty}.<br><br>Please reduce the qty of one or more lines.`));
+				submit_button.prop("disabled", false);
+				return;
+			}
+
+			if (typeof callback === 'function') {
+				if (stockItems && stockItems.length == 0) {
+					submit_button.prop("disabled", false);
+					frappe.throw(`Cancelling as the batch data did not populate correctly.<br><br><b>Please ensure all fields have been entered correctly.</b>`)
+				} else {
+					callback(stockItems);
+				}
+			}
+			d.hide();
+			return;
+		},
+		secondary_action_label: 'Cancel',
+		secondary_action: function () {
+			d.hide();
+			return;
+		}
+	});
+
+	let tarBatchHtml = `<h5 style="text-align: center;"><br>There are currently no batches with stock for ${item_code} in ${target_site}.<br><br></h5>`;
+
+	if (tar_batch_data && tar_batch_data.length > 0) {
+		let filtered_batches = tar_batch_data;
+
+		if (action === "pull") {
+			filtered_batches = tar_batch_data.filter(batch => batch.batch_qty > 0);
+		}
+
+		if (filtered_batches.length > 0) {
+			tarBatchHtml = `
+				<h4 style="text-align: center;">${target_site} Batches</h4>
+				<div id="dialog-description" style="margin-top: 20px; text-align: center;">
+					${batchDesc}
+				</div>
+				<table class="table table-bordered table-striped">
+					<thead>
+						<tr>
+							<th class="col-md-4">Batch Name (${target_site})</th>
+							<th class="col-md-2" style="text-align: center;">Batch Qty</th>
+							<th class="col-md-2" style="text-align: center;">Batch Expiry</th>
+							<th class="col-md-1" style="text-align: center;"></th>
+						</tr>
+					</thead>
+					<tbody>
+						${filtered_batches.map(batch => `
+							<tr>
+								<td>${batch.batch_id}</td>
+								<td style="text-align: center;">${batch.batch_qty}</td>
+								<td style="color: ${batch.is_shortdated ? 'green' : 'orange'}; text-align: center;">
+									${batch.expiry_date ? batch.expiry_date : 'No Expiry'}
+								</td>
+								<td style="text-align: center;"><button class="btn btn-xs btn-secondary select-batch" data-batch-id="${batch.batch_id}" data-expiry-date="${batch.expiry_date}" data-batch-qty="${batch.batch_qty}">Select</button></td>
+							</tr>
+						`).join('')}
+					</tbody>
+				</table>
+			`;
+		}
+	}
+
+	let curBatchHtml = `<h5 style="text-align: center;"><br>There are currently no batches with stock for ${item_code} in ${current_site}.<br><br></h5>`;
+
+	if (action == 'transfer' && (cur_batch_data && cur_batch_data.length > 0)) {
+		let cur_filtered_batches = cur_batch_data;
+		cur_filtered_batches = cur_batch_data.filter(batch => batch.batch_qty > 0);
+
+		if (cur_filtered_batches.length > 0) {
+			curBatchHtml = `
+				<h4 style="text-align: center;">${current_site} Batches</h4>
+				<div id="dialog-description" style="margin-top: 20px; text-align: center;">
+					This table contains the batches currently in <b>${current_site}</b> with a quantity greater than 0.
+				</div>
+				<table class="table table-bordered table-striped">
+					<thead>
+						<tr>
+							<th class="col-md-4">Batch Name (${current_site})</th>
+							<th class="col-md-2" style="text-align: center;">Batch Qty</th>
+							<th class="col-md-2" style="text-align: center;">Batch Expiry</th>
+						</tr>
+					</thead>
+					<tbody>
+						${cur_filtered_batches.map(batch => `
+							<tr>
+								<td>${batch.batch_id}</td>
+								<td style="text-align: center;">${batch.batch_qty}</td>
+								<td style="color: ${batch.is_shortdated ? 'green' : 'orange'}; text-align: center;">
+									${batch.expiry_date ? batch.expiry_date : 'No Expiry'}
+								</td>
+							</tr>
+						`).join('')}
+					</tbody>
+				</table>
+			`;
+		}
+	}
+	
+	d.fields_dict.tar_batch_data.$wrapper.html(tarBatchHtml);
+
+	if (action == 'transfer') {
+		d.fields_dict.cur_batch_data.$wrapper.html(curBatchHtml);
+	}
+	
+	d.fields_dict.tar_batch_data.$wrapper.on('click', 'button.select-batch', function () {
+		let batch_id = $(this).data('batch-id');
+		let expiry_date = $(this).data('expiry-date');
+		let batch_qty = $(this).data('batch-qty');
+		let selectedBatch = tar_batch_data.find(batch => batch.batch_id == batch_id);
+
+		if (selectedBatch) {
+			let grid = d.fields_dict['stock_items'].grid;
+			let isExpiryDatePresent = grid.df.data.some(row => row.date == expiry_date);
+
+			if (!isExpiryDatePresent) {
+				grid.df.data.push({
+					batch_no: selectedBatch.batch_id,
+					qty: 0,
+					date: selectedBatch.expiry_date,
+					batch_qty: batch_qty
+				});
+				grid.refresh();
+				$(grid.wrapper).find('.grid-row-index').hide();
+				$(grid.wrapper).find('.data-row .grid-row-index').hide();
+				$(grid.wrapper).find('.row-index.sortable-handle.col.col-xs-1').css('pointer-events', 'none');
+				$(grid.wrapper).find('.row-index.sortable-handle.col.col-xs-1 input.grid-row-check').css('pointer-events', 'all');
+			} else {
+				frappe.msgprint(__('This expiry date is already in the items table.'));
+			}
+		}
+	});
+
+	d.show();
+
+	d.$wrapper.find('.grid-add-row').on('click', function () {
+		console.log('click event')
+		let grid = d.fields_dict['stock_items'].grid;
+		grid.df.data = grid.df.data.filter(row => !(row.batch_no == undefined && row.date == undefined));
+
+		grid.df.data.push({
+			batch_no: item_code,
+			qty: 0,
+			date: ''
+		});
+
+		grid.refresh();
+		$(grid.wrapper).find('.grid-row-index').hide();
+		$(grid.wrapper).find('.data-row .grid-row-index').hide();
+		$(grid.wrapper).find('.row-index.sortable-handle.col.col-xs-1').css('pointer-events', 'none');
+		$(grid.wrapper).find('.row-index.sortable-handle.col.col-xs-1 input.grid-row-check').css('pointer-events', 'all');
+	});
+}
+
+function create_stock_entry(item_code, current_site, target_site, values, action, has_batch_no) {
+	// Used to store reference of source and target site stock entries
+	function generateRandomHash(length) {
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let hash = '';
+        for (let i = 0; i < length; i++) {
+            hash += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return hash;
+    }
+
+    let intersite_key = generateRandomHash(16);
+
+	frappe.call({
+		method: 'fxnmrnth.utils.stock_receiver.validate_create_stock_transfer',
+		args: {
+			params: {
+				method: 'validate_and_create',
+				action: action,
+				item_code: item_code,
+				target_site: target_site,
+				current_site: current_site,
+				has_batch_no: has_batch_no,
+				batch_data: values,
+				intersite_key: intersite_key
+			}
+		},
+		async: false,
+		callback: function (r) {
+			if (r.message) {
+				let entry_1 = `https://${r.message.current_site_url}/app/stock-entry/${r.message.transfer_entry}`;
+				let entry_2 = `https://${r.message.target_site_url}/app/stock-entry/${r.message.receipt_entry}`;
+				
+				let message = `
+					<strong>Stock Transfer Successful!</strong><br><br>
+					Material Issue (${r.message.transfer_site}):<br> <a href="${entry_1}" target="_blank">${r.message.transfer_entry}</a>
+					<br><br>
+					Material Receipt (${r.message.receipt_site}):<br> <a href="${entry_2}" target="_blank">${r.message.receipt_entry}</a>
+				`;
+
+				frappe.show_alert({message: message, indicator: 'green'}, 15);
+			}
+		}
+	})
 }
