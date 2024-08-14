@@ -2664,6 +2664,7 @@ def get_advance_payment_entries(
 				pe.name.as_("reference_name"),
 				pe.remarks,
 				per.allocated_amount.as_("amount"),
+				pe.unallocated_amount.as_("outstanding_amount"),
 				per.name.as_("reference_row"),
 				per.reference_name.as_("against_order"),
 				pe.posting_date,

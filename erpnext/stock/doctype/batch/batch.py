@@ -765,7 +765,12 @@ def allocate_batches_table(doc, item_code, warehouse, type_required, qty_require
 						}
 						
 						free_item_data = free_item_results[pricing_rule['pricing_rules']]
-						free_item_data['discount_percentage'] = ((price_list_rate-free_item_data['rate'])/price_list_rate)*100
+
+						if price_list_rate:
+							free_item_data['discount_percentage'] = ((price_list_rate-free_item_data['rate'])/price_list_rate)*100
+						else:
+							free_item_data['discount_percentage'] = 0
+
 			doc['items'].append(item)
 		for pricing_rule in free_item_results:
 			qty_required += free_item_results[pricing_rule]['qty']

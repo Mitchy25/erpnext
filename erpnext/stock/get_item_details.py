@@ -112,15 +112,16 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		if args.get(key) is None:
 			args[key] = value
 
-	if frappe.get_cached_value("Item", args.get("item_code"), "has_batch_no") and not args.batch_no:
-		batch_results = get_batch_no(args.get("item_code"), args.get("warehouse"), args.get("qty"), cur_batch_no=args.get(args.batch_no), return_error=False, return_shortdated=True)
-		if batch_results:
-			args.batch_no, args.shortdated_batch = batch_results
-
 	if args.get("update_stock"):
-		data = get_pricing_rule_for_item(args, doc, for_validate=for_validate)
-		
-		out.update(data)
+		if frappe.get_cached_value("Item", args.get("item_code"), "has_batch_no") and not args.batch_no:
+			batch_results = get_batch_no(args.get("item_code"), args.get("warehouse"), args.get("qty"), cur_batch_no=args.get(args.batch_no), return_error=False, return_shortdated=True)
+			if batch_results:
+				args.batch_no, args.shortdated_batch = batch_results
+
+	
+	data = get_pricing_rule_for_item(args, doc, for_validate=for_validate)
+	
+	out.update(data)
 
 	update_stock(args, out)
 
@@ -1389,7 +1390,7 @@ def apply_price_list(args, as_doc=False, doc=None):
 def apply_price_list_on_item(args, doc=None):
 	item_doc = frappe.db.get_value("Item", args.item_code, ["name", "variant_of"], as_dict=1)
 	item_details = get_price_list_rate(args, item_doc)
-	item_details.update(get_pricing_rule_for_item(args, item_details.price_list_rate, doc=doc))
+	item_details.update(get_pricing_rule_for_item(args, doc=doc))
 	return item_details
 
 

@@ -104,12 +104,13 @@ frappe.ui.form.on('Stock Entry', {
 		frm.add_fetch("bom_no", "inspection_required", "inspection_required");
 		erpnext.accounts.dimensions.setup_dimension_filters(frm, frm.doctype);
 
-		frappe.db.get_single_value('Stock Settings', 'disable_serial_no_and_batch_selector')
-		.then((value) => {
-			if (value) {
-				frappe.flags.hide_serial_batch_dialog = true;
-			}
-		});
+		// frappe.db.get_single_value('Stock Settings', 'disable_serial_no_and_batch_selector')
+		// .then((value) => {
+		// 	if (value) {
+		// 		frappe.flags.hide_serial_batch_dialog = true;
+		// 	}
+		// });
+		frappe.flags.hide_serial_batch_dialog = true;
 		attach_bom_items(frm.doc.bom_no);
 
 		if(!check_should_not_attach_bom_items(frm.doc.bom_no)) {
