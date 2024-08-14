@@ -166,8 +166,9 @@
   "inter_company_invoice_reference",
   "represents_company",
   "customer_group",
-  "campaign",
+  "sales_partner",
   "col_break23",
+  "campaign",
   "is_internal_customer",
   "is_discounted",
   "source",
@@ -181,7 +182,6 @@
   "unrealized_profit_loss_account",
   "remarks",
   "sales_team_section_break",
-  "sales_partner",
   "column_break10",
   "amount_eligible_for_commission",
   "commission_rate",
@@ -2050,7 +2050,7 @@
    "link_fieldname": "consolidated_invoice"
   }
  ],
- "modified": "2024-04-10 10:33:49.918110",
+ "modified": "2024-08-14 13:14:33.305255",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
