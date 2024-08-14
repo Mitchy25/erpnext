@@ -89,52 +89,55 @@ def get_balance_qty_from_sle(item_code, warehouse):
 
 
 def get_reserved_qty(item_code, warehouse):
-	reserved_qty = frappe.db.sql(
-		"""
-		select
-			sum(dnpi_qty * ((so_item_qty - so_item_delivered_qty) / so_item_qty))
-		from
-			(
-				(select
-					qty as dnpi_qty,
-					(
-						select qty from `tabSales Order Item`
-						where name = dnpi.parent_detail_docname
-						and (delivered_by_supplier is null or delivered_by_supplier = 0)
-					) as so_item_qty,
-					(
-						select delivered_qty from `tabSales Order Item`
-						where name = dnpi.parent_detail_docname
-						and delivered_by_supplier = 0
-					) as so_item_delivered_qty,
-					parent, name
-				from
-				(
-					select qty, parent_detail_docname, parent, name
-					from `tabPacked Item` dnpi_in
-					where item_code = %s and warehouse = %s
-					and parenttype='Sales Order'
-					and item_code != parent_item
-					and exists (select * from `tabSales Order` so
-					where name = dnpi_in.parent and docstatus = 1 and status not in ('On Hold', 'Closed'))
-				) dnpi)
-			union
-				(select stock_qty as dnpi_qty, qty as so_item_qty,
-					delivered_qty as so_item_delivered_qty, parent, name
-				from `tabSales Order Item` so_item
-				where item_code = %s and warehouse = %s
-				and (so_item.delivered_by_supplier is null or so_item.delivered_by_supplier = 0)
-				and exists(select * from `tabSales Order` so
-					where so.name = so_item.parent and so.docstatus = 1
-					and so.status not in ('On Hold', 'Closed')))
-			) tab
-		where
-			so_item_qty >= so_item_delivered_qty
-	""",
-		(item_code, warehouse, item_code, warehouse),
-	)
+	"""Overriding whatever stock qty mulitplication nonsense is below. Using our backorder reserve qty instead"""
+	from fxnmrnth.backorder_items import get_reserved_qty as get_reserved_qty2
+	return get_reserved_qty2(item_code, warehouse)
+	# reserved_qty = frappe.db.sql(
+	# 	"""
+	# 	select
+	# 		sum(dnpi_qty * ((so_item_qty - so_item_delivered_qty) / so_item_qty))
+	# 	from
+	# 		(
+	# 			(select
+	# 				qty as dnpi_qty,
+	# 				(
+	# 					select qty from `tabSales Order Item`
+	# 					where name = dnpi.parent_detail_docname
+	# 					and (delivered_by_supplier is null or delivered_by_supplier = 0)
+	# 				) as so_item_qty,
+	# 				(
+	# 					select delivered_qty from `tabSales Order Item`
+	# 					where name = dnpi.parent_detail_docname
+	# 					and delivered_by_supplier = 0
+	# 				) as so_item_delivered_qty,
+	# 				parent, name
+	# 			from
+	# 			(
+	# 				select qty, parent_detail_docname, parent, name
+	# 				from `tabPacked Item` dnpi_in
+	# 				where item_code = %s and warehouse = %s
+	# 				and parenttype="Sales Order"
+	# 				and item_code != parent_item
+	# 				and exists (select * from `tabSales Order` so
+	# 				where name = dnpi_in.parent and docstatus = 1 and status not in ('On Hold', 'Closed'))
+	# 			) dnpi)
+	# 		union
+	# 			(select stock_qty as dnpi_qty, qty as so_item_qty,
+	# 				delivered_qty as so_item_delivered_qty, parent, name
+	# 			from `tabSales Order Item` so_item
+	# 			where item_code = %s and warehouse = %s
+	# 			and (so_item.delivered_by_supplier is null or so_item.delivered_by_supplier = 0)
+	# 			and exists(select * from `tabSales Order` so
+	# 				where so.name = so_item.parent and so.docstatus = 1
+	# 				and so.status not in ('On Hold', 'Closed')))
+	# 		) tab
+	# 	where
+	# 		so_item_qty >= so_item_delivered_qty
+	# """,
+	# 	(item_code, warehouse, item_code, warehouse),
+	# )
 
-	return flt(reserved_qty[0][0]) if reserved_qty else 0
+	# return flt(reserved_qty[0][0]) if reserved_qty else 0
 
 
 def get_indented_qty(item_code, warehouse):
