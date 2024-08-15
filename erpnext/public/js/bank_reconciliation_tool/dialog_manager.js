@@ -50,6 +50,10 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					r.message.payment_entry = 1;
 					r.message.journal_entry = 1;
 					this.dialog.set_values(r.message);
+					this.dialog.fields_dict.reference_no.value = r.message.reference_number
+					this.dialog.fields_dict.posting_date.value = r.message.date
+					this.dialog.fields_dict.reference_date.value = r.message.date
+
 					if (r.message.deposit > 1) {
 						this.dialog.fields_dict.party_type.set_value("Customer")
 					}
@@ -98,9 +102,10 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 							row[1],
 							row[2],
 							reference_date,
-							format_currency(row[3], row[9]),
-							row[4],
+							// format_currency(row[3], row[9]),
+							row[3],
 							row[6],
+							row[4],
 						]);
 					});
 					this.get_dt_columns();

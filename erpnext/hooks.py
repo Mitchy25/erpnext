@@ -497,10 +497,11 @@ invoice_doctypes = ["Sales Invoice", "Purchase Invoice"]
 bank_reconciliation_doctypes = [
 	"Payment Entry",
 	"Journal Entry",
-	"Purchase Invoice",
-	"Sales Invoice",
-	"Loan Repayment",
-	"Loan Disbursement",
+	"Payment Group",
+	# "Purchase Invoice",
+	# "Sales Invoice",
+	# "Loan Repayment",
+	# "Loan Disbursement",
 ]
 
 accounting_dimension_doctypes = [
