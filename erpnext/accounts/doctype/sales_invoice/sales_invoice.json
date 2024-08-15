@@ -32,7 +32,6 @@
   "amended_from",
   "accounting_dimensions_section",
   "cost_center",
-  "dimension_col_break",
   "project",
   "currency_and_price_list",
   "currency",
@@ -186,7 +185,6 @@
   "sales_partner",
   "amount_eligible_for_commission",
   "column_break10",
-  "amount_eligible_for_commission",
   "commission_rate",
   "total_commission",
   "section_break2",
@@ -214,6 +212,7 @@
   "is_internal_customer",
   "is_discounted",
   "remarks",
+  "repost_required",
   "connections_tab"
  ],
  "fields": [
@@ -1906,12 +1905,6 @@
    "label": "Accounting Dimensions"
   },
   {
-   "fieldname": "dimension_col_break",
-   "fieldtype": "Column Break",
-   "hide_days": 1,
-   "hide_seconds": 1
-  },
-  {
    "default": "0",
    "depends_on": "eval:(doc.is_pos && doc.is_consolidated)",
    "fieldname": "is_consolidated",
@@ -2139,6 +2132,7 @@
    "read_only": 1
   },
   {
+   "default": "0",
    "depends_on": "allocate_advances_automatically",
    "description": "Advance payments allocated against orders will only be fetched",
    "fieldname": "only_include_allocated_payments",
@@ -2187,7 +2181,7 @@
    "link_fieldname": "consolidated_invoice"
   }
  ],
- "modified": "2024-07-18 15:30:39.428519",
+ "modified": "2024-08-09 15:34:26.032115",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
