@@ -14,7 +14,7 @@ from frappe.utils import cint, flt, fmt_money, get_link_to_form, getdate, today
 
 from erpnext.setup.doctype.item_group.item_group import get_child_item_groups
 from erpnext.stock.doctype.warehouse.warehouse import get_child_warehouses
-from erpnext.stock.get_item_details import get_conversion_factor
+from erpnext.stock.get_item_details import get_conversion_factor, get_basic_details
 
 
 class MultiplePricingRuleConflict(frappe.ValidationError):
@@ -721,7 +721,6 @@ def get_product_discount_rule(pricing_rule, item_details, args=None, doc=None):
 	})
 	if "Item" in basic_args.doctype:
 		basic_args.doctype = " ".join(basic_args.doctype.split(" ")[:-1])
-
 	free_item_data_args = get_basic_details(basic_args, None).update(free_item_data_args)
 
 	item_data = frappe.get_cached_value(

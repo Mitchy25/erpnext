@@ -7,6 +7,8 @@ from frappe.utils import flt
 
 from erpnext.controllers.status_updater import StatusUpdater
 
+from fxnmrnth.fxnmrnth.doctype.payment_group.payment_group import set_clearance_date_bank_rec
+from fxnmrnth.utils.bank_reconciliation_tool import clear_linked_payment_group
 
 class BankTransaction(StatusUpdater):
 	def after_insert(self):
@@ -194,6 +196,7 @@ def get_clearance_details(transaction, payment_entry):
 	)
 	unmatched_gles = len(gles)
 	latest_transaction = transaction
+
 	for gle in gles:
 		if gle["gl_account"] == gl_bank_account:
 			if gle["amount"] <= 0.0:
@@ -315,6 +318,11 @@ def get_paid_amount(payment_entry, currency, gl_bank_account):
 		return frappe.db.get_value(
 			payment_entry.payment_document, payment_entry.payment_entry, "total_amount_reimbursed"
 		)
+	
+	elif payment_entry.payment_document == "Payment Group":
+		return frappe.db.get_value(
+			payment_entry.payment_document, payment_entry.payment_entry, "total"
+		)
 
 	elif payment_entry.payment_document == "Loan Disbursement":
 		return frappe.db.get_value(
@@ -340,10 +348,11 @@ def set_voucher_clearance(doctype, docname, clearance_date, self):
 	if doctype in [
 		"Payment Entry",
 		"Journal Entry",
-		"Purchase Invoice",
-		"Expense Claim",
-		"Loan Repayment",
-		"Loan Disbursement",
+		"Payment Group",
+		# "Purchase Invoice",
+		# "Expense Claim",
+		# "Loan Repayment",
+		# "Loan Disbursement",
 	]:
 		if (
 			doctype == "Payment Entry"
@@ -351,6 +360,13 @@ def set_voucher_clearance(doctype, docname, clearance_date, self):
 			and len(get_reconciled_bank_transactions(doctype, docname)) < 2
 		):
 			return
+		
+		if doctype == "Journal Entry":
+			#Check for PG's with this JE as a Clearance JE
+			clear_linked_payment_group(docname, clearance_date)
+		elif doctype == "Payment Group":
+			set_clearance_date_bank_rec(docname,clearance_date)
+
 		frappe.db.set_value(doctype, docname, "clearance_date", clearance_date)
 
 	elif doctype == "Sales Invoice":

@@ -353,7 +353,7 @@ def auto_reconcile_vouchers(
 	to_reference_date=None,
 ):
 	frappe.flags.auto_reconcile_vouchers = True
-	document_types = ["payment_entry", "journal_entry"]
+	document_types = ["payment_entry", "journal_entry", "payment_group"]
 	bank_transactions = get_bank_transactions(bank_account)
 	matched_transaction = []
 	for transaction in bank_transactions:
@@ -522,9 +522,10 @@ def check_matching(
 		matching_vouchers.extend(
 			frappe.db.sql(
 				query,
-				filters,
+				filters
 			)
 		)
+		
 	return sorted(matching_vouchers, key=lambda x: x[0], reverse=True) if matching_vouchers else []
 
 
@@ -544,6 +545,7 @@ def get_queries(
 	account_from_to = "paid_to" if transaction.deposit > 0.0 else "paid_from"
 	queries = []
 
+
 	# get matching queries from all the apps
 	for method_name in frappe.get_hooks("get_matching_queries"):
 		queries.extend(
@@ -562,7 +564,6 @@ def get_queries(
 			)
 			or []
 		)
-
 	return queries
 
 
@@ -595,6 +596,18 @@ def get_matching_queries(
 
 	if "journal_entry" in document_types:
 		query = get_je_matching_query(
+			exact_match,
+			transaction,
+			from_date,
+			to_date,
+			filter_by_reference_date,
+			from_reference_date,
+			to_reference_date,
+		)
+		queries.append(query)
+	
+	if "payment_group" in document_types:
+		query = get_pg_matching_query(
 			exact_match,
 			transaction,
 			from_date,
@@ -767,7 +780,7 @@ def get_pe_matching_query(
 		filter_by_date = f"AND reference_date between '{from_reference_date}' and '{to_reference_date}'"
 		order_by = " reference_date"
 	if frappe.flags.auto_reconcile_vouchers is True:
-		filter_by_reference_no = f"AND reference_no = '{transaction.reference_number}'"
+		filter_by_reference_no = "AND reference_no = %(reference_no)s "
 	return f"""
 		SELECT
 			(CASE WHEN reference_no=%(reference_no)s THEN 1 ELSE 0 END
@@ -818,7 +831,7 @@ def get_je_matching_query(
 		filter_by_date = f"AND je.cheque_date between '{from_reference_date}' and '{to_reference_date}'"
 		order_by = " je.cheque_date"
 	if frappe.flags.auto_reconcile_vouchers is True:
-		filter_by_reference_no = f"AND je.cheque_no = '{transaction.reference_number}'"
+		filter_by_reference_no = "AND je.cheque_no = %(reference_no)s "
 	return f"""
 		SELECT
 			(CASE WHEN je.cheque_no=%(reference_no)s THEN 1 ELSE 0 END
@@ -851,19 +864,25 @@ def get_je_matching_query(
 			order by {order_by}
 	"""
 
-	if amount_condition == "=":
-		sql += f"""AND jea.{cr_or_dr}_in_account_currency {amount_condition} %(amount)s"""
-
-	return sql
-
-def get_pg_matching_query(amount_condition, transaction):
+def get_pg_matching_query(exact_match,
+	transaction,
+	from_date,
+	to_date,
+	filter_by_reference_date,
+	from_reference_date,
+	to_reference_date,):
 	# get matching payment groups query
 	
 	if transaction.deposit > 0:
 		currency_field = "paid_to_account_currency as currency"
 	else:
 		currency_field = "paid_from_account_currency as currency"
-	sql = f"""
+
+
+	filter_by_date = f"AND pg.date between '{from_date}' and '{to_date}'"
+	order_by = " pg.date"
+
+	return f"""
 	SELECT
 		0 AS rank,
 		'Payment Group' as doctype,
@@ -887,14 +906,13 @@ def get_pg_matching_query(amount_condition, transaction):
 		bankAcc.account = acc.name
 	WHERE
 		pg.docstatus = 1
-		AND ifnull(pg.clearance_date, '') = ""
+		AND (pg.clearance_date IS NULL OR pg.clearance_date='0000-00-00')
 		AND bankAcc.account = %(bank_account)s
+		AND pg.total {'= %(amount)s' if exact_match else '> 0.0'}
+		{filter_by_date}
+		order by {order_by}
 	"""
 
-	if amount_condition == "=":
-		sql += f"""AND pg.total {amount_condition} %(amount)s"""
-
-	return sql
 
 
 def get_si_matching_query(exact_match):
