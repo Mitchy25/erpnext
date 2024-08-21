@@ -50,6 +50,7 @@ def get_party_details(
 	company_address=None,
 	shipping_address=None,
 	pos_profile=None,
+	temp_country_code=None,
 ):
 
 	if not party:
@@ -72,6 +73,7 @@ def get_party_details(
 		company_address,
 		shipping_address,
 		pos_profile,
+		temp_country_code
 	)
 
 
@@ -91,6 +93,7 @@ def _get_party_details(
 	company_address=None,
 	shipping_address=None,
 	pos_profile=None,
+	temp_country_code=None
 ):
 	party_details = frappe._dict(
 		set_account_and_due_date(party, account, party_type, company, posting_date, bill_date, doctype)
@@ -137,6 +140,7 @@ def _get_party_details(
 		tax_category=party_details.tax_category,
 		billing_address=party_address,
 		shipping_address=shipping_address,
+		temp_country_code=temp_country_code
 	)
 
 	if tax_template:
@@ -645,6 +649,7 @@ def set_taxes(
 	billing_address=None,
 	shipping_address=None,
 	use_for_shopping_cart=None,
+	temp_country_code=None
 ):
 	from erpnext.accounts.doctype.tax_rule.tax_rule import get_party_details, get_tax_template
 
@@ -659,7 +664,9 @@ def set_taxes(
 	if supplier_group:
 		args["supplier_group"] = supplier_group
 
-	if billing_address or shipping_address:
+	if temp_country_code:
+		args.update({'temp_country_code': temp_country_code})
+	elif billing_address or shipping_address:
 		args.update(
 			get_party_details(
 				party, party_type, {"billing_address": billing_address, "shipping_address": shipping_address}

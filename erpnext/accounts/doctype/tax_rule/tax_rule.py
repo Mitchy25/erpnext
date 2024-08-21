@@ -186,11 +186,18 @@ def get_tax_template(posting_date, args):
 				value = get_root_of("Customer Group")
 			customer_group_condition = get_customer_group_condition(value)
 			conditions.append("ifnull({0}, '') in ('', {1})".format(key, customer_group_condition))
+		elif key == "temp_country_code":
+			if frappe.db.exists("Country", {"code": value.lower().strip(" ")}):
+				country = frappe.db.get_value("Country", {'code': value.lower().strip(" ")}, ['name'])
+			else:
+				frappe.throw(f"Unable to find a country to match code {value}. Please enter a value country code.")
+			
+			conditions.append("ifnull({0}, '') in ('', {1})".format('shipping_country', frappe.db.escape(cstr(country))))
 		else:
 			conditions.append("ifnull({0}, '') in ('', {1})".format(key, frappe.db.escape(cstr(value))))
 
 	tax_rule = frappe.db.sql(
-		"""select * from `tabTax Rule`
+		"""select *, shipping_country AS "temp_country_code"  from `tabTax Rule`
 		where {0}""".format(
 			" and ".join(conditions)
 		),
