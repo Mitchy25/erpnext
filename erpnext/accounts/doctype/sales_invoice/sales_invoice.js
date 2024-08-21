@@ -327,12 +327,6 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 			});
 	},
 
-	taxes_and_charges: function() {
-		if (this.frm.doc.taxes_and_charges && this.frm.doc.taxes_and_charges.toLowerCase().includes("no tax")) {
-			frappe.msgprint("Unable to find a tax template to match this shipping country.<br><br><b>Setting tax template to No Tax.</b>");
-		}
-	},
-
 	make_inter_company_invoice: function() {
 		let me = this;
 		frappe.model.open_mapped_doc({
