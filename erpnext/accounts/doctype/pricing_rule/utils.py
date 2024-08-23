@@ -351,13 +351,11 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 			else:
 				p.variant_of = None
 
-	if len(pricing_rules) > 1:
-		filtered_rules = list(filter(lambda x: x.currency == args.get("currency"), pricing_rules))
-		if filtered_rules:
-			pricing_rules = filtered_rules
+	if len(pricing_rules) >= 1:
+		pricing_rules = list(filter(lambda x: x.currency == args.get("currency") or x.currency_non_specific_pricing_rule, pricing_rules))
+	
 
 	# Filter out pricing rules only for shortdated
-	test = args
 	if pricing_rules and not args.shortdated_batch:
 		pricing_rules = [pricing_rule for pricing_rule in pricing_rules if pricing_rule.is_shortdated != 1]
 
