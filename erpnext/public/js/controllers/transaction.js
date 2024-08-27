@@ -2307,6 +2307,10 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 							me.frm.set_value("taxes", r.message);
 							me.calculate_taxes_and_totals();
 						}
+
+						if (me.frm.doc.temporary_address && me.frm.doc.country_code && me.frm.doc.taxes_and_charges.toLowerCase().includes("no tax")) {
+							frappe.msgprint(`Unable to find a tax template to match this shipping country of ${me.frm.doc.country_code}.<br><br><b>Setting tax template to No Tax.</b>`);
+						}
 					}
 				}
 			});
