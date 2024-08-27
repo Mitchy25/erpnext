@@ -662,6 +662,9 @@ def send_emails(document_name, from_scheduler=False):
 	if company == "FxMed":
 		sender = "ar@fxmed.co.nz"
 		enqueue_args["sender"] = sender
+	elif company == "RN Labs":
+		sender = "ar@rnlabs.com.au"
+		enqueue_args["sender"] = sender
 	else:
 		company = None
 		sender = None
@@ -696,7 +699,7 @@ def send_emails(document_name, from_scheduler=False):
 				"attachments":attachments,
 			}
 
-			if company == "FxMed":
+			if company == "FxMed" or company == "RN Labs":
 				enqueue_args["sender"] = sender
 
 			frappe.enqueue(**enqueue_args)
