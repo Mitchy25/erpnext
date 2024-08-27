@@ -779,7 +779,8 @@ def apply_pricing_rule_for_free_items(doc, pricing_rule_args, set_missing_values
 						args["qty"] -= bo_item.qty
 
 			if not items or (args.get("item_code"), args.get("pricing_rules")) not in items:
-				doc.append("items", args)
+				if args.qty != 0:
+					doc.append("items", args)
 
 
 def get_pricing_rule_items(pr_doc):
