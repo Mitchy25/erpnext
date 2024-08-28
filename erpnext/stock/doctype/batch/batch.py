@@ -219,9 +219,14 @@ def get_batch_qty(batch_no=None, warehouse=None, item_code=None, posting_date=No
 def get_batches_by_oldest(item_code, warehouse):
 	"""Returns the oldest batch and qty for the given item_code and warehouse"""
 	batches = get_batch_qty(item_code=item_code, warehouse=warehouse)
+	
+	if not batches:
+		return []
+	# Batches are being returned as 0 here
 	batches_dates = [
 		[batch, frappe.get_value("Batch", batch.batch_no, "expiry_date")] for batch in batches
 	]
+
 	import datetime
 	batches_dates.sort(key=lambda tup: tup[1] or datetime.date(9999, 12, 31))
 	return batches_dates
