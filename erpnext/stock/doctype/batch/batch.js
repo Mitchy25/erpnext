@@ -159,15 +159,17 @@ frappe.ui.form.on("Batch", {
 									warehouse: $btn.attr('data-warehouse'),
 									new_batch_id: data.new_batch_id,
 									new_batch_expiry: data.new_batch_expiry
+								}
 								}).then(() => frm.reload_doc());
 							},
 							__("Split Batch"),
 							__("Split")
 						);
 					});
+					
 
 					frm.dashboard.show();
-				},
+				}
 			});
 		}
 	},
