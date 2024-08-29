@@ -354,7 +354,21 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 	if len(pricing_rules) >= 1:
 		pricing_rules = list(filter(lambda x: x.currency == args.get("currency") or x.currency_non_specific_pricing_rule, pricing_rules))
 	
+	
+	filtered_rules = []
+	if pricing_rules:
+		for pricing_rule in pricing_rules:
+			if pricing_rule.coupon_code_based:
+				coupon_code_list = frappe.get_list("Coupon Code", filters={'pricing_rule': pricing_rule.name, 'coupon_code': args.coupon_code}, fields=['name'])
+				if coupon_code_list:
+					filtered_rules.append(pricing_rule)
+			else:
+				filtered_rules.append(pricing_rule)
+		pricing_rules = filtered_rules
+		del filtered_rules
+	
 
+	
 	# Filter out pricing rules only for shortdated
 	if pricing_rules and not args.shortdated_batch:
 		pricing_rules = [pricing_rule for pricing_rule in pricing_rules if pricing_rule.is_shortdated != 1]
@@ -779,7 +793,8 @@ def apply_pricing_rule_for_free_items(doc, pricing_rule_args, set_missing_values
 						args["qty"] -= bo_item.qty
 
 			if not items or (args.get("item_code"), args.get("pricing_rules")) not in items:
-				doc.append("items", args)
+				if args.qty != 0:
+					doc.append("items", args)
 
 
 def get_pricing_rule_items(pr_doc):
