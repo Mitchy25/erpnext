@@ -48,7 +48,7 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 	if not pricing_rules:
 		return []
 	
-	if doc.get("coupon_code"):
+	if doc and doc.get("coupon_code"):
 		args.coupon_code = doc.get("coupon_code")
 	if returnAll:
 		pricing_rules = filter_pricing_rules_for_qty_amount(
