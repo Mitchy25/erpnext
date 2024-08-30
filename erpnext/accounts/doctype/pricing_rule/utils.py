@@ -48,6 +48,8 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 	if not pricing_rules:
 		return []
 	
+	if doc.get("coupon_code"):
+		args.coupon_code = doc.get("coupon_code")
 	if returnAll:
 		pricing_rules = filter_pricing_rules_for_qty_amount(
 			args.qty, args.rate, pricing_rules
@@ -64,7 +66,6 @@ def get_pricing_rules(args, doc=None, returnAll=False):
 			rules.extend(pricing_rule)
 		else:
 			rules.append(pricing_rule)
-
 	if apply_multiple_pricing_rules(pricing_rules):
 		return rules
 	else:
@@ -302,6 +303,7 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 
 	original_pricing_rule = copy.copy(pricing_rules)
 
+	
 	# filter for qty
 	if pricing_rules:
 		stock_qty = flt(args.get("stock_qty"))
