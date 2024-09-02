@@ -7,7 +7,6 @@ def get_data():
 		"non_standard_fieldnames": {
 			"Journal Entry": "reference_name",
 			"Payment Entry": "reference_name",
-			"Payment Request": "reference_name",
 			"Auto Repeat": "reference_document",
 		},
 		"internal_links": {
@@ -17,12 +16,11 @@ def get_data():
 		},
 		"transactions": [
 			{"label": _("Related"), "items": ["Purchase Receipt", "Purchase Invoice"]},
-			{"label": _("Payment"), "items": ["Payment Entry", "Journal Entry", "Payment Request"]},
+			{"label": _("Payment"), "items": ["Payment Entry", "Journal Entry"]},
 			{
 				"label": _("Reference"),
-				"items": ["Material Request", "Supplier Quotation", "Project", "Auto Repeat"],
+				"items": ["Material Request", "Supplier Quotation", "Project", "Auto Repeat", "Shipments"],
 			},
-			{"label": _("Sub-contracting"), "items": ["Subcontracting Order", "Stock Entry"]},
-			{"label": _("Internal"), "items": ["Sales Order"]},
+			{"label": _("Sub-contracting"), "items": ["Stock Entry"]},
 		],
 	}
