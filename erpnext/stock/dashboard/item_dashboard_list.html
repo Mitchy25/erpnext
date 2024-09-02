@@ -77,6 +77,7 @@
                 {% else %}
                     {% if d.show_stock_buttons %}
                         <div class="col-sm-3 text-right" style="margin: var(--margin-sm) 0;">
+                            {% if d.batch_match %}
                             <button class="btn btn-default btn-xs btn-send-stock" 
                                     data-has_batch_no="{{ d.has_batch_no }}"
                                     data-warehouse="{{ d.warehouse }}" 
@@ -97,6 +98,9 @@
                                     data-current_site_qty="{{ d.current_site_qty }}">
                                 {{ __("Transfer To") }}
                             </button>
+                            {% else %}
+                                <div class="col-sm-13 text-right" style="margin: var(--margin-sm) 0;">Transfer Disabled. <b>Has Batch No</b> Flag Mismatch.</div>
+                            {% endif %}
                         </div>
                     {% else %}
                         <div class="col-sm-3 text-right" style="margin: var(--margin-sm) 0;"></div>
