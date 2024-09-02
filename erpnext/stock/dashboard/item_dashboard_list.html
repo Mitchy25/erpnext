@@ -78,26 +78,26 @@
                     {% if d.show_stock_buttons %}
                         <div class="col-sm-3 text-right" style="margin: var(--margin-sm) 0;">
                             {% if d.batch_match %}
-                            <button class="btn btn-default btn-xs btn-send-stock" 
-                                    data-has_batch_no="{{ d.has_batch_no }}"
-                                    data-warehouse="{{ d.warehouse }}" 
-                                    data-actual_qty="{{ d.actual_qty }}" 
-                                    data-current_site="{{ d.current_site }}"
-                                    data-target_site="{{ d.target_site }}" 
-                                    data-item="{{ escape(d.item_code) }}" 
-                                    data-current_site_qty="{{ d.current_site_qty }}">
-                                {{ __("Transfer From") }}
-                            </button>
-                            <button class="btn btn-default btn-xs btn-transfer" 
-                                    data-has_batch_no="{{ d.has_batch_no }}"
-                                    data-warehouse="{{ d.warehouse }}" 
-                                    data-actual_qty="{{ d.actual_qty }}" 
-                                    data-current_site="{{ d.current_site }}"
-                                    data-target_site="{{ d.target_site }}" 
-                                    data-item="{{ escape(d.item_code) }}" 
-                                    data-current_site_qty="{{ d.current_site_qty }}">
-                                {{ __("Transfer To") }}
-                            </button>
+                                <button class="btn btn-default btn-xs btn-send-stock" 
+                                        data-has_batch_no="{{ d.has_batch_no }}"
+                                        data-warehouse="{{ d.warehouse }}" 
+                                        data-actual_qty="{{ d.actual_qty }}" 
+                                        data-current_site="{{ d.current_site }}"
+                                        data-target_site="{{ d.target_site }}" 
+                                        data-item="{{ escape(d.item_code) }}" 
+                                        data-current_site_qty="{{ d.current_site_qty }}">
+                                    {{ __("Transfer From") }}
+                                </button>
+                                <button class="btn btn-default btn-xs btn-transfer" 
+                                        data-has_batch_no="{{ d.has_batch_no }}"
+                                        data-warehouse="{{ d.warehouse }}" 
+                                        data-actual_qty="{{ d.actual_qty }}" 
+                                        data-current_site="{{ d.current_site }}"
+                                        data-target_site="{{ d.target_site }}" 
+                                        data-item="{{ escape(d.item_code) }}" 
+                                        data-current_site_qty="{{ d.current_site_qty }}">
+                                    {{ __("Transfer To") }}
+                                </button>
                             {% else %}
                                 <div class="col-sm-13 text-right" style="margin: var(--margin-sm) 0;">Transfer Disabled. <b>Has Batch No</b> Flag Mismatch.</div>
                             {% endif %}
