@@ -47,7 +47,8 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 				bin.reserved_qty_for_sub_contract,
 				bin.actual_qty,
 				bin.valuation_rate,
-				item.brand
+				item.brand,
+				item.has_batch_no
 		From `tabBin` bin
 			Left Join `tabItem` item on bin.item_code = item.name
 		Where 	(bin.projected_qty != 0.0 or
@@ -89,6 +90,7 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 	items = frappe.db.sql(SQL_query, as_dict=1, debug=0)
 	precision = cint(frappe.db.get_single_value("System Settings", "float_precision"))
 	current_site_qty = 0
+	has_batch_no = frappe.get_value("Item", item_code, "has_batch_no")
 	show_button = "Administrator" in frappe.get_roles() or "Stock Manager" in frappe.get_roles()
 
 	for item in items:
@@ -108,15 +110,12 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 			}
 		)
 		current_site_qty = flt(item.actual_qty, precision)
-
-	if not items:
-		return
 		
 	params = {
 		"item_code": item_code,
 		"current_site": get_default_company(),
 		"method": "item_exists", 
-		"has_batch_no": frappe.get_cached_value("Item", item.item_code, "has_batch_no")
+		"has_batch_no": has_batch_no
 	}
 	
 	# Fetching Intersite Item Data
@@ -126,9 +125,14 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 		if isinstance(intersite_items, dict) and intersite_items.get('error'):
 			frappe.throw(intersite_items.get('error'))
 		else:
+			batch_match = intersite_items[0].get('batch_match', 0)
 			for item in intersite_items:
 				item["current_site_qty"] = current_site_qty
 				item["show_stock_buttons"] = show_button
+
+			for element in items:	
+				element['batch_match'] = batch_match
+
 			items = items + intersite_items
 
 	return items

@@ -73,6 +73,9 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 		if doc.get("doctype") == "Purchase Invoice":
 			args["bill_date"] = doc.get("bill_date")
+		
+		if doc.get("coupon_code"):
+			args["coupon_code"] = doc.get("coupon_code")
 
 	out = get_basic_details(args, item, overwrite_warehouse)
 
