@@ -315,8 +315,12 @@ def calculate_ws_commission(entries, filters):
 		entry_price_list += " Wholesale"
 
 		entry['wholesale_price'], entry['wholesale_amount'] = get_wholesale_price(entry)
+
+		if entry['is_return']:
+			entry['wholesale_price'] = entry['wholesale_price'] * -1
+			entry['wholesale_amount'] = entry['wholesale_amount'] * -1
 		if entry['wholesale_price']:
-			entry["commission_wholesale"] = flt(abs(entry["amount"]) - (entry['wholesale_price']*abs(entry["qty"])), 2)
+			entry["commission_wholesale"] = flt(entry["amount"] - (entry['wholesale_price']*abs(entry["qty"])), 2)
 			if entry["commission_wholesale"] < 0 and not entry['is_return']:
 				entry["commission_wholesale"] = 0
 		else:
