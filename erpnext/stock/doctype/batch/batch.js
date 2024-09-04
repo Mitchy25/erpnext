@@ -160,14 +160,14 @@ frappe.ui.form.on("Batch", {
 									new_batch_id: data.new_batch_id,
 									new_batch_expiry: data.new_batch_expiry
 								}
-								}).then(() => frm.reload_doc());
-							},
-							__("Split Batch"),
-							__("Split")
+							}).then(() => frm.reload_doc());
+						},
+						__("Split Batch"),
+						__("Split")
 						);
 					});
 					
-
+	
 					frm.dashboard.show();
 				}
 			});

@@ -299,6 +299,7 @@ erpnext.SerialNoBatchSelector = class SerialNoBatchSelector {
 		if (!(me.has_batch && !me.has_serial_no)) {
 			let qty = this.dialog.fields_dict.qty.get_value();
 			let already_selected_serial_nos = get_selected_serial_nos(me);
+			console.log("Fetch Batches called")
 			let numbers = frappe.call({
 				method: "erpnext.stock.doctype.serial_no.serial_no.auto_fetch_serial_number",
 				args: {

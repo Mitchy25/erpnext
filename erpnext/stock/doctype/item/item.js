@@ -1004,6 +1004,7 @@ function open_form(frm, doctype, child_doctype, parentfield) {
 		}
 		new_child_doc.description = frm.doc.description;
 		if (!new_child_doc.qty) {
+			console.log("Setting this to 1")
 			new_child_doc.qty = 1.0;
 		}
 

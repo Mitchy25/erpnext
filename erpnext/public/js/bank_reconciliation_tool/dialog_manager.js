@@ -130,7 +130,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 			{
 				name: __("Document Name"),
 				editable: false,
-				width: 1,
+				width: 125,
 				format: (value, row) => {
 					return frappe.form.formatters.Link(value, { options: row[2].content });
 				},
@@ -623,7 +623,6 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				frappe.show_alert(alert_string);
 				this.update_dt_cards(response.message);
 				this.dialog.hide();
-				//debugger;
 				if (values.party && values.party_type && values.party.length > 0){
 					this.route_to_payment_reconcile(values.party,values.party_type)
 				}
