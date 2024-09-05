@@ -2421,7 +2421,6 @@ def get_tax_rate(account_head):
 
 @frappe.whitelist()
 def get_default_taxes_and_charges(master_doctype, tax_template=None, company=None):
-	#breakpoint()
 	if not company:
 		return {}
 
