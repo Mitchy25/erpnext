@@ -434,7 +434,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	}
 
 	item_code(doc, cdt, cdn) {
-		
 		var d = locals[cdt][cdn];
 		if (d.item_code && d.qty > 0) {
 			var me = this;

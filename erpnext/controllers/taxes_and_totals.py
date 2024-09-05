@@ -28,6 +28,7 @@ class calculate_taxes_and_totals:
 		frappe.flags.round_off_applicable_accounts = []
 
 		self._items = self.filter_rows() if self.doc.doctype == "Quotation" else self.doc.get("items")
+		
 		get_round_off_applicable_accounts(self.doc.company, frappe.flags.round_off_applicable_accounts)
 		self.calculate()
 
