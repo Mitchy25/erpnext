@@ -342,6 +342,13 @@ def get_pricing_rule_for_item(args, doc=None, for_validate=False):
 		}
 	)
 
+	if args.ignore_pricing_rules:
+		if frappe.db.exists(args.doctype, args.name) and args.get("pricing_rules"):
+			item_details.pricing_rules = ''
+			return item_details
+		else:
+			return item_details
+
 	if args.ignore_pricing_rule or not args.item_code:
 		if frappe.db.exists(args.doctype, args.name) and args.get("pricing_rules"):
 			item_details = remove_pricing_rule_for_item(

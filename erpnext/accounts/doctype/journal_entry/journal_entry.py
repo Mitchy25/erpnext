@@ -1080,7 +1080,7 @@ class JournalEntry(AccountsController):
 
 
 @frappe.whitelist()
-def get_default_bank_cash_account(company, account_type=None, mode_of_payment=None, account=None):
+def get_default_bank_cash_account(company, account_type=None, mode_of_payment=None, account=None, currency=None):
 	from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
 
 	if mode_of_payment:
