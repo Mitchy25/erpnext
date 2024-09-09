@@ -78,6 +78,12 @@ def get_columns(filters):
 			"width": 140,
 		},
 		{
+			"label": _("Shipment Country"),
+			"fieldname": "shipment_country",
+			"fieldtype": "Data",
+			"width": 140,
+		},
+		{
 			"label": _("Customer Name"),
 			"fieldname": "customer_name",
 			"fieldtype": "Data",
@@ -217,7 +223,8 @@ def get_entries(filters):
 			dt.name, 
 			if(s.preference = "Refund to Account", a.branch_code, 'N/A') as branch_code,
 			if(s.preference = "Refund to Account", a.bank_account_no, 'N/A') as account_number,
-			dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, 
+			dt.customer, dt.territory, dt.{date_field} as posting_date, dt.currency, dt.country_code as 'shipment_country',
+			dt.shipping_address_name, 
 			s.preference as bank_details, dt.selling_price_list as price_list,
 			dt_item.item_code, dt_item.item_name, dt.customer_name, {fields}
 			SUM(dt_item.net_rate) as rate, SUM(dt_item.qty) as qty, SUM(dt_item.net_amount) as amount,
@@ -247,6 +254,13 @@ def get_entries(filters):
 	)
 	if filters["doctype"] == "Sales Invoice":
 		entries = calculate_ws_commission(entries, filters)
+	for entry in entries:
+		if not entry['shipment_country']:
+			address = frappe.get_value("Address", entry['shipping_address_name'], "country")
+			if address == "New Zealand":
+				entry['shipment_country'] = "NZ"
+			elif address == "Australia":
+				entry['shipment_country'] = "AU"
 	return entries
 
 
@@ -319,8 +333,12 @@ def calculate_ws_commission(entries, filters):
 		entry_price_list += " Wholesale"
 
 		entry['wholesale_price'], entry['wholesale_amount'] = get_wholesale_price(entry)
+
+		if entry['is_return']:
+			entry['wholesale_price'] = entry['wholesale_price'] * -1
+			entry['wholesale_amount'] = entry['wholesale_amount'] * -1
 		if entry['wholesale_price']:
-			entry["commission_wholesale"] = flt(abs(entry["amount"]) - (entry['wholesale_price']*abs(entry["qty"])), 2)
+			entry["commission_wholesale"] = flt(entry["amount"] - (entry['wholesale_price']*abs(entry["qty"])), 2)
 			if entry["commission_wholesale"] < 0 and not entry['is_return']:
 				entry["commission_wholesale"] = 0
 		else:
