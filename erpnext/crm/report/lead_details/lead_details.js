@@ -47,6 +47,12 @@ frappe.query_reports["Lead Details"] = {
 			"label": __("Territory"),
 			"fieldtype": "Link",
 			"options": "Territory",
+		},
+		{
+			"fieldname":"owner",
+			"label": __("Owner"),
+			"fieldtype": "Link",
+			"options": "User",
 		}
 	]
 };
