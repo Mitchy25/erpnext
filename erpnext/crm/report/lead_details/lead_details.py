@@ -107,4 +107,7 @@ def get_data(filters):
 	if filters.get("status"):
 		query = query.where(lead.status == filters.get("status"))
 
+	if filters.get("owner"):
+		query = query.where(lead.owner == filters.get("owner"))
+
 	return query.run(as_dict=1)
