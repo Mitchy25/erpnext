@@ -302,7 +302,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				fieldname: "user_remark",
 				fieldtype: "Data",
 				label: "User Remark",
-				depends_on: "eval:doc.action=='Create Voucher'",
+				depends_on: "eval:doc.action=='Create Voucher' && doc.document_type=='Journal Entry'",
 			},
 			{
 				fieldname: "edit_in_full_page",
@@ -600,7 +600,6 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				party: values.party,
 				posting_date: values.posting_date,
 				mode_of_payment: values.mode_of_payment,
-				user_remark: values.user_remark,
 				project: values.project,
 				cost_center: values.cost_center,
 			},
@@ -696,7 +695,6 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					party: values.party,
 					posting_date: values.posting_date,
 					mode_of_payment: values.mode_of_payment,
-					user_remark: values.user_remark,
 					project: values.project,
 					cost_center: values.cost_center,
 					allow_edit: true
