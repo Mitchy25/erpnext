@@ -230,7 +230,6 @@ def create_payment_entry_bts(
 	party=None,
 	posting_date=None,
 	mode_of_payment=None,
-	user_remark=None,
 	project=None,
 	cost_center=None,
 	allow_edit=None,
@@ -265,8 +264,6 @@ def create_payment_entry_bts(
 
 	if mode_of_payment:
 		payment_entry.mode_of_payment = mode_of_payment
-	if user_remark:
-		payment_entry.remarks = user_remark
 	if project:
 		payment_entry.project = project
 	if cost_center:
