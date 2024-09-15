@@ -121,6 +121,7 @@ def create_journal_entry_bts(
 	entry_type=None,
 	second_account=None,
 	mode_of_payment=None,
+	user_remark=None,
 	party_type=None,
 	party=None,
 	cost_center = None,
@@ -145,8 +146,7 @@ def create_journal_entry_bts(
 			)
 	accounts = []
 	# Multi Currency?
-	accounts.append(
-		{
+	acc1 = {
 			"account": second_account,
 			"credit_in_account_currency": bank_transaction.deposit if bank_transaction.deposit > 0 else 0,
 			"debit_in_account_currency": bank_transaction.withdrawal
@@ -154,12 +154,10 @@ def create_journal_entry_bts(
 			else 0,
 			"party_type": party_type,
 			"party": party,
-			"cost_center": cost_center
 		}
-	)
+	
 
-	accounts.append(
-		{
+	acc2 = {
 			"account": company_account,
 			"bank_account": bank_transaction.bank_account,
 			"credit_in_account_currency": bank_transaction.withdrawal
@@ -167,7 +165,13 @@ def create_journal_entry_bts(
 			else 0,
 			"debit_in_account_currency": bank_transaction.deposit if bank_transaction.deposit > 0 else 0,
 		}
-	)
+	
+	if cost_center:
+		acc1['cost_center'] = cost_center
+		acc2['cost_center'] = cost_center
+	
+	accounts.append(acc1)
+	accounts.append(acc2)
 
 	company = frappe.get_value("Account", company_account, "company")
 
@@ -180,9 +184,14 @@ def create_journal_entry_bts(
 		"mode_of_payment": mode_of_payment,
 		"multi_currency":multi_currency
 	}
+
+	if user_remark:
+		journal_entry_dict["remark"] = user_remark
+
 	journal_entry = frappe.new_doc("Journal Entry")
 	journal_entry.update(journal_entry_dict)
 	journal_entry.set("accounts", accounts)
+
 	if multi_currency:
 		journal_entry.validate_party()
 		journal_entry.validate_entries_for_advance()
