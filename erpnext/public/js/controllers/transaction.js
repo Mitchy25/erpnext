@@ -1953,7 +1953,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			frappe.model.round_floats_in(item_row, ["price_list_rate", "discount_percentage"]);
 
 			// if pricing rule set as blank from an existing value, apply price_list
-			if(!me.frm.doc.ignore_pricing_rule && existing_pricing_rule && !d.pricing_rules) {
+			if(!me.frm.doc.ignore_pricing_rule && existing_pricing_rule && !d.pricing_rules && !item_row.ignore_pricing_rules) {
 				me.apply_price_list(frappe.get_doc(d.doctype, d.name));
 			} else if(!d.pricing_rules) {
 				me.remove_pricing_rule(frappe.get_doc(d.doctype, d.name));
