@@ -435,6 +435,30 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				options: "party_type",
 				mandatory_depends_on:
 					"eval:doc.action=='Create Voucher' && doc.document_type=='Payment Entry'",
+				onchange: function (values) {
+					console.log(cur_dialog.fields_dict.action.value);
+					console.log(cur_dialog.fields_dict.document_type.value);
+					if (cur_dialog.fields_dict.action.value == "Create Voucher" && cur_dialog.fields_dict.document_type.value == "Payment Entry" && values.party_type == "Customer" && values.party) {
+						frappe.call({
+								method: 'frappe.client.get_value',
+								args: {
+								doctype: 'Customer',
+								name: values.party,
+								fieldname: 'cost_center',
+								async: false,
+							},
+							callback: function(r){
+							}
+						});
+					}
+				}
+			},
+			{
+				fieldname: "je_cost_center",
+				fieldtype: "Link",
+				options: "Cost Center",
+				label: "Cost Center",
+				depends_on: "eval:doc.action=='Create Voucher' && doc.document_type=='Journal Entry'"
 			},
 			{
 				fieldname: "project",
