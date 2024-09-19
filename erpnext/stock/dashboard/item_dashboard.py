@@ -51,11 +51,7 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 				item.has_batch_no
 		From `tabBin` bin
 			Left Join `tabItem` item on bin.item_code = item.name
-		Where 	(bin.projected_qty != 0.0 or
-				bin.reserved_qty != 0.0 or
-				bin.reserved_qty_for_production != 0.0 or
-				bin.reserved_qty_for_sub_contract != 0.0 or
-				bin.actual_qty != 0.0)
+		Where 1=1
 				{item_code_filter}
 				{warehouse_filter}
 				{item_group_filter}
