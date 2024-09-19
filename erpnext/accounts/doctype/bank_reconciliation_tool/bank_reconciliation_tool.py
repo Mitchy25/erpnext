@@ -117,6 +117,7 @@ def create_journal_entry_bts(
 	entry_type=None,
 	second_account=None,
 	mode_of_payment=None,
+	user_remark=None,
 	party_type=None,
 	party=None,
 	cost_center = None,

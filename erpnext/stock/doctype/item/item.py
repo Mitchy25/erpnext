@@ -655,8 +655,7 @@ class Item(Document):
 
 	def validate_item_defaults(self):
 		companies = {row.company for row in self.item_defaults}
-
-		if len(companies) != len(self.item_defaults):
+		if self.brand not in ["RN Labs", "RN Labs Compounding"] and len(companies) != len(self.item_defaults):
 			frappe.throw(_("Cannot set multiple Item Defaults for a company."))
 
 		validate_item_default_company_links(self.item_defaults)
@@ -668,7 +667,7 @@ class Item(Document):
 
 		item_defaults = frappe.db.get_values(
 			"Item Default",
-			{"parent": self.item_group},
+			{"parent": self.brand},
 			[
 				"company",
 				"default_warehouse",

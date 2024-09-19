@@ -308,6 +308,12 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				depends_on: "eval:doc.action=='Create Voucher'",
 			},
 			{
+				fieldname: "user_remark",
+				fieldtype: "Data",
+				label: "User Remark",
+				depends_on: "eval:doc.action=='Create Voucher' && doc.document_type=='Journal Entry'",
+			},
+			{
 				fieldname: "edit_in_full_page",
 				fieldtype: "Button",
 				label: "Edit in Full Page",
@@ -432,6 +438,30 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				options: "party_type",
 				mandatory_depends_on:
 					"eval:doc.action=='Create Voucher' && doc.document_type=='Payment Entry'",
+				onchange: function (values) {
+					console.log(cur_dialog.fields_dict.action.value);
+					console.log(cur_dialog.fields_dict.document_type.value);
+					if (cur_dialog.fields_dict.action.value == "Create Voucher" && cur_dialog.fields_dict.document_type.value == "Payment Entry" && values.party_type == "Customer" && values.party) {
+						frappe.call({
+								method: 'frappe.client.get_value',
+								args: {
+								doctype: 'Customer',
+								name: values.party,
+								fieldname: 'cost_center',
+								async: false,
+							},
+							callback: function(r){
+							}
+						});
+					}
+				}
+			},
+			{
+				fieldname: "je_cost_center",
+				fieldtype: "Link",
+				options: "Cost Center",
+				label: "Cost Center",
+				depends_on: "eval:doc.action=='Create Voucher' && doc.document_type=='Journal Entry'"
 			},
 			{
 				fieldname: "project",
@@ -609,8 +639,10 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				reference_date: values.reference_date,
 				party_type: values.party_type,
 				party: values.party,
+				cost_center: values.je_cost_center,
 				posting_date: values.posting_date,
 				mode_of_payment: values.mode_of_payment,
+				user_remark: values.user_remark,
 				entry_type: values.journal_entry_type,
 				second_account: values.second_account,
 				multi_currency: values.multi_currency
@@ -678,8 +710,10 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					reference_date: values.reference_date,
 					party_type: values.party_type,
 					party: values.party,
+					cost_center: values.je_cost_center,
 					posting_date: values.posting_date,
 					mode_of_payment: values.mode_of_payment,
+					user_remark: values.user_remark,
 					entry_type: values.journal_entry_type,
 					second_account: values.second_account,
 					allow_edit: true,
