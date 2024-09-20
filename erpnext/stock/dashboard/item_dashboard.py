@@ -69,21 +69,7 @@ def get_data(item_code=None, warehouse=None, item_group=None, brand=None, start=
 		limit_start			=	start,
 	)
 
-	"""
-				%(item_code_filter)s
-				%(warehouse_filter)s
-				%(item_group_filter)s
-				%(brand_filter)s
-
-
-				{
-		"item_code_filter": item_code_filter,
-		"warehouse_filter": warehouse_filter,
-		"item_group_filter": item_group_filter,
-		"brand_filter": brand_filter,
-	}, 
-	"""
-	items = frappe.db.sql(SQL_query, as_dict=1, debug=0)
+	items = frappe.db.sql(SQL_query, as_dict=1)
 	precision = cint(frappe.db.get_single_value("System Settings", "float_precision"))
 	current_site_qty = 0
 	has_batch_no = frappe.get_value("Item", item_code, "has_batch_no")

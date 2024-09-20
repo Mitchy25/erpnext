@@ -1331,7 +1331,6 @@ def validate_item_default_company_links(item_defaults: list[ItemDefault]) -> Non
 						title=_("Invalid Item Defaults"),
 					)
 
-
 @frappe.whitelist()
 def get_asset_naming_series():
 	from erpnext.assets.doctype.asset.asset import get_asset_naming_series
