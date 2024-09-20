@@ -12,6 +12,7 @@ frappe.provide("erpnext.selling");
 erpnext.selling.SellingController = erpnext.TransactionController.extend({
 	setup: function() {
 		this._super();
+		this.frm.add_fetch("sales_person", "commission_rate", "commission_rate");
 	},
 
 	onload: function() {

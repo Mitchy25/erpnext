@@ -40,6 +40,7 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 				"project",
@@ -54,6 +55,7 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
@@ -64,6 +66,7 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
@@ -74,6 +77,7 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
@@ -84,6 +88,7 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
@@ -94,6 +99,7 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
@@ -105,6 +111,7 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
@@ -115,6 +122,7 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
@@ -126,14 +134,23 @@ def execute(filters=None):
 				"buying_rate",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
-			"project": ["project", "base_amount", "buying_amount", "gross_profit", "gross_profit_percent"],
+			"project": [
+				"project", 
+				"base_amount", 
+				"buying_amount",
+				"discount_amount",
+				"gross_profit", 
+				"gross_profit_percent"
+			],
 			"territory": [
 				"territory",
 				"base_amount",
 				"buying_amount",
+				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
 			],
@@ -253,6 +270,13 @@ def get_columns(group_wise_columns, filters):
 				"width": 100,
 			},
 			"qty": {"label": _("Qty"), "fieldname": "qty", "fieldtype": "Float", "width": 80},
+			"discount_amount": {
+				"label": _("Discount Amount"),
+				"fieldname": "discount_amount",
+				"fieldtype": "Currency",
+				"options": "currency",
+				"width": 100,
+			},
 			"base_rate": {
 				"label": _("Avg. Selling Rate"),
 				"fieldname": "avg._selling_rate",
@@ -373,6 +397,7 @@ def get_column_names():
 			"buying_rate": "valuation_rate",
 			"base_amount": "selling_amount",
 			"buying_amount": "buying_amount",
+			"discount_amount": "discount_amount",
 			"gross_profit": "gross_profit",
 			"gross_profit_percent": "gross_profit_%",
 			"project": "project",
@@ -471,6 +496,7 @@ class GrossProfitGenerator(object):
 						new_row = row
 					else:
 						new_row.qty += flt(row.qty)
+						new_row.discount_amount += flt(row.discount_amount)
 						new_row.buying_amount += flt(row.buying_amount, self.currency_precision)
 						new_row.base_amount += flt(row.base_amount, self.currency_precision)
 						if self.filters.get("group_by") == "Sales Person":
@@ -485,14 +511,8 @@ class GrossProfitGenerator(object):
 						):
 							returned_item_rows = self.returned_invoices[row.parent][row.item_code]
 							for returned_item_row in returned_item_rows:
-								# returned_items 'qty' should be stateful
-								if returned_item_row.qty != 0:
-									if row.qty >= abs(returned_item_row.qty):
-										row.qty += returned_item_row.qty
-										returned_item_row.qty = 0
-									else:
-										row.qty = 0
-										returned_item_row.qty += row.qty
+								row.qty += flt(returned_item_row.qty)
+								row.discount_amount += flt(returned_item_row.discount_amount)
 								row.base_amount += flt(returned_item_row.base_amount, self.currency_precision)
 							row.buying_amount = flt(flt(row.qty) * flt(row.buying_rate), self.currency_precision)
 						if flt(row.qty) or row.base_amount:
@@ -532,7 +552,13 @@ class GrossProfitGenerator(object):
 		returned_invoices = frappe.db.sql(
 			"""
 			select
-				si.name, si_item.cost_center, si_item.item_code, si_item.stock_qty as qty, si_item.base_net_amount as base_amount, si.return_against
+				si.name, 
+				si_item.cost_center, 
+				si_item.item_code, 
+				si_item.stock_qty as qty, 
+				si_item.base_net_amount as base_amount, 
+				si_item.discount_amount, 
+				si.return_against
 			from
 				`tabSales Invoice` si, `tabSales Invoice Item` si_item
 			where
@@ -734,7 +760,8 @@ class GrossProfitGenerator(object):
 				`tabSales Invoice Item`.delivery_note, `tabSales Invoice Item`.stock_qty as qty,
 				`tabSales Invoice Item`.base_net_rate, `tabSales Invoice Item`.base_net_amount,
 				`tabSales Invoice Item`.name as "item_row", `tabSales Invoice`.is_return,
-				`tabSales Invoice Item`.cost_center
+				`tabSales Invoice Item`.cost_center,
+				`tabSales Invoice Item`.discount_amount
 				{sales_person_cols}
 			from
 				`tabSales Invoice` inner join `tabSales Invoice Item`
