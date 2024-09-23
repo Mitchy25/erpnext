@@ -332,7 +332,7 @@ def update_outstanding_amt(
 			bal = -bal
 
 		# Validation : Outstanding can not be negative for JV
-		if bal < 0 and not on_cancel:
+		if round(bal,2) < 0 and not on_cancel:
 			frappe.throw(
 				_("Outstanding for {0} cannot be less than zero ({1})").format(
 					against_voucher, fmt_money(bal)
