@@ -681,6 +681,20 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 
 	edit_in_full_page() {
 		const values = this.dialog.get_values(true);
+
+		if (values.document_type == "Journal Entry") {
+			if (!values.second_account) {
+				frappe.msgprint("Please set the <b>account</b> before continuing.");
+				return;
+			}
+		} else if (values.document_type == "Payment Entry") {
+			if (!values.party_type || !values.party) {
+				let missingFields = !values.party_type ? "party type" : "party";
+				frappe.msgprint(`Please set the <b>${missingFields}</b> before continuing.`);
+				return;
+			}
+		}
+		
 		if (values.document_type == "Payment Entry") {
 			frappe.call({
 				method: "erpnext.accounts.doctype.bank_reconciliation_tool.bank_reconciliation_tool.create_payment_entry_bts",
@@ -695,6 +709,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					project: values.project,
 					cost_center: values.cost_center,
 					allow_edit: true,
+					user_remark: values.user_remark,
 				},
 				callback: (r) => {
 					const doc = frappe.model.sync(r.message);
