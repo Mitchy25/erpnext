@@ -34,8 +34,8 @@
   "sample_quantity",
   "tracking_section",
   "received_stock_qty",
-  "stock_qty",
   "col_break_tracking_section",
+  "stock_qty",
   "returned_qty",
   "rate_and_amount",
   "price_list_rate",
@@ -58,6 +58,7 @@
   "pricing_rules",
   "stock_uom_rate",
   "is_free_item",
+  "apply_tds",
   "section_break_29",
   "net_rate",
   "net_amount",
@@ -79,6 +80,8 @@
   "purchase_order",
   "purchase_invoice",
   "column_break_40",
+  "allow_zero_valuation_rate",
+  "return_qty_from_rejected_warehouse",
   "is_fixed_asset",
   "asset_location",
   "asset_category",
@@ -91,14 +94,20 @@
   "delivery_note_item",
   "putaway_rule",
   "section_break_45",
-  "allow_zero_valuation_rate",
-  "bom",
-  "serial_no",
+  "add_serial_batch_bundle",
+  "serial_and_batch_bundle",
+  "use_serial_batch_fields",
   "col_break5",
-  "include_exploded_items",
-  "batch_no",
+  "add_serial_batch_for_rejected_qty",
+  "rejected_serial_and_batch_bundle",
+  "section_break_3vxt",
+  "serial_no",
   "rejected_serial_no",
-  "item_tax_rate",
+  "column_break_tolu",
+  "batch_no",
+  "subcontract_bom_section",
+  "include_exploded_items",
+  "bom",
   "item_weight_details",
   "weight_per_unit",
   "total_weight",
@@ -110,6 +119,7 @@
   "manufacturer_part_no",
   "accounting_details_section",
   "expense_account",
+  "item_tax_rate",
   "wip_composite_asset",
   "column_break_102",
   "provisional_expense_account",
@@ -120,7 +130,8 @@
   "section_break_80",
   "page_break",
   "sales_order",
-  "sales_order_item"
+  "sales_order_item",
+  "subcontracting_receipt_item"
  ],
  "fields": [
   {
@@ -572,37 +583,8 @@
   },
   {
    "fieldname": "section_break_45",
-   "fieldtype": "Section Break"
-  },
-  {
-   "depends_on": "eval:!doc.is_fixed_asset",
-   "fieldname": "serial_no",
-   "fieldtype": "Small Text",
-   "in_list_view": 1,
-   "label": "Serial No",
-   "no_copy": 1,
-   "oldfieldname": "serial_no",
-   "oldfieldtype": "Text"
-  },
-  {
-   "depends_on": "eval:!doc.is_fixed_asset",
-   "fieldname": "batch_no",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Batch No",
-   "no_copy": 1,
-   "oldfieldname": "batch_no",
-   "oldfieldtype": "Link",
-   "options": "Batch",
-   "print_hide": 1
-  },
-  {
-   "depends_on": "eval:!doc.is_fixed_asset",
-   "fieldname": "rejected_serial_no",
-   "fieldtype": "Small Text",
-   "label": "Rejected Serial No",
-   "no_copy": 1,
-   "print_hide": 1
+   "fieldtype": "Section Break",
+   "label": "Serial and Batch No"
   },
   {
    "fieldname": "item_tax_template",
@@ -886,7 +868,8 @@
   },
   {
    "fieldname": "tracking_section",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Qty as Per Stock UOM"
   },
   {
    "fieldname": "col_break_tracking_section",
@@ -1026,6 +1009,68 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.use_serial_batch_fields === 0 || doc.docstatus === 1",
+   "fieldname": "serial_and_batch_bundle",
+   "fieldtype": "Link",
+   "label": "Serial and Batch Bundle",
+   "no_copy": 1,
+   "options": "Serial and Batch Bundle",
+   "print_hide": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:parent.is_old_subcontracting_flow",
+   "fieldname": "subcontract_bom_section",
+   "fieldtype": "Section Break",
+   "label": "Subcontract BOM"
+  },
+  {
+   "fieldname": "serial_no",
+   "fieldtype": "Text",
+   "label": "Serial No"
+  },
+  {
+   "fieldname": "rejected_serial_no",
+   "fieldtype": "Text",
+   "label": "Rejected Serial No"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "label": "Batch No",
+   "options": "Batch",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.use_serial_batch_fields === 0 || doc.docstatus === 1",
+   "fieldname": "rejected_serial_and_batch_bundle",
+   "fieldtype": "Link",
+   "label": "Rejected Serial and Batch Bundle",
+   "no_copy": 1,
+   "options": "Serial and Batch Bundle"
+  },
+  {
+   "depends_on": "eval:doc.use_serial_batch_fields === 0",
+   "fieldname": "add_serial_batch_for_rejected_qty",
+   "fieldtype": "Button",
+   "label": "Add Serial / Batch No (Rejected Qty)"
+  },
+  {
+   "depends_on": "eval:doc.use_serial_batch_fields === 1",
+   "fieldname": "section_break_3vxt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_tolu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.use_serial_batch_fields === 0",
+   "fieldname": "add_serial_batch_bundle",
+   "fieldtype": "Button",
+   "label": "Add Serial / Batch No"
+  },
+  {
    "fieldname": "wip_composite_asset",
    "fieldtype": "Link",
    "label": "WIP Composite Asset",
@@ -1050,12 +1095,44 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "subcontracting_receipt_item",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Subcontracting Receipt Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "use_serial_batch_fields",
+   "fieldtype": "Check",
+   "label": "Use Serial No / Batch Fields"
+  },
+  {
+   "default": "1",
+   "fieldname": "apply_tds",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Apply TDS",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "return_qty_from_rejected_warehouse",
+   "fieldtype": "Check",
+   "label": "Return Qty from Rejected Warehouse",
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-12-25 22:32:09.801965",
+ "modified": "2024-05-28 09:48:24.448815",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt Item",

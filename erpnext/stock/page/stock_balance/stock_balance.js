@@ -42,28 +42,6 @@ frappe.pages["stock-balance"].on_page_load = function (wrapper) {
 		},
 	});
 
-	page.brand_field = page.add_field({
-		fieldname: 'brand',
-		label: __('Brand'),
-		fieldtype:'Link',
-		options:'Brand',
-		change: function() {
-			page.item_dashboard.start = 0;
-			page.item_dashboard.refresh();
-		}
-	});
-
-	page.limit_field = page.add_field({
-		fieldname: 'limit',
-		label: 'Limit',
-		fieldtype:'Int',
-		default: 50,
-		change: function() {
-			page.item_dashboard.start = 0;
-			page.item_dashboard.refresh();
-		}
-	});
-
 	page.sort_selector = new frappe.ui.SortSelector({
 		parent: page.wrapper.find(".page-form"),
 		args: {

@@ -1,6 +1,6 @@
 # Copyright (c) 2023, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
-
+import gzip
 import json
 
 import frappe
@@ -8,13 +8,34 @@ from frappe import _
 from frappe.core.doctype.prepared_report.prepared_report import create_json_gz_file
 from frappe.desk.form.load import get_attachments
 from frappe.model.document import Document
-from frappe.utils import get_link_to_form, gzip_decompress, parse_json
+from frappe.utils import get_link_to_form, parse_json
 from frappe.utils.background_jobs import enqueue
 
 from erpnext.stock.report.stock_balance.stock_balance import execute
 
 
 class ClosingStockBalance(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		amended_from: DF.Link | None
+		company: DF.Link | None
+		from_date: DF.Date | None
+		include_uom: DF.Link | None
+		item_code: DF.Link | None
+		item_group: DF.Link | None
+		naming_series: DF.Literal["CBAL-.#####"]
+		status: DF.Literal["Draft", "Queued", "In Progress", "Completed", "Failed", "Canceled"]
+		to_date: DF.Date | None
+		warehouse: DF.Link | None
+		warehouse_type: DF.Link | None
+	# end: auto-generated types
+
 	def before_save(self):
 		self.set_status()
 
@@ -102,14 +123,16 @@ class ClosingStockBalance(Document):
 			)
 		)
 
-		create_json_gz_file({"columns": columns, "data": data}, self.doctype, self.name)
+		create_json_gz_file(
+			{"columns": columns, "data": data}, self.doctype, self.name, "closing-stock-balance"
+		)
 
 	def get_prepared_data(self):
 		if attachments := get_attachments(self.doctype, self.name):
 			attachment = attachments[0]
 			attached_file = frappe.get_doc("File", attachment.name)
 
-			data = gzip_decompress(attached_file.get_content())
+			data = gzip.decompress(attached_file.get_content())
 			if data := json.loads(data.decode("utf-8")):
 				data = data
 

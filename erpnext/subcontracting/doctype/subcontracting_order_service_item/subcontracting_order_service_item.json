@@ -19,6 +19,7 @@
   "fg_item",
   "column_break_12",
   "fg_item_qty",
+  "purchase_order_item",
   "section_break_kphn",
   "material_request",
   "column_break_piqi",
@@ -116,6 +117,15 @@
   {
    "fieldname": "column_break_12",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_order_item",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Purchase Order Item",
+   "no_copy": 1,
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,

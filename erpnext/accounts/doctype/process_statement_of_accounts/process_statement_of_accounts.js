@@ -8,63 +8,41 @@ frappe.ui.form.on("Process Statement Of Accounts", {
 	},
 	refresh: function(frm){
 		if(!frm.doc.__islocal) {
-			// frm.add_custom_button('Send Emails',function(){
-			// 	if (frm.doc.__islocal != 1) frm.save();
-			// 	frappe.confirm('You are about to send Customer Statements. <span style="color:red;font-weight:bold;">This action is not reversible</span>. Please make sure that the following details are correct:<br><br><b>From:</b> ' + frm.doc.from_date + "<br><b>To:</b> " + frm.doc.to_date,
-			// 		function() {
-			// 			// if Yes
-			// 			frappe.show_alert({message: __('Please wait...'), indicator: 'orange'});
-			// 			frappe.call({
-			// 				"method": "frappe.desk.form.utils.add_comment",
-			// 				"args": {
-			// 				  reference_doctype: "Process Statement Of Accounts",
-			// 				  reference_name: frm.doc.name,
-			// 				  content: "Statement send executed by " + frappe.user.name + " at " + frappe.datetime.now_datetime() + ".<br><br>From: " + frm.doc.from_date + ".<br>To: " + frm.doc.to_date + ".",
-			// 				  comment_email: frappe.session.user,
-			// 				  comment_by: frappe.session.user_fullname,
-			// 				}
-			// 			});
-			// 			frappe.call({
-			// 				method: "erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_emails",
-			// 				args: {
-			// 					"document_name": frm.doc.name,
-			// 				},
-			// 				callback: function(r) {
-			// 					if(r && r.message) {
-			// 						frappe.show_alert({message: __('Emails Queued'), indicator: 'blue'});
-			// 					}
-			// 					else{
-			// 						frappe.msgprint(__('No Records for these settings.'))
-			// 					}
-			// 				}
-			// 			});
+			// frm.add_custom_button(__("Send Emails"), function () {
+			// 	if (frm.is_dirty()) frappe.throw(__("Please save before proceeding."));
+			// 	frappe.call({
+			// 		method: "erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.send_emails",
+			// 		args: {
+			// 			document_name: frm.doc.name,
 			// 		},
-			// 		function() {
-			// 			// if No
-			// 			frappe.show_alert({
-			// 				message: 'Aborted',
-			// 				indicator: 'red'
-			// 			});
-			// 		}
-			// 	);
+			// 		callback: function (r) {
+			// 			if (r && r.message) {
+			// 				frappe.show_alert({ message: __("Emails Queued"), indicator: "blue" });
+			// 			} else {
+			// 				frappe.msgprint(__("No Records for these settings."));
+			// 			}
+			// 		},
+			// 	});
 			// });
 			
 			frm.add_custom_button('Download',function(){
 				if (frm.doc.__islocal != 1) frm.save();
-				// var url = frappe.urllib.get_full_url(
-				// 	'/api/method/erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.download_statements?'
-				// 	+ 'document_name='+encodeURIComponent(frm.doc.name))
+				// if (frm.is_dirty()) frappe.throw(__("Please save before proceeding."));
+				// let url = frappe.urllib.get_full_url(
+				// 	"/api/method/erpnext.accounts.doctype.process_statement_of_accounts.process_statement_of_accounts.download_statements?" +
+				// 		"document_name=" +
+				// 		encodeURIComponent(frm.doc.name)
+				// );
 				// $.ajax({
 				// 	url: url,
-				// 	type: 'GET',
-				// 	success: function(result) {
-				// 		if(jQuery.isEmptyObject(result)){
-				// 			frappe.msgprint(__('No Records for these settings.'));
-				// 		}
-				// 		else{
+				// 	type: "GET",
+				// 	success: function (result) {
+				// 		if (jQuery.isEmptyObject(result)) {
+				// 			frappe.msgprint(__("No Records for these settings."));
+				// 		} else {
 				// 			window.location = url;
 				// 		}
-				// 	}
+				// 	},
 				// });
 				alert("Please use the 'Download PDF' button in the rows below")
 			});
@@ -78,16 +56,16 @@ frappe.ui.form.on("Process Statement Of Accounts", {
 				},
 			};
 		});
-		frm.set_query("account", function() {
+		frm.set_query("account", function () {
 			return {
 				filters: {
-					'company': frm.doc.company
-				}
+					company: frm.doc.company,
+				},
 			};
 		});
-		if(frm.doc.__islocal){
-			frm.set_value('from_date', frappe.datetime.add_months(frappe.datetime.get_today(), -1));
-			frm.set_value('to_date', frappe.datetime.get_today());
+		if (frm.doc.__islocal) {
+			frm.set_value("from_date", frappe.datetime.add_months(frappe.datetime.get_today(), -1));
+			frm.set_value("to_date", frappe.datetime.get_today());
 		}
 	},
 	report: function (frm) {

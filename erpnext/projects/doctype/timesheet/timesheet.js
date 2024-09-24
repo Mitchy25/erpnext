@@ -113,6 +113,7 @@ frappe.ui.form.on("Timesheet", {
 
 		frm.trigger("setup_filters");
 		frm.trigger("set_dynamic_field_label");
+		frm.trigger("set_route_options_for_new_task");
 	},
 
 	customer: function (frm) {
@@ -195,6 +196,14 @@ frappe.ui.form.on("Timesheet", {
 			);
 		}
 		frm.refresh_fields();
+	},
+
+	set_route_options_for_new_task: (frm) => {
+		let task_field = frm.get_docfield("time_logs", "task");
+
+		if (task_field) {
+			task_field.get_route_options_for_new_doc = (row) => ({ project: row.doc.project });
+		}
 	},
 
 	make_invoice: function (frm) {

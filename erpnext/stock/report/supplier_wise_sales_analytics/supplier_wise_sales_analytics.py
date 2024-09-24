@@ -71,7 +71,6 @@ def get_columns(filters):
 	return columns
 
 
-
 def get_consumed_details(filters):
 	item = frappe.qb.DocType("Item")
 	sle = frappe.qb.DocType("Stock Ledger Entry")

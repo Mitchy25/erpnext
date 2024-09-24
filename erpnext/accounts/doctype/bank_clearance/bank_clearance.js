@@ -36,12 +36,8 @@ frappe.ui.form.on("Bank Clearance", {
 	refresh: function (frm) {
 		frm.disable_save();
 		frm.add_custom_button(__("Get Payment Entries"), () => frm.trigger("get_payment_entries"));
+
 		frm.change_custom_button_type(__("Get Payment Entries"), null, "primary");
-		if (frm.doc.payment_entries.length) {
-			frm.add_custom_button(__("Update Clearance Date"), () => frm.trigger("update_clearance_date"));
-			frm.change_custom_button_type(__("Get Payment Entries"), null, "default");
-			frm.change_custom_button_type(__("Update Clearance Date"), null, "primary");
-		}
 	},
 
 	update_clearance_date: function (frm) {
@@ -49,7 +45,13 @@ frappe.ui.form.on("Bank Clearance", {
 			method: "update_clearance_date",
 			doc: frm.doc,
 			callback: function (r, rt) {
-				frm.refresh();
+				frm.refresh_field("payment_entries");
+				frm.refresh_fields();
+
+				if (!frm.doc.payment_entries.length) {
+					frm.change_custom_button_type(__("Get Payment Entries"), null, "primary");
+					frm.change_custom_button_type(__("Update Clearance Date"), null, "default");
+				}
 			},
 		});
 	},
@@ -58,8 +60,17 @@ frappe.ui.form.on("Bank Clearance", {
 		return frappe.call({
 			method: "get_payment_entries",
 			doc: frm.doc,
-			callback: function () {
-				frm.refresh();
+			callback: function (r, rt) {
+				frm.refresh_field("payment_entries");
+
+				if (frm.doc.payment_entries.length) {
+					frm.add_custom_button(__("Update Clearance Date"), () =>
+						frm.trigger("update_clearance_date")
+					);
+
+					frm.change_custom_button_type(__("Get Payment Entries"), null, "default");
+					frm.change_custom_button_type(__("Update Clearance Date"), null, "primary");
+				}
 			},
 		});
 	},

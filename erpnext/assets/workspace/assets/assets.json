@@ -183,9 +183,20 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "dependencies": "Asset Activity",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Asset Activity",
+   "link_count": 0,
+   "link_to": "Asset Activity",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2023-05-24 14:47:20.243146",
+ "modified": "2024-01-05 17:40:34.570041",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Assets",
@@ -196,7 +207,7 @@
  "quick_lists": [],
  "restrict_to_domain": "",
  "roles": [],
- "sequence_id": 4.0,
+ "sequence_id": 7.0,
  "shortcuts": [
   {
    "label": "Asset",

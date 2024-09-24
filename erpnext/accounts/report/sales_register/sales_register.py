@@ -80,6 +80,7 @@ def _execute(filters, additional_table_columns=None):
 		delivery_note = list(set(invoice_so_dn_map.get(inv.name, {}).get("delivery_note", [])))
 		cost_center = list(set(invoice_cc_wh_map.get(inv.name, {}).get("cost_center", [])))
 		warehouse = list(set(invoice_cc_wh_map.get(inv.name, {}).get("warehouse", [])))
+		inv_customer_details = customer_details.get(inv.customer, {})
 
 		row = {
 			"voucher_type": inv.doctype,
@@ -88,9 +89,9 @@ def _execute(filters, additional_table_columns=None):
 			"customer": inv.customer,
 			"customer_name": inv.customer_name,
 			**get_values_for_columns(additional_table_columns, inv),
-			"customer_group": customer_details.get(inv.customer).get("customer_group"),
-			"territory": customer_details.get(inv.customer).get("territory"),
-			"tax_id": customer_details.get(inv.customer).get("tax_id"),
+			"customer_group": inv_customer_details.get("customer_group"),
+			"territory": inv_customer_details.get("territory"),
+			"tax_id": inv_customer_details.get("tax_id"),
 			"receivable_account": inv.debit_to,
 			"mode_of_payment": ", ".join(mode_of_payments.get(inv.name, [])),
 			"project": inv.project,
@@ -98,7 +99,7 @@ def _execute(filters, additional_table_columns=None):
 			"remarks": inv.remarks,
 			"sales_order": ", ".join(sales_order),
 			"delivery_note": ", ".join(delivery_note),
-			"cost_center": ", ".join(cost_center) if inv.doctype == "Sales Invoice" else inv.cost_center,
+			"cost_center": ", ".join(cost_center),
 			"warehouse": ", ".join(warehouse),
 			"currency": company_currency,
 		}
@@ -448,6 +449,9 @@ def get_invoices(filters, additional_query_columns):
 	if filters.get("customer"):
 		query = query.where(si.customer == filters.customer)
 
+	if filters.get("customer_group"):
+		query = query.where(si.customer_group == filters.customer_group)
+
 	query = get_conditions(filters, query, "Sales Invoice")
 	query = apply_common_conditions(
 		filters, query, doctype="Sales Invoice", child_doctype="Sales Invoice Item"
@@ -476,7 +480,7 @@ def get_payments(filters):
 		account_fieldname="paid_from",
 		party="customer",
 		party_name="customer_name",
-		party_account=[get_party_account("Customer", filters.customer, filters.company)],
+		party_account=get_party_account("Customer", filters.customer, filters.company, include_advance=True),
 	)
 	payment_entries = get_payment_entries(filters, args)
 	journal_entries = get_journal_entries(filters, args)
@@ -549,7 +553,7 @@ def get_invoice_so_dn_map(invoice_list):
 	si_items = frappe.db.sql(
 		"""select parent, sales_order, delivery_note, so_detail
 		from `tabSales Invoice Item` where parent in (%s)
-		and (ifnull(sales_order, '') != '' or ifnull(delivery_note, '') != '')"""
+		and (sales_order != '' or delivery_note != '')"""
 		% ", ".join(["%s"] * len(invoice_list)),
 		tuple(inv.name for inv in invoice_list),
 		as_dict=1,
@@ -584,7 +588,7 @@ def get_invoice_cc_wh_map(invoice_list):
 	si_items = frappe.db.sql(
 		"""select parent, cost_center, warehouse
 		from `tabSales Invoice Item` where parent in (%s)
-		and (ifnull(cost_center, '') != '' or ifnull(warehouse, '') != '')"""
+		and (cost_center != '' or warehouse != '')"""
 		% ", ".join(["%s"] * len(invoice_list)),
 		tuple(inv.name for inv in invoice_list),
 		as_dict=1,

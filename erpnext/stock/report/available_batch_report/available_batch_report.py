@@ -54,12 +54,6 @@ def get_columns(filters):
 				"width": 150,
 				"options": "Batch",
 			},
-			{
-				"label": _("Expiry Date"),
-				"fieldname": "expiry_date",
-				"fieldtype": "Date",
-				"width": 120,
-			},
 			{"label": _("Balance Qty"), "fieldname": "balance_qty", "fieldtype": "Float", "width": 150},
 		]
 	)
@@ -70,6 +64,7 @@ def get_columns(filters):
 def get_data(filters):
 	data = []
 	batchwise_data = get_batchwise_data_from_stock_ledger(filters)
+	batchwise_data = get_batchwise_data_from_serial_batch_bundle(batchwise_data, filters)
 
 	data = parse_batchwise_data(batchwise_data)
 
@@ -102,7 +97,6 @@ def get_batchwise_data_from_stock_ledger(filters):
 			table.item_code,
 			table.batch_no,
 			table.warehouse,
-			batch.expiry_date,
 			Sum(table.actual_qty).as_("balance_qty"),
 		)
 		.where(table.is_cancelled == 0)
@@ -118,6 +112,39 @@ def get_batchwise_data_from_stock_ledger(filters):
 	return batchwise_data
 
 
+def get_batchwise_data_from_serial_batch_bundle(batchwise_data, filters):
+	table = frappe.qb.DocType("Stock Ledger Entry")
+	ch_table = frappe.qb.DocType("Serial and Batch Entry")
+	batch = frappe.qb.DocType("Batch")
+
+	query = (
+		frappe.qb.from_(table)
+		.inner_join(ch_table)
+		.on(table.serial_and_batch_bundle == ch_table.parent)
+		.inner_join(batch)
+		.on(ch_table.batch_no == batch.name)
+		.select(
+			table.item_code,
+			ch_table.batch_no,
+			table.warehouse,
+			Sum(ch_table.qty).as_("balance_qty"),
+		)
+		.where((table.is_cancelled == 0) & (table.docstatus == 1))
+		.groupby(ch_table.batch_no, table.item_code, ch_table.warehouse)
+	)
+
+	query = get_query_based_on_filters(query, batch, table, filters)
+
+	for d in query.run(as_dict=True):
+		key = (d.item_code, d.warehouse, d.batch_no)
+		if key in batchwise_data:
+			batchwise_data[key].balance_qty += flt(d.balance_qty)
+		else:
+			batchwise_data.setdefault(key, d)
+
+	return batchwise_data
+
+
 def get_query_based_on_filters(query, batch, table, filters):
 	if filters.item_code:
 		query = query.where(table.item_code == filters.item_code)
@@ -125,14 +152,10 @@ def get_query_based_on_filters(query, batch, table, filters):
 	if filters.batch_no:
 		query = query.where(batch.name == filters.batch_no)
 
-	if filters.to_date == today():
-		if not filters.include_expired_batches:
-			query = query.where((batch.expiry_date >= today()) | (batch.expiry_date.isnull()))
-
-		query = query.where(batch.batch_qty > 0)
-
-	else:
-		query = query.where(table.posting_date <= filters.to_date)
+	if not filters.include_expired_batches:
+		query = query.where((batch.expiry_date >= today()) | (batch.expiry_date.isnull()))
+		if filters.to_date == today():
+			query = query.where(batch.batch_qty > 0)
 
 	if filters.warehouse:
 		lft, rgt = frappe.db.get_value("Warehouse", filters.warehouse, ["lft", "rgt"])

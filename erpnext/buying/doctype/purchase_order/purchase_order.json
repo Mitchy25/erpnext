@@ -322,6 +322,7 @@
    "fieldtype": "Small Text",
    "hidden": 1,
    "label": "Customer Mobile No",
+   "options": "Phone",
    "print_hide": 1
   },
   {
@@ -368,6 +369,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Small Text",
    "label": "Contact Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {

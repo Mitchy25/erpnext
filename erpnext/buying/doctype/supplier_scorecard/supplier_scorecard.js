@@ -1,8 +1,6 @@
 // Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-/* global frappe, refresh_field */
-
 frappe.ui.form.on("Supplier Scorecard", {
 	setup: function (frm) {
 		if (frm.doc.indicator_color !== "") {
@@ -74,7 +72,7 @@ var loadAllStandings = function (frm) {
 		method: "erpnext.buying.doctype.supplier_scorecard_standing.supplier_scorecard_standing.get_standings_list",
 		callback: function (r) {
 			for (var j = 0; j < frm.doc.standings.length; j++) {
-				if (!frm.doc.standings[j].hasOwnProperty("standing_name")) {
+				if (!Object.prototype.hasOwnProperty.call(frm.doc.standings[j], "standing_name")) {
 					frm.get_field("standings").grid.grid_rows[j].remove();
 				}
 			}

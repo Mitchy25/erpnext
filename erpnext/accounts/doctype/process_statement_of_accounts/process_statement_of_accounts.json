@@ -16,7 +16,6 @@
   "cost_center",
   "territory",
   "ignore_exchange_rate_revaluation_journals",
-  "ignore_cr_dr_notes",
   "column_break_14",
   "to_date",
   "finance_book",
@@ -32,10 +31,12 @@
   "fetch_customers",
   "column_break_6",
   "primary_mandatory",
+  "show_net_values_in_party_account",
   "column_break_17",
   "customers",
   "preferences",
   "orientation",
+  "include_break",
   "include_ageing",
   "ageing_based_on",
   "section_break_14",
@@ -382,16 +383,10 @@
    "fieldname": "ignore_exchange_rate_revaluation_journals",
    "fieldtype": "Check",
    "label": "Ignore Exchange Rate Revaluation Journals"
-  },
-  {
-   "default": "0",
-   "fieldname": "ignore_cr_dr_notes",
-   "fieldtype": "Check",
-   "label": "Ignore System Generated Credit / Debit Notes"
   }
  ],
  "links": [],
- "modified": "2024-08-13 10:41:18.381165",
+ "modified": "2023-12-18 12:20:08.965120",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Process Statement Of Accounts",
@@ -425,5 +420,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

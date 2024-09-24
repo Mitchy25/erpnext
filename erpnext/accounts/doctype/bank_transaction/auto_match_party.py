@@ -68,6 +68,9 @@ class AutoMatchbyAccountIBAN:
 					party, or_filters=or_filters, pluck="name", limit_page_length=1
 				)
 
+				if "bank_ac_no" in or_filters:
+					or_filters["bank_account_no"] = or_filters.pop("bank_ac_no")
+
 			if party_result:
 				result = (
 					party,
@@ -110,8 +113,7 @@ class AutoMatchbyPartyNameDescription:
 
 		for party in parties:
 			filters = {"status": "Active"} if party == "Employee" else {"disabled": 0}
-			field = party.lower() + "_name"
-			names = frappe.get_all(party, filters=filters, fields=[f"{field} as party_name", "name"])
+			names = frappe.get_all(party, filters=filters, pluck=party.lower() + "_name")
 
 			for field in ["bank_party_name", "description"]:
 				if not self.get(field):
@@ -130,11 +132,7 @@ class AutoMatchbyPartyNameDescription:
 
 	def fuzzy_search_and_return_result(self, party, names, field) -> tuple | None:
 		skip = False
-		result = process.extract(
-			query=self.get(field),
-			choices={row.get("name"): row.get("party_name") for row in names},
-			scorer=fuzz.token_set_ratio,
-		)
+		result = process.extract(query=self.get(field), choices=names, scorer=fuzz.token_set_ratio)
 		party_name, skip = self.process_fuzzy_result(result)
 
 		if not party_name:
@@ -152,14 +150,14 @@ class AutoMatchbyPartyNameDescription:
 
 		Returns: Result, Skip (whether or not to discontinue matching)
 		"""
-		SCORE, PARTY_ID, CUTOFF = 1, 2, 80
+		PARTY, SCORE, CUTOFF = 0, 1, 80
 
 		if not result or not len(result):
 			return None, False
 
 		first_result = result[0]
 		if len(result) == 1:
-			return (first_result[PARTY_ID] if first_result[SCORE] > CUTOFF else None), True
+			return (first_result[PARTY] if first_result[SCORE] > CUTOFF else None), True
 
 		second_result = result[1]
 		if first_result[SCORE] > CUTOFF:
@@ -168,7 +166,7 @@ class AutoMatchbyPartyNameDescription:
 			if first_result[SCORE] == second_result[SCORE]:
 				return None, True
 
-			return first_result[PARTY_ID], True
+			return first_result[PARTY], True
 		else:
 			return None, False
 

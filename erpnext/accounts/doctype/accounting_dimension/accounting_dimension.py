@@ -11,8 +11,31 @@ from frappe.model import core_doctypes_list
 from frappe.model.document import Document
 from frappe.utils import cstr
 
+from erpnext.accounts.doctype.repost_accounting_ledger.repost_accounting_ledger import (
+	get_allowed_types_from_settings,
+)
+
 
 class AccountingDimension(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.accounts.doctype.accounting_dimension_detail.accounting_dimension_detail import (
+			AccountingDimensionDetail,
+		)
+
+		dimension_defaults: DF.Table[AccountingDimensionDetail]
+		disabled: DF.Check
+		document_type: DF.Link
+		fieldname: DF.Data | None
+		label: DF.Data | None
+	# end: auto-generated types
+
 	def before_insert(self):
 		self.set_fieldname_and_label()
 
@@ -85,6 +108,7 @@ def make_dimension_in_accounting_doctypes(doc, doclist=None):
 
 	doc_count = len(get_accounting_dimensions())
 	count = 0
+	repostable_doctypes = get_allowed_types_from_settings()
 
 	for doctype in doclist:
 		if (doc_count + 1) % 2 == 0:
@@ -99,6 +123,7 @@ def make_dimension_in_accounting_doctypes(doc, doclist=None):
 			"options": doc.document_type,
 			"insert_after": insert_after_field,
 			"owner": "Administrator",
+			"allow_on_submit": 1 if doctype in repostable_doctypes else 0,
 		}
 
 		meta = frappe.get_meta(doctype, cached=False)
@@ -258,21 +283,24 @@ def get_dimension_with_children(doctype, dimensions):
 
 @frappe.whitelist()
 def get_dimensions(with_cost_center_and_project=False):
-	dimension_filters = frappe.db.sql(
-		"""
-		SELECT label, fieldname, document_type
-		FROM `tabAccounting Dimension`
-		WHERE disabled = 0
-	""",
-		as_dict=1,
+	c = frappe.qb.DocType("Accounting Dimension Detail")
+	p = frappe.qb.DocType("Accounting Dimension")
+	dimension_filters = (
+		frappe.qb.from_(p).select(p.label, p.fieldname, p.document_type).where(p.disabled == 0).run(as_dict=1)
+	)
+	default_dimensions = (
+		frappe.qb.from_(c)
+		.inner_join(p)
+		.on(c.parent == p.name)
+		.select(p.fieldname, c.company, c.default_dimension)
+		.run(as_dict=1)
 	)
 
-	default_dimensions = frappe.db.sql(
-		"""SELECT p.fieldname, c.company, c.default_dimension
-		FROM `tabAccounting Dimension Detail` c, `tabAccounting Dimension` p
-		WHERE c.parent = p.name""",
-		as_dict=1,
-	)
+	if isinstance(with_cost_center_and_project, str):
+		if with_cost_center_and_project.lower().strip() == "true":
+			with_cost_center_and_project = True
+		else:
+			with_cost_center_and_project = False
 
 	if isinstance(with_cost_center_and_project, str):
 		if with_cost_center_and_project.lower().strip() == "true":

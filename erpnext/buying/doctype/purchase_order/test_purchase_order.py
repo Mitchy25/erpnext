@@ -109,7 +109,7 @@ class TestPurchaseOrder(FrappeTestCase):
 
 		frappe.db.set_value("Item", "_Test Item", "over_delivery_receipt_allowance", 0)
 		frappe.db.set_value("Item", "_Test Item", "over_billing_allowance", 0)
-		frappe.db.set_value("Accounts Settings", None, "over_billing_allowance", 0)
+		frappe.db.set_single_value("Accounts Settings", "over_billing_allowance", 0)
 
 	def test_update_remove_child_linked_to_mr(self):
 		"""Test impact on linked PO and MR on deleting/updating row."""
@@ -592,7 +592,7 @@ class TestPurchaseOrder(FrappeTestCase):
 		)
 
 	def test_group_same_items(self):
-		frappe.db.set_value("Buying Settings", None, "allow_multiple_items", 1)
+		frappe.db.set_single_value("Buying Settings", "allow_multiple_items", 1)
 		frappe.get_doc(
 			{
 				"doctype": "Purchase Order",
@@ -750,11 +750,69 @@ class TestPurchaseOrder(FrappeTestCase):
 		pe_doc = frappe.get_doc("Payment Entry", pe.name)
 		pe_doc.cancel()
 
+	def create_account(self, account_name, company, currency, parent):
+		if not frappe.db.get_value("Account", filters={"account_name": account_name, "company": company}):
+			account = frappe.get_doc(
+				{
+					"doctype": "Account",
+					"account_name": account_name,
+					"parent_account": parent,
+					"company": company,
+					"account_currency": currency,
+					"is_group": 0,
+					"account_type": "Payable",
+				}
+			).insert()
+		else:
+			account = frappe.get_doc("Account", {"account_name": account_name, "company": company})
+
+		return account
+
+	def test_advance_payment_with_separate_party_account_enabled(self):
+		"""
+		Test "Advance Paid" on Purchase Order, when "Book Advance Payments in Separate Party Account" is enabled and
+		the payment entry linked to the Order is allocated to Purchase Invoice.
+		"""
+		supplier = "_Test Supplier"
+		company = "_Test Company"
+
+		# Setup default 'Advance Paid' account
+		account = self.create_account("Advance Paid", company, "INR", "Application of Funds (Assets) - _TC")
+		company_doc = frappe.get_doc("Company", company)
+		company_doc.book_advance_payments_in_separate_party_account = True
+		company_doc.default_advance_paid_account = account.name
+		company_doc.save()
+
+		po_doc = create_purchase_order(supplier=supplier)
+
+		from erpnext.accounts.doctype.payment_entry.test_payment_entry import get_payment_entry
+
+		pe = get_payment_entry("Purchase Order", po_doc.name)
+		pe.save().submit()
+
+		po_doc.reload()
+		self.assertEqual(po_doc.advance_paid, 5000)
+
+		from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_invoice
+
+		company_doc.book_advance_payments_in_separate_party_account = False
+		company_doc.save()
+
 	@change_settings("Accounts Settings", {"unlink_advance_payment_on_cancelation_of_order": 1})
 	def test_advance_paid_upon_payment_entry_cancellation(self):
 		from erpnext.accounts.doctype.payment_entry.test_payment_entry import get_payment_entry
 
-		po_doc = create_purchase_order(supplier="_Test Supplier USD", currency="USD", do_not_submit=1)
+		supplier = "_Test Supplier USD"
+		company = "_Test Company"
+
+		# Setup default USD payable account for Supplier
+		account = self.create_account("Creditors USD", company, "USD", "Accounts Payable - _TC")
+		supplier_doc = frappe.get_doc("Supplier", supplier)
+		if not [x for x in supplier_doc.accounts if x.company == company]:
+			supplier_doc.append("accounts", {"company": company, "account": account.name})
+			supplier_doc.save()
+
+		po_doc = create_purchase_order(supplier=supplier, currency="USD", do_not_submit=1)
 		po_doc.conversion_rate = 80
 		po_doc.submit()
 
@@ -871,8 +929,8 @@ class TestPurchaseOrder(FrappeTestCase):
 		)
 		from erpnext.stock.doctype.delivery_note.delivery_note import make_inter_company_purchase_receipt
 
-		frappe.db.set_value("Selling Settings", None, "maintain_same_sales_rate", 1)
-		frappe.db.set_value("Buying Settings", None, "maintain_same_rate", 1)
+		frappe.db.set_single_value("Selling Settings", "maintain_same_sales_rate", 1)
+		frappe.db.set_single_value("Buying Settings", "maintain_same_rate", 1)
 
 		prepare_data_for_internal_transfer()
 		supplier = "_Test Internal Supplier 2"
@@ -935,6 +993,103 @@ class TestPurchaseOrder(FrappeTestCase):
 		po = create_purchase_order(item_code="_Test Variant Item", qty=1, rate=100, do_not_save=1)
 
 		self.assertRaises(frappe.ValidationError, po.save)
+
+	def test_update_items_for_subcontracting_purchase_order(self):
+		from erpnext.controllers.tests.test_subcontracting_controller import (
+			get_subcontracting_order,
+			make_bom_for_subcontracted_items,
+			make_raw_materials,
+			make_service_items,
+			make_subcontracted_items,
+		)
+
+		def update_items(po, qty):
+			trans_items = [po.items[0].as_dict()]
+			trans_items[0]["qty"] = qty
+			trans_items[0]["fg_item_qty"] = qty
+			trans_items = json.dumps(trans_items, default=str)
+
+			return update_child_qty_rate(
+				po.doctype,
+				trans_items,
+				po.name,
+			)
+
+		make_subcontracted_items()
+		make_raw_materials()
+		make_service_items()
+		make_bom_for_subcontracted_items()
+
+		service_items = [
+			{
+				"warehouse": "_Test Warehouse - _TC",
+				"item_code": "Subcontracted Service Item 7",
+				"qty": 10,
+				"rate": 100,
+				"fg_item": "Subcontracted Item SA7",
+				"fg_item_qty": 10,
+			},
+		]
+		po = create_purchase_order(
+			rm_items=service_items,
+			is_subcontracted=1,
+			supplier_warehouse="_Test Warehouse 1 - _TC",
+		)
+
+		update_items(po, qty=20)
+		po.reload()
+
+		# Test - 1: Items should be updated as there is no Subcontracting Order against PO
+		self.assertEqual(po.items[0].qty, 20)
+		self.assertEqual(po.items[0].fg_item_qty, 20)
+
+		sco = get_subcontracting_order(po_name=po.name, warehouse="_Test Warehouse - _TC")
+
+		# Test - 2: ValidationError should be raised as there is Subcontracting Order against PO
+		self.assertRaises(frappe.ValidationError, update_items, po=po, qty=30)
+
+		sco.reload()
+		sco.cancel()
+		po.reload()
+
+		update_items(po, qty=30)
+		po.reload()
+
+		# Test - 3: Items should be updated as the Subcontracting Order is cancelled
+		self.assertEqual(po.items[0].qty, 30)
+		self.assertEqual(po.items[0].fg_item_qty, 30)
+
+	@change_settings("Buying Settings", {"auto_create_subcontracting_order": 1})
+	def test_auto_create_subcontracting_order(self):
+		from erpnext.controllers.tests.test_subcontracting_controller import (
+			make_bom_for_subcontracted_items,
+			make_raw_materials,
+			make_service_items,
+			make_subcontracted_items,
+		)
+
+		make_subcontracted_items()
+		make_raw_materials()
+		make_service_items()
+		make_bom_for_subcontracted_items()
+
+		service_items = [
+			{
+				"warehouse": "_Test Warehouse - _TC",
+				"item_code": "Subcontracted Service Item 7",
+				"qty": 10,
+				"rate": 100,
+				"fg_item": "Subcontracted Item SA7",
+				"fg_item_qty": 10,
+			},
+		]
+		po = create_purchase_order(
+			rm_items=service_items,
+			is_subcontracted=1,
+			supplier_warehouse="_Test Warehouse 1 - _TC",
+		)
+
+		self.assertTrue(frappe.db.get_value("Subcontracting Order", {"purchase_order": po.name}))
 
 	def test_po_billed_amount_against_return_entry(self):
 		from erpnext.accounts.doctype.purchase_invoice.purchase_invoice import make_debit_note

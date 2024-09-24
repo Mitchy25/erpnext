@@ -2,12 +2,14 @@
 # License: GNU General Public License v3. See license.txt
 
 
+from collections import defaultdict
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname, revert_series_if_last
-from frappe.query_builder.functions import CombineDatetime, CurDate, Sum
-from frappe.utils import cint, flt, get_link_to_form, nowtime
+from frappe.query_builder.functions import CurDate, Sum
+from frappe.utils import cint, flt, get_link_to_form
 from frappe.utils.data import add_days
 from frappe.utils.jinja import render_template
 
@@ -85,6 +87,33 @@ def get_batch_naming_series():
 
 
 class Batch(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		batch_id: DF.Data
+		batch_qty: DF.Float
+		description: DF.SmallText | None
+		disabled: DF.Check
+		expiry_date: DF.Date | None
+		image: DF.AttachImage | None
+		item: DF.Link
+		item_name: DF.Data | None
+		manufacturing_date: DF.Date | None
+		parent_batch: DF.Link | None
+		produced_qty: DF.Float
+		qty_to_produce: DF.Float
+		reference_doctype: DF.Link | None
+		reference_name: DF.DynamicLink | None
+		stock_uom: DF.Link | None
+		supplier: DF.Link | None
+		use_batchwise_valuation: DF.Check
+	# end: auto-generated types
+
 	def autoname(self):
 		"""Generate random ID for batch if not specified"""
 
@@ -128,17 +157,33 @@ class Batch(Document):
 			frappe.throw(_("The selected item cannot have Batch"))
 
 	def set_batchwise_valuation(self):
-		from erpnext.stock.stock_ledger import get_valuation_method
+		if self.is_new():
+			if frappe.db.get_single_value("Stock Settings", "do_not_use_batchwise_valuation"):
+				self.use_batchwise_valuation = 0
+				return
 
-		if self.is_new() and get_valuation_method(self.item) != "Moving Average":
 			self.use_batchwise_valuation = 1
 
 	def before_save(self):
+		self.set_expiry_date()
+
+	def set_expiry_date(self):
 		has_expiry_date, shelf_life_in_days = frappe.db.get_value(
 			"Item", self.item, ["has_expiry_date", "shelf_life_in_days"]
 		)
+
 		if not self.expiry_date and has_expiry_date and shelf_life_in_days:
-			self.expiry_date = add_days(self.manufacturing_date, shelf_life_in_days)
+			if (
+				not self.manufacturing_date
+				and self.reference_doctype in ["Stock Entry", "Purchase Receipt", "Purchase Invoice"]
+				and self.reference_name
+			):
+				self.manufacturing_date = frappe.db.get_value(
+					self.reference_doctype, self.reference_name, "posting_date"
+				)
+
+			if self.manufacturing_date:
+				self.expiry_date = add_days(self.manufacturing_date, shelf_life_in_days)
 
 		if has_expiry_date and not self.expiry_date:
 			frappe.throw(
@@ -165,7 +210,15 @@ class Batch(Document):
 
 
 @frappe.whitelist()
-def get_batch_qty(batch_no=None, warehouse=None, item_code=None, posting_date=None, posting_time=None):
+def get_batch_qty(
+	batch_no=None,
+	warehouse=None,
+	item_code=None,
+	posting_date=None,
+	posting_time=None,
+	ignore_voucher_nos=None,
+	for_stock_levels=False,
+):
 	"""Returns batch actual qty if warehouse is passed,
 	        or returns dict of qty by warehouse if warehouse is None
 
@@ -173,46 +226,35 @@ def get_batch_qty(batch_no=None, warehouse=None, item_code=None, posting_date=No
 
 	:param batch_no: Optional - give qty for this batch no
 	:param warehouse: Optional - give qty for this warehouse
-	:param item_code: Optional - give qty for this item"""
+	:param item_code: Optional - give qty for this item
+	:param for_stock_levels: True consider expired batches"""
 
-	sle = frappe.qb.DocType("Stock Ledger Entry")
+	from erpnext.stock.doctype.serial_and_batch_bundle.serial_and_batch_bundle import (
+		get_auto_batch_nos,
+	)
 
-	out = 0
-	if batch_no and warehouse:
-		query = (
-			frappe.qb.from_(sle)
-			.select(Sum(sle.actual_qty))
-			.where((sle.is_cancelled == 0) & (sle.warehouse == warehouse) & (sle.batch_no == batch_no))
-		)
+	batchwise_qty = defaultdict(float)
+	kwargs = frappe._dict(
+		{
+			"item_code": item_code,
+			"warehouse": warehouse,
+			"posting_date": posting_date,
+			"posting_time": posting_time,
+			"batch_no": batch_no,
+			"ignore_voucher_nos": ignore_voucher_nos,
+			"for_stock_levels": for_stock_levels,
+		}
+	)
 
-		if posting_date:
-			if posting_time is None:
-				posting_time = nowtime()
+	batches = get_auto_batch_nos(kwargs)
 
-			query = query.where(
-				CombineDatetime(sle.posting_date, sle.posting_time)
-				<= CombineDatetime(posting_date, posting_time)
-			)
+	if not (batch_no and warehouse):
+		return batches
 
-		out = query.run(as_list=True)[0][0] or 0
+	for batch in batches:
+		batchwise_qty[batch.get("batch_no")] += batch.get("qty")
 
-	if batch_no and not warehouse:
-		out = (
-			frappe.qb.from_(sle)
-			.select(sle.warehouse, Sum(sle.actual_qty).as_("qty"))
-			.where((sle.is_cancelled == 0) & (sle.batch_no == batch_no))
-			.groupby(sle.warehouse)
-		).run(as_dict=True)
-
-	if not batch_no and item_code and warehouse:
-		out = (
-			frappe.qb.from_(sle)
-			.select(sle.batch_no, Sum(sle.actual_qty).as_("qty"))
-			.where((sle.is_cancelled == 0) & (sle.item_code == item_code) & (sle.warehouse == warehouse))
-			.groupby(sle.batch_no)
-		).run(as_dict=True)
-
-	return out
+	return batchwise_qty[batch_no]
 
 
 @frappe.whitelist()
@@ -236,11 +278,26 @@ def get_batches_by_oldest(item_code, warehouse):
 def split_batch(batch_no, item_code, warehouse, qty, new_batch_id=None, new_batch_expiry=None):
 	"""Split the batch into a new batch"""
 	batch = frappe.get_doc(dict(doctype="Batch", item=item_code, batch_id=new_batch_id, expiry_date=new_batch_expiry)).insert()
+	qty = flt(qty)
 
-	company = frappe.db.get_value(
-		"Stock Ledger Entry",
-		dict(item_code=item_code, batch_no=batch_no, warehouse=warehouse),
-		["company"],
+	company = frappe.db.get_value("Warehouse", warehouse, "company")
+
+	from_bundle_id = make_batch_bundle(
+		item_code=item_code,
+		warehouse=warehouse,
+		batches=frappe._dict({batch_no: qty}),
+		company=company,
+		type_of_transaction="Outward",
+		qty=qty,
+	)
+
+	to_bundle_id = make_batch_bundle(
+		item_code=item_code,
+		warehouse=warehouse,
+		batches=frappe._dict({batch.name: qty}),
+		company=company,
+		type_of_transaction="Inward",
+		qty=qty,
 	)
 
 	stock_entry = frappe.get_doc(
@@ -249,8 +306,15 @@ def split_batch(batch_no, item_code, warehouse, qty, new_batch_id=None, new_batc
 			purpose="Repack",
 			company=company,
 			items=[
-				dict(item_code=item_code, qty=float(qty or 0), s_warehouse=warehouse, batch_no=batch_no),
-				dict(item_code=item_code, qty=float(qty or 0), t_warehouse=warehouse, batch_no=batch.name),
+				dict(
+					item_code=item_code,
+					qty=qty,
+					s_warehouse=warehouse,
+					serial_and_batch_bundle=from_bundle_id,
+				),
+				dict(
+					item_code=item_code, qty=qty, t_warehouse=warehouse, serial_and_batch_bundle=to_bundle_id
+				),
 			],
 		)
 	)
@@ -261,23 +325,17 @@ def split_batch(batch_no, item_code, warehouse, qty, new_batch_id=None, new_batc
 	return batch.name
 
 
-def set_batch_nos(doc, warehouse_field, throw=False, child_table="items"):
-	"""Automatically select `batch_no` for outgoing items in item table"""
-	for d in doc.get(child_table):
-		qty = d.get("stock_qty") or d.get("transfer_qty") or d.get("qty") or 0
-		warehouse = d.get(warehouse_field, None)
-		if warehouse and qty > 0 and frappe.db.get_value("Item", d.item_code, "has_batch_no"):
-			if not d.batch_no:
-				d.batch_no = get_batch_no(d.item_code, warehouse, qty, throw, d.serial_no)
-			else:
-				batch_qty = get_batch_qty(batch_no=d.batch_no, warehouse=warehouse)
-				if flt(batch_qty, d.precision("qty")) < flt(qty, d.precision("qty")):
-					frappe.throw(
-						_(
-							"Row #{0}: The batch {1} has only {2} qty. Please select another batch which has {3} qty available or split the row into multiple rows, to deliver/issue from multiple batches"
-						).format(d.idx, d.batch_no, batch_qty, qty)
-					)
+def make_batch_bundle(
+	item_code: str,
+	warehouse: str,
+	batches: dict[str, float],
+	company: str,
+	type_of_transaction: str,
+	qty: float,
+):
+	from frappe.utils import nowtime, today
 
+	from erpnext.stock.serial_batch_bundle import SerialBatchCreation
 
 @frappe.whitelist()
 def get_batch_no(item_code, warehouse, qty=1, throw=False, serial_no=None, cur_batch_no=None, return_error=True, return_shortdated = False):
@@ -493,10 +551,10 @@ def validate_serial_no_with_batch(serial_nos, item_code):
 	frappe.throw(_("There is no batch found against the {0}: {1}").format(message, serial_no_link))
 
 
-def make_batch(args):
-	if frappe.db.get_value("Item", args.item, "has_batch_no"):
-		args.doctype = "Batch"
-		frappe.get_doc(args).insert().name
+def make_batch(kwargs):
+	if frappe.db.get_value("Item", kwargs.item, "has_batch_no"):
+		kwargs.doctype = "Batch"
+		return frappe.get_doc(kwargs).insert().name
 
 
 @frappe.whitelist()
@@ -876,3 +934,26 @@ def test():
 		print(i)
 	print("###Total###")
 	print(total)
+def get_available_batches(kwargs):
+	from erpnext.stock.doctype.serial_and_batch_bundle.serial_and_batch_bundle import (
+		get_auto_batch_nos,
+	)
+
+	batchwise_qty = defaultdict(float)
+
+	batches = get_auto_batch_nos(kwargs)
+	for batch in batches:
+		batchwise_qty[batch.get("batch_no")] += batch.get("qty")
+
+	return batchwise_qty
+
+
+def get_batch_no(bundle_id):
+	from erpnext.stock.serial_batch_bundle import get_batch_nos
+
+	batches = defaultdict(float)
+
+	for batch_id, d in get_batch_nos(bundle_id).items():
+		batches[batch_id] += abs(d.get("qty"))
+
+	return batches

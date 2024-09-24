@@ -26,9 +26,12 @@ class calculate_taxes_and_totals:
 	def __init__(self, doc: Document):
 		self.doc = doc
 		frappe.flags.round_off_applicable_accounts = []
+		frappe.flags.round_row_wise_tax = frappe.db.get_single_value(
+			"Accounts Settings", "round_row_wise_tax"
+		)
 
 		self._items = self.filter_rows() if self.doc.doctype == "Quotation" else self.doc.get("items")
-		
+
 		get_round_off_applicable_accounts(self.doc.company, frappe.flags.round_off_applicable_accounts)
 		self.calculate()
 
@@ -90,14 +93,12 @@ class calculate_taxes_and_totals:
 			self.doc.base_tax_withholding_net_total = sum_base_net_amount
 
 	def validate_item_tax_template(self):
-		if self.doc.get("is_return") and self.doc.get("return_against"):
-			return
-
 		for item in self._items:
 			if item.item_code and item.get("item_tax_template"):
 				item_doc = frappe.get_cached_doc("Item", item.item_code)
 				args = {
 					"net_rate": item.net_rate or item.rate,
+					"base_net_rate": item.base_net_rate or item.base_rate,
 					"tax_category": self.doc.get("tax_category"),
 					"posting_date": self.doc.get("posting_date"),
 					"bill_date": self.doc.get("bill_date"),
@@ -384,6 +385,8 @@ class calculate_taxes_and_totals:
 			for i, tax in enumerate(self.doc.get("taxes")):
 				# tax_amount represents the amount of tax for the current step
 				current_tax_amount = self.get_current_tax_amount(item, tax, item_tax_map)
+				if frappe.flags.round_row_wise_tax:
+					current_tax_amount = flt(current_tax_amount, tax.precision("tax_amount"))
 
 				# Adjust divisional loss to the last item
 				if tax.charge_type == "Actual":
@@ -470,7 +473,16 @@ class calculate_taxes_and_totals:
 		if tax.charge_type == "Actual":
 			# distribute the tax amount proportionally to each item row
 			actual = flt(tax.tax_amount, tax.precision("tax_amount"))
-			current_tax_amount = item.net_amount * actual / self.doc.net_total if self.doc.net_total else 0.0
+
+			if tax.get("is_tax_withholding_account") and item.meta.get_field("apply_tds"):
+				if not item.get("apply_tds") or not self.doc.tax_withholding_net_total:
+					current_tax_amount = 0.0
+				else:
+					current_tax_amount = item.net_amount * actual / self.doc.tax_withholding_net_total
+			else:
+				current_tax_amount = (
+					item.net_amount * actual / self.doc.net_total if self.doc.net_total else 0.0
+				)
 
 		elif tax.charge_type == "On Net Total":
 			current_tax_amount = (tax_rate / 100.0) * item.net_amount
@@ -494,10 +506,19 @@ class calculate_taxes_and_totals:
 		# store tax breakup for each item
 		key = item.item_code or item.item_name
 		item_wise_tax_amount = current_tax_amount * self.doc.conversion_rate
-		if tax.item_wise_tax_detail.get(key):
-			item_wise_tax_amount += tax.item_wise_tax_detail[key][1]
+		if frappe.flags.round_row_wise_tax:
+			item_wise_tax_amount = flt(item_wise_tax_amount, tax.precision("tax_amount"))
+			if tax.item_wise_tax_detail.get(key):
+				item_wise_tax_amount += flt(tax.item_wise_tax_detail[key][1], tax.precision("tax_amount"))
+			tax.item_wise_tax_detail[key] = [
+				tax_rate,
+				flt(item_wise_tax_amount, tax.precision("tax_amount")),
+			]
+		else:
+			if tax.item_wise_tax_detail.get(key):
+				item_wise_tax_amount += tax.item_wise_tax_detail[key][1]
 
-		tax.item_wise_tax_detail[key] = [tax_rate, flt(item_wise_tax_amount)]
+			tax.item_wise_tax_detail[key] = [tax_rate, flt(item_wise_tax_amount)]
 
 	def round_off_totals(self, tax):
 		if tax.account_head in frappe.flags.round_off_applicable_accounts:
@@ -1004,7 +1025,6 @@ def get_round_off_applicable_accounts(company, account_list):
 		return get_regional_round_off_accounts(company, account_list)
 
 
-
 @erpnext.allow_regional
 def get_regional_round_off_accounts(company, account_list):
 	pass
@@ -1019,7 +1039,6 @@ def update_itemised_tax_data(doc):
 @erpnext.allow_regional
 def get_itemised_tax_breakup_header(item_doctype, tax_accounts):
 	return [_("Item"), _("Taxable Amount"), *tax_accounts]
-
 
 
 @erpnext.allow_regional
@@ -1037,7 +1056,6 @@ def get_itemised_tax_breakup_data(doc):
 		)
 
 	return itemised_tax_data
-
 
 
 def get_itemised_tax(taxes, with_tax_account=False):
@@ -1086,6 +1104,11 @@ def get_rounded_tax_amount(itemised_tax, precision):
 		for row in taxes.values():
 			if isinstance(row, dict) and isinstance(row["tax_amount"], float):
 				row["tax_amount"] = flt(row["tax_amount"], precision)
+
+
+@frappe.whitelist()
+def get_rounding_tax_settings():
+	return frappe.db.get_single_value("Accounts Settings", "round_row_wise_tax")
 
 
 class init_landed_taxes_and_totals:

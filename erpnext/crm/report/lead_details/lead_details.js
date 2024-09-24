@@ -1,6 +1,5 @@
 // Copyright (c) 2016, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
-/* eslint-disable */
 
 frappe.query_reports["Lead Details"] = {
 	filters: [
@@ -43,16 +42,10 @@ frappe.query_reports["Lead Details"] = {
 			],
 		},
 		{
-			"fieldname":"territory",
-			"label": __("Territory"),
-			"fieldtype": "Link",
-			"options": "Territory",
+			fieldname: "territory",
+			label: __("Territory"),
+			fieldtype: "Link",
+			options: "Territory",
 		},
-		{
-			"fieldname":"owner",
-			"label": __("Owner"),
-			"fieldtype": "Link",
-			"options": "User",
-		}
-	]
+	],
 };

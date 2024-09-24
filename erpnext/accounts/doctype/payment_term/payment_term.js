@@ -16,7 +16,7 @@ frappe.ui.form.on("Payment Term", {
 				frm.doc.discount,
 			]);
 			if (frm.doc.discount_type == "Amount") {
-				description = __("{0} will be given as discount.", [fmt_money(frm.doc.discount)]);
+				description = __("{0} will be given as discount.", [frm.doc.discount]);
 			}
 			frm.set_df_property("discount", "description", description);
 		}

@@ -24,6 +24,48 @@ from erpnext.controllers.accounts_controller import get_advance_payment_entries_
 
 
 class PaymentReconciliation(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.accounts.doctype.payment_reconciliation_allocation.payment_reconciliation_allocation import (
+			PaymentReconciliationAllocation,
+		)
+		from erpnext.accounts.doctype.payment_reconciliation_invoice.payment_reconciliation_invoice import (
+			PaymentReconciliationInvoice,
+		)
+		from erpnext.accounts.doctype.payment_reconciliation_payment.payment_reconciliation_payment import (
+			PaymentReconciliationPayment,
+		)
+
+		allocation: DF.Table[PaymentReconciliationAllocation]
+		bank_cash_account: DF.Link | None
+		company: DF.Link
+		cost_center: DF.Link | None
+		default_advance_account: DF.Link | None
+		from_invoice_date: DF.Date | None
+		from_payment_date: DF.Date | None
+		invoice_limit: DF.Int
+		invoice_name: DF.Data | None
+		invoices: DF.Table[PaymentReconciliationInvoice]
+		maximum_invoice_amount: DF.Currency
+		maximum_payment_amount: DF.Currency
+		minimum_invoice_amount: DF.Currency
+		minimum_payment_amount: DF.Currency
+		party: DF.DynamicLink
+		party_type: DF.Link
+		payment_limit: DF.Int
+		payment_name: DF.Data | None
+		payments: DF.Table[PaymentReconciliationPayment]
+		receivable_payable_account: DF.Link
+		to_invoice_date: DF.Date | None
+		to_payment_date: DF.Date | None
+	# end: auto-generated types
+
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.common_filter_conditions = []
@@ -118,13 +160,39 @@ class PaymentReconciliation(Document):
 		self.add_payment_entries(non_reconciled_payments)
 
 	def get_payment_entries(self):
+		if self.default_advance_account:
+			party_account = [self.receivable_payable_account, self.default_advance_account]
+		else:
+			party_account = [self.receivable_payable_account]
+
 		order_doctype = "Sales Order" if self.party_type == "Customer" else "Purchase Order"
-		condition = self.get_payment_entry_conditions()
+		condition = frappe._dict(
+			{
+				"company": self.get("company"),
+				"get_payments": True,
+				"cost_center": self.get("cost_center"),
+				"from_payment_date": self.get("from_payment_date"),
+				"to_payment_date": self.get("to_payment_date"),
+				"maximum_payment_amount": self.get("maximum_payment_amount"),
+				"minimum_payment_amount": self.get("minimum_payment_amount"),
+			}
+		)
+
+		if self.payment_name:
+			condition.update({"name": self.payment_name})
+
+		# pass dynamic dimension filter values to query builder
+		dimensions = {}
+		for x in self.dimensions:
+			dimension = x.fieldname
+			if self.get(dimension):
+				dimensions.update({dimension: self.get(dimension)})
+		condition.update({"accounting_dimensions": dimensions})
 
 		payment_entries = get_advance_payment_entries_for_regional(
 			self.party_type,
 			self.party,
-			self.receivable_payable_account,
+			party_account,
 			order_doctype,
 			against_all_orders=True,
 			limit=self.payment_limit,
@@ -282,10 +350,15 @@ class PaymentReconciliation(Document):
 
 		self.build_qb_filter_conditions(get_invoices=True)
 
+		accounts = [self.receivable_payable_account]
+
+		if self.default_advance_account:
+			accounts.append(self.default_advance_account)
+
 		non_reconciled_invoices = get_outstanding_invoices(
 			self.party_type,
 			self.party,
-			self.receivable_payable_account,
+			accounts,
 			common_filter=self.common_filter_conditions,
 			posting_date=self.ple_posting_date_filter,
 			min_outstanding=self.minimum_invoice_amount if self.minimum_invoice_amount else None,
@@ -651,34 +724,6 @@ class PaymentReconciliation(Document):
 
 		self.build_dimensions_filter_conditions()
 
-	def get_payment_entry_conditions(self):
-		conditions = []
-		pe = qb.DocType("Payment Entry")
-		conditions.append(pe.company == self.company)
-
-		if self.get("cost_center"):
-			conditions.append(pe.cost_center == self.cost_center)
-
-		if self.from_payment_date:
-			conditions.append(pe.posting_date.gte(self.from_payment_date))
-
-		if self.to_payment_date:
-			conditions.append(pe.posting_date.lte(self.to_payment_date))
-
-		if self.minimum_payment_amount:
-			conditions.append(pe.unallocated_amount.gte(flt(self.minimum_payment_amount)))
-
-		if self.maximum_payment_amount:
-			conditions.append(pe.unallocated_amount.lte(flt(self.maximum_payment_amount)))
-
-		# pass dynamic dimension filter values to payment query
-		for x in self.dimensions:
-			dimension = x.fieldname
-			if self.get(dimension):
-				conditions.append(pe[dimension] == self.get(dimension))
-
-		return conditions
-
 	def get_journal_filter_conditions(self):
 		conditions = []
 		je = qb.DocType("Journal Entry")
@@ -728,8 +773,8 @@ def reconcile_dr_cr_note(dr_cr_notes, company, active_dimensions=None):
 						"reference_type": inv.against_voucher_type,
 						"reference_name": inv.against_voucher,
 						"cost_center": inv.cost_center or erpnext.get_default_cost_center(company),
-						"user_remark": f"{fmt_money(flt(inv.allocated_amount), currency=company_currency)} against {inv.against_voucher}",
 						"exchange_rate": inv.exchange_rate,
+						"user_remark": f"{fmt_money(flt(inv.allocated_amount), currency=company_currency)} against {inv.against_voucher}",
 					},
 					{
 						"account": inv.account,
@@ -743,8 +788,8 @@ def reconcile_dr_cr_note(dr_cr_notes, company, active_dimensions=None):
 						"reference_type": inv.voucher_type,
 						"reference_name": inv.voucher_no,
 						"cost_center": inv.cost_center or erpnext.get_default_cost_center(company),
-						"user_remark": f"{fmt_money(flt(inv.allocated_amount), currency=company_currency)} from {inv.voucher_no}",
 						"exchange_rate": inv.exchange_rate,
+						"user_remark": f"{fmt_money(flt(inv.allocated_amount), currency=company_currency)} from {inv.voucher_no}",
 					},
 				],
 			}
@@ -760,10 +805,10 @@ def reconcile_dr_cr_note(dr_cr_notes, company, active_dimensions=None):
 		jv.accounts[1].update(dimensions_dict)
 
 		jv.flags.ignore_mandatory = True
-		jv.flags.skip_remarks_creation = True
 		jv.flags.ignore_exchange_rate = True
-		jv.is_system_generated = True
 		jv.remark = None
+		jv.flags.skip_remarks_creation = True
+		jv.is_system_generated = True
 		jv.submit()
 
 		if inv.difference_amount != 0:

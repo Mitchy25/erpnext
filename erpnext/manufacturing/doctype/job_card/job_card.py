@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 import datetime
 import json
+from collections import OrderedDict
 
 import frappe
 from frappe import _, bold
@@ -50,6 +51,82 @@ class JobCardOverTransferError(frappe.ValidationError):
 
 
 class JobCard(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.manufacturing.doctype.job_card_item.job_card_item import JobCardItem
+		from erpnext.manufacturing.doctype.job_card_operation.job_card_operation import JobCardOperation
+		from erpnext.manufacturing.doctype.job_card_scheduled_time.job_card_scheduled_time import (
+			JobCardScheduledTime,
+		)
+		from erpnext.manufacturing.doctype.job_card_scrap_item.job_card_scrap_item import (
+			JobCardScrapItem,
+		)
+		from erpnext.manufacturing.doctype.job_card_time_log.job_card_time_log import JobCardTimeLog
+
+		actual_end_date: DF.Datetime | None
+		actual_start_date: DF.Datetime | None
+		amended_from: DF.Link | None
+		barcode: DF.Barcode | None
+		batch_no: DF.Link | None
+		bom_no: DF.Link | None
+		company: DF.Link
+		current_time: DF.Int
+		employee: DF.TableMultiSelect[JobCardTimeLog]
+		expected_end_date: DF.Datetime | None
+		expected_start_date: DF.Datetime | None
+		for_job_card: DF.Link | None
+		for_operation: DF.Link | None
+		for_quantity: DF.Float
+		hour_rate: DF.Currency
+		is_corrective_job_card: DF.Check
+		item_name: DF.ReadOnly | None
+		items: DF.Table[JobCardItem]
+		job_started: DF.Check
+		naming_series: DF.Literal["PO-JOB.#####"]
+		operation: DF.Link
+		operation_id: DF.Data | None
+		operation_row_number: DF.Literal
+		posting_date: DF.Date | None
+		process_loss_qty: DF.Float
+		production_item: DF.Link | None
+		project: DF.Link | None
+		quality_inspection: DF.Link | None
+		quality_inspection_template: DF.Link | None
+		remarks: DF.SmallText | None
+		requested_qty: DF.Float
+		scheduled_time_logs: DF.Table[JobCardScheduledTime]
+		scrap_items: DF.Table[JobCardScrapItem]
+		sequence_id: DF.Int
+		serial_and_batch_bundle: DF.Link | None
+		serial_no: DF.SmallText | None
+		started_time: DF.Datetime | None
+		status: DF.Literal[
+			"Open",
+			"Work In Progress",
+			"Material Transferred",
+			"On Hold",
+			"Submitted",
+			"Cancelled",
+			"Completed",
+		]
+		sub_operations: DF.Table[JobCardOperation]
+		time_logs: DF.Table[JobCardTimeLog]
+		time_required: DF.Float
+		total_completed_qty: DF.Float
+		total_time_in_mins: DF.Float
+		transferred_qty: DF.Float
+		wip_warehouse: DF.Link
+		work_order: DF.Link
+		workstation: DF.Link
+		workstation_type: DF.Link | None
+	# end: auto-generated types
+
 	def onload(self):
 		excess_transfer = frappe.db.get_single_value("Manufacturing Settings", "job_card_excess_transfer")
 		self.set_onload("job_card_excess_transfer", excess_transfer)
@@ -137,7 +214,11 @@ class JobCard(Document):
 				if d.to_time and get_datetime(d.from_time) > get_datetime(d.to_time):
 					frappe.throw(_("Row {0}: From time must be less than to time").format(d.idx))
 
-				data = self.get_overlap_for(d)
+				open_job_cards = []
+				if d.get("employee"):
+					open_job_cards = self.get_open_job_cards(d.get("employee"))
+
+				data = self.get_overlap_for(d, open_job_cards=open_job_cards)
 				if data:
 					frappe.throw(
 						_("Row {0}: From Time and To Time of {1} is overlapping with {2}").format(
@@ -158,64 +239,37 @@ class JobCard(Document):
 		for row in self.sub_operations:
 			self.total_completed_qty += row.completed_qty
 
-	def get_overlap_for(self, args):
+	def get_overlap_for(self, args, open_job_cards=None):
+		time_logs = []
+
+		time_logs.extend(self.get_time_logs(args, "Job Card Time Log"))
+
+		time_logs.extend(self.get_time_logs(args, "Job Card Scheduled Time", open_job_cards=open_job_cards))
+
+		if not time_logs:
+			return {}
+
+		time_logs = sorted(time_logs, key=lambda x: x.get("to_time"))
+
 		production_capacity = 1
-
-		jc = frappe.qb.DocType("Job Card")
-		jctl = frappe.qb.DocType("Job Card Time Log")
-
-		time_conditions = [
-			((jctl.from_time < args.from_time) & (jctl.to_time > args.from_time)),
-			((jctl.from_time < args.to_time) & (jctl.to_time > args.to_time)),
-			((jctl.from_time >= args.from_time) & (jctl.to_time <= args.to_time)),
-		]
-
-		query = (
-			frappe.qb.from_(jctl)
-			.from_(jc)
-			.select(
-				jc.name.as_("name"),
-				jctl.name.as_("row_name"),
-				jctl.from_time,
-				jctl.to_time,
-				jc.workstation,
-				jc.workstation_type,
-			)
-			.where(
-				(jctl.parent == jc.name)
-				& (Criterion.any(time_conditions))
-				& (jctl.name != f"{args.name or 'No Name'}")
-				& (jc.name != f"{args.parent or 'No Name'}")
-				& (jc.docstatus < 2)
-			)
-			.orderby(jctl.to_time, order=frappe.qb.desc)
-		)
-
-		if self.workstation_type:
-			query = query.where(jc.workstation_type == self.workstation_type)
-
 		if self.workstation:
 			production_capacity = (
 				frappe.get_cached_value("Workstation", self.workstation, "production_capacity") or 1
 			)
-			query = query.where(jc.workstation == self.workstation)
 
 		if args.get("employee"):
 			# override capacity for employee
 			production_capacity = 1
-			query = query.where(jctl.employee == args.get("employee"))
 
-		existing_time_logs = query.run(as_dict=True)
-
-		if not self.has_overlap(production_capacity, existing_time_logs):
+		if not self.has_overlap(production_capacity, time_logs):
 			return {}
 
-		if not self.workstation and self.workstation_type:
-			if workstation := self.get_workstation_based_on_available_slot(existing_time_logs):
-				self.workstation = workstation
-				return None
+		if not self.workstation and self.workstation_type and time_logs:
+			if workstation_time := self.get_workstation_based_on_available_slot(time_logs):
+				self.workstation = workstation_time.get("workstation")
+				return workstation_time
 
-		return existing_time_logs[0] if existing_time_logs else None
+		return time_logs[0]
 
 	def has_overlap(self, production_capacity, time_logs):
 		overlap = False
@@ -254,13 +308,106 @@ class JobCard(Document):
 			return True
 		return overlap
 
-	def get_workstation_based_on_available_slot(self, existing) -> str | None:
+	def get_time_logs(self, args, doctype, open_job_cards=None):
+		jc = frappe.qb.DocType("Job Card")
+		jctl = frappe.qb.DocType(doctype)
+
+		time_conditions = [
+			((jctl.from_time < args.from_time) & (jctl.to_time > args.from_time)),
+			((jctl.from_time < args.to_time) & (jctl.to_time > args.to_time)),
+			((jctl.from_time >= args.from_time) & (jctl.to_time <= args.to_time)),
+		]
+
+		query = (
+			frappe.qb.from_(jctl)
+			.from_(jc)
+			.select(
+				jc.name.as_("name"),
+				jctl.name.as_("row_name"),
+				jctl.from_time,
+				jctl.to_time,
+				jc.workstation,
+				jc.workstation_type,
+			)
+			.where(
+				(jctl.parent == jc.name)
+				& (Criterion.any(time_conditions))
+				& (jctl.name != f"{args.name or 'No Name'}")
+				& (jc.name != f"{args.parent or 'No Name'}")
+				& (jc.docstatus < 2)
+			)
+			.orderby(jctl.to_time)
+		)
+
+		if self.workstation_type:
+			query = query.where(jc.workstation_type == self.workstation_type)
+
+		if self.workstation:
+			query = query.where(jc.workstation == self.workstation)
+
+		if args.get("employee"):
+			if not open_job_cards and doctype == "Job Card Scheduled Time":
+				return []
+
+			if doctype == "Job Card Time Log":
+				query = query.where(jctl.employee == args.get("employee"))
+			else:
+				query = query.where(jc.name.isin(open_job_cards))
+
+		if doctype != "Job Card Time Log":
+			query = query.where(jc.total_time_in_mins == 0)
+
+		time_logs = query.run(as_dict=True)
+
+		return time_logs
+
+	def get_open_job_cards(self, employee):
+		jc = frappe.qb.DocType("Job Card")
+		jctl = frappe.qb.DocType("Job Card Time Log")
+
+		query = (
+			frappe.qb.from_(jc)
+			.left_join(jctl)
+			.on(jc.name == jctl.parent)
+			.select(jc.name)
+			.where(
+				(jctl.parent == jc.name)
+				& (jc.workstation == self.workstation)
+				& (jctl.employee == employee)
+				& (jc.docstatus < 1)
+				& (jc.name != self.name)
+			)
+		)
+
+		jobs = query.run(as_dict=True)
+		return [job.get("name") for job in jobs] if jobs else []
+
+	def get_workstation_based_on_available_slot(self, existing_time_logs) -> dict:
 		workstations = get_workstations(self.workstation_type)
 		if workstations:
-			busy_workstations = [row.workstation for row in existing]
-			for workstation in workstations:
-				if workstation not in busy_workstations:
-					return workstation
+			busy_workstations = self.time_slot_wise_busy_workstations(existing_time_logs)
+			for time_slot in busy_workstations:
+				available_workstations = sorted(list(set(workstations) - set(busy_workstations[time_slot])))
+				if available_workstations:
+					return frappe._dict(
+						{
+							"workstation": available_workstations[0],
+							"planned_start_time": get_datetime(time_slot[0]),
+							"to_time": get_datetime(time_slot[1]),
+						}
+					)
+
+		return frappe._dict({})
+
+	@staticmethod
+	def time_slot_wise_busy_workstations(existing_time_logs) -> dict:
+		time_slot = OrderedDict()
+		for row in existing_time_logs:
+			from_time = get_datetime(row.from_time).strftime("%Y-%m-%d %H:%M")
+			to_time = get_datetime(row.to_time).strftime("%Y-%m-%d %H:%M")
+			time_slot.setdefault((from_time, to_time), []).append(row.workstation)
+
+		return time_slot
 
 	def schedule_time_logs(self, row):
 		row.remaining_time_in_mins = row.time_in_mins
@@ -277,14 +424,17 @@ class JobCard(Document):
 		# get the last record based on the to time from the job card
 		data = self.get_overlap_for(args)
 
+		if not self.workstation:
+			workstations = get_workstations(self.workstation_type)
+			if workstations:
+				# Get the first workstation
+				self.workstation = workstations[0]
+
 		if not data:
 			row.planned_start_time = args.from_time
 			return
 
 		if data:
-			if not self.workstation:
-				self.workstation = data.workstation
-
 			if data.get("planned_start_time"):
 				args.planned_start_time = get_datetime(data.planned_start_time)
 			else:
@@ -466,7 +616,7 @@ class JobCard(Document):
 
 	def update_time_logs(self, row):
 		self.append(
-			"time_logs",
+			"scheduled_time_logs",
 			{
 				"from_time": row.planned_start_time,
 				"to_time": row.planned_end_time,
@@ -508,6 +658,7 @@ class JobCard(Document):
 				)
 
 	def before_save(self):
+		self.set_expected_and_actual_time()
 		self.set_process_loss()
 
 	def on_submit(self):
@@ -560,6 +711,32 @@ class JobCard(Document):
 					bold(self.for_quantity),
 				)
 			)
+
+	def set_expected_and_actual_time(self):
+		for child_table, start_field, end_field, time_required in [
+			("scheduled_time_logs", "expected_start_date", "expected_end_date", "time_required"),
+			("time_logs", "actual_start_date", "actual_end_date", "total_time_in_mins"),
+		]:
+			if not self.get(child_table):
+				continue
+
+			time_list = []
+			time_in_mins = 0.0
+			for row in self.get(child_table):
+				time_in_mins += flt(row.get("time_in_mins"))
+				for field in ["from_time", "to_time"]:
+					if row.get(field):
+						time_list.append(get_datetime(row.get(field)))
+
+			if time_list:
+				self.set(start_field, min(time_list))
+				if end_field == "actual_end_date" and not self.time_logs[-1].to_time:
+					self.set(end_field, "")
+					return
+
+				self.set(end_field, max(time_list))
+
+			self.set(time_required, time_in_mins)
 
 	def set_process_loss(self):
 		precision = self.precision("total_completed_qty")
@@ -809,6 +986,14 @@ class JobCard(Document):
 		if update_status:
 			self.db_set("status", self.status)
 
+		if self.status in ["Completed", "Work In Progress"]:
+			status = {
+				"Completed": "Off",
+				"Work In Progress": "Production",
+			}.get(self.status)
+
+			self.update_status_in_workstation(status)
+
 	def set_wip_warehouse(self):
 		if not self.wip_warehouse:
 			self.wip_warehouse = frappe.db.get_single_value("Manufacturing Settings", "default_wip_warehouse")
@@ -886,6 +1071,12 @@ class JobCard(Document):
 				return True
 
 		return False
+
+	def update_status_in_workstation(self, status):
+		if not self.workstation:
+			return
+
+		frappe.db.set_value("Workstation", self.workstation, "status", status)
 
 
 @frappe.whitelist()

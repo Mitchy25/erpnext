@@ -14,6 +14,7 @@ frappe.ui.form.on("Journal Entry", {
 			"Repost Payment Ledger",
 			"Asset",
 			"Asset Movement",
+			"Asset Depreciation Schedule",
 			"Repost Accounting Ledger",
 			"Unreconcile Payment",
 			"Unreconcile Payment Entries",
@@ -304,11 +305,11 @@ erpnext.accounts.JournalEntry = class JournalEntry extends frappe.ui.form.Contro
 			}
 
 			if (jvd.party_type && jvd.party) {
-				var party_field = "";
+				let party_field = "";
 				if (jvd.reference_type.indexOf("Sales") === 0) {
-					var party_field = "customer";
+					party_field = "customer";
 				} else if (jvd.reference_type.indexOf("Purchase") === 0) {
-					var party_field = "supplier";
+					party_field = "supplier";
 				}
 
 				if (party_field) {
@@ -682,7 +683,10 @@ $.extend(erpnext.journal_entry, {
 		};
 		if (!frm.doc.multi_currency) {
 			$.extend(filters, {
-				account_currency: frappe.get_doc(":Company", frm.doc.company).default_currency,
+				account_currency: [
+					"in",
+					[frappe.get_doc(":Company", frm.doc.company).default_currency, null],
+				],
 			});
 		}
 		return { filters: filters };

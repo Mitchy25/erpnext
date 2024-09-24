@@ -7,13 +7,13 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "fg_item",
+  "fg_item_qty",
   "item_code",
   "supplier_part_no",
   "item_name",
   "brand",
   "product_bundle",
-  "fg_item",
-  "fg_item_qty",
   "column_break_4",
   "schedule_date",
   "expected_delivery_date",
@@ -181,7 +181,6 @@
    "oldfieldname": "description",
    "oldfieldtype": "Small Text",
    "print_width": "300px",
-   "reqd": 1,
    "width": "300px"
   },
   {
@@ -865,7 +864,7 @@
    "depends_on": "eval:parent.is_subcontracted && !parent.is_old_subcontracting_flow",
    "fieldname": "fg_item",
    "fieldtype": "Link",
-   "label": "Finished Good Item",
+   "label": "Finished Good",
    "mandatory_depends_on": "eval:parent.is_subcontracted && !parent.is_old_subcontracting_flow",
    "options": "Item"
   },
@@ -874,7 +873,7 @@
    "depends_on": "eval:parent.is_subcontracted && !parent.is_old_subcontracting_flow",
    "fieldname": "fg_item_qty",
    "fieldtype": "Float",
-   "label": "Finished Good Item Qty",
+   "label": "Finished Good Qty",
    "mandatory_depends_on": "eval:parent.is_subcontracted && !parent.is_old_subcontracting_flow"
   },
   {

@@ -9,7 +9,7 @@ on:
     types: [opened, labelled, synchronize, reopened]
 
 concurrency:
-  group: server-postgres-develop-${{ github.event.number }}
+  group: server-postgres-develop-${{ github.event_name }}-${{ github.event.number || github.event_name == 'workflow_dispatch' && github.run_id || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -59,7 +59,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v2
         with:
-          node-version: 14
+          node-version: 18
           check-latest: true
 
       - name: Add to Hosts

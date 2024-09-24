@@ -31,7 +31,7 @@ class TestPlaidSettings(unittest.TestCase):
 				frappe.delete_doc(doctype, d.name, force=True)
 
 	def test_plaid_disabled(self):
-		frappe.db.set_value("Plaid Settings", None, "enabled", 0)
+		frappe.db.set_single_value("Plaid Settings", "enabled", 0)
 		self.assertTrue(get_plaid_configuration() == "disabled")
 
 	def test_add_account_type(self):
@@ -41,47 +41,6 @@ class TestPlaidSettings(unittest.TestCase):
 	def test_add_account_subtype(self):
 		add_account_subtype("loan")
 		self.assertEqual(frappe.get_doc("Bank Account Subtype", "loan").name, "loan")
-
-	def test_parent_bank_account_validation(self):
-		if not frappe.db.exists("Bank", "Citi"):
-			frappe.get_doc({"doctype": "Bank", "bank_name": "Citi"}).insert()
-
-		bank_accounts = {
-			"account": {
-				"subtype": "checking",
-				"mask": "0000",
-				"type": "depository",
-				"id": "6GbM6RRQgdfy3lAqGz4JUnpmR948WZFg8DjQK",
-				"name": "Plaid Checking",
-			},
-			"account_id": "6GbM6RRQgdfy3lAqGz4JUnpmR948WZFg8DjQK",
-			"link_session_id": "db673d75-61aa-442a-864f-9b3f174f3725",
-			"accounts": [
-				{
-					"type": "depository",
-					"subtype": "checking",
-					"mask": "0000",
-					"id": "6GbM6RRQgdfy3lAqGz4JUnpmR948WZFg8DjQK",
-					"name": "Plaid Checking",
-				}
-			],
-			"institution": {"institution_id": "ins_6", "name": "Citi"},
-		}
-
-		bank = json.dumps(frappe.get_doc("Bank", "Citi").as_dict(), default=json_handler)
-		company = frappe.db.get_single_value("Global Defaults", "default_company")
-		group_bank_account = frappe.db.get_all(
-			"Account", {"company": company, "account_type": "Bank", "is_group": 1}, pluck="name"
-		)
-		if group_bank_account:
-			frappe.db.set_value("Account", group_bank_account[0], "disabled", 1)
-
-		self.assertRaises(
-			frappe.ValidationError, add_bank_accounts, response=bank_accounts, bank=bank, company=company
-		)
-
-		if group_bank_account:
-			frappe.db.set_value("Account", group_bank_account[0], "disabled", 0)
 
 	def test_new_transaction(self):
 		if not frappe.db.exists("Bank", "Citi"):

@@ -6,6 +6,9 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import cstr
 
 from erpnext.assets.doctype.asset.test_asset import create_asset
+from erpnext.assets.doctype.asset_depreciation_schedule.asset_depreciation_schedule import (
+	get_depr_schedule,
+)
 
 
 class TestAssetShiftAllocation(FrappeTestCase):
@@ -47,7 +50,7 @@ class TestAssetShiftAllocation(FrappeTestCase):
 
 		schedules = [
 			[cstr(d.schedule_date), d.depreciation_amount, d.accumulated_depreciation_amount, d.shift]
-			for d in asset.get("schedules")
+			for d in get_depr_schedule(asset.name, "Active")
 		]
 
 		self.assertEqual(schedules, expected_schedules)
@@ -90,11 +93,9 @@ class TestAssetShiftAllocation(FrappeTestCase):
 
 		asset_shift_allocation.submit()
 
-		asset.reload()
-
 		schedules = [
 			[cstr(d.schedule_date), d.depreciation_amount, d.accumulated_depreciation_amount, d.shift]
-			for d in asset.get("schedules")
+			for d in get_depr_schedule(asset.name, "Active")
 		]
 
 		self.assertEqual(schedules, expected_schedules)

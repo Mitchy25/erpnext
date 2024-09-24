@@ -50,6 +50,7 @@
   "dimension_col_break",
   "project",
   "section_break_34",
+  "purchase_order_item",
   "page_break"
  ],
  "fields": [
@@ -368,6 +369,15 @@
   {
    "fieldname": "column_break_fpyl",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_order_item",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Purchase Order Item",
+   "no_copy": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "idx": 1,

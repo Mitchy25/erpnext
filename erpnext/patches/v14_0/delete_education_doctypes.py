@@ -39,6 +39,7 @@ def execute():
 		frappe.delete_doc("Number Card", card, ignore_missing=True, force=True)
 
 	doctypes = frappe.get_all("DocType", {"module": "education", "custom": 0}, pluck="name")
+
 	for doctype in doctypes:
 		frappe.delete_doc("DocType", doctype, ignore_missing=True)
 

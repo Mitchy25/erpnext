@@ -9,11 +9,26 @@ from frappe.model.document import Document
 from frappe.utils import add_days, add_years, cstr, getdate
 
 
-class FiscalYearIncorrectDate(frappe.ValidationError):
-	pass
-
-
 class FiscalYear(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.accounts.doctype.fiscal_year_company.fiscal_year_company import FiscalYearCompany
+
+		auto_created: DF.Check
+		companies: DF.Table[FiscalYearCompany]
+		disabled: DF.Check
+		is_short_year: DF.Check
+		year: DF.Data
+		year_end_date: DF.Date
+		year_start_date: DF.Date
+	# end: auto-generated types
+
 	def validate(self):
 		self.validate_dates()
 		self.validate_overlap()
@@ -37,23 +52,18 @@ class FiscalYear(Document):
 					)
 
 	def validate_dates(self):
+		self.validate_from_to_dates("year_start_date", "year_end_date")
 		if self.is_short_year:
 			# Fiscal Year can be shorter than one year, in some jurisdictions
 			# under certain circumstances. For example, in the USA and Germany.
 			return
-
-		if getdate(self.year_start_date) > getdate(self.year_end_date):
-			frappe.throw(
-				_("Fiscal Year Start Date should be one year earlier than Fiscal Year End Date"),
-				FiscalYearIncorrectDate,
-			)
 
 		date = getdate(self.year_start_date) + relativedelta(years=1) - relativedelta(days=1)
 
 		if getdate(self.year_end_date) != date:
 			frappe.throw(
 				_("Fiscal Year End Date should be one year after Fiscal Year Start Date"),
-				FiscalYearIncorrectDate,
+				frappe.exceptions.InvalidDates,
 			)
 
 	def on_update(self):

@@ -53,6 +53,11 @@ frappe.query_reports["General Ledger"] = {
 			},
 		},
 		{
+			fieldname: "against_voucher_no",
+			label: __("Against Voucher No"),
+			fieldtype: "Data",
+		},
+		{
 			fieldtype: "Break",
 		},
 		{
@@ -212,6 +217,11 @@ frappe.query_reports["General Ledger"] = {
 			"default": 0
 		},
 		{
+			fieldname: "add_values_in_transaction_currency",
+			label: __("Add Columns in Transaction Currency"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "show_remarks",
 			label: __("Show Remarks"),
 			fieldtype: "Check",
@@ -221,13 +231,7 @@ frappe.query_reports["General Ledger"] = {
 			label: __("Ignore Exchange Rate Revaluation Journals"),
 			fieldtype: "Check",
 		},
-		{
-			fieldname: "ignore_cr_dr_notes",
-			label: __("Ignore System Generated Credit / Debit Notes"),
-			fieldtype: "Check",
-		},
 	],
 };
 
-
-erpnext.utils.add_dimensions('General Ledger', 15)
+erpnext.utils.add_dimensions("General Ledger", 15);

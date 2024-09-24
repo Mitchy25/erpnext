@@ -3,19 +3,16 @@ from erpnext import get_default_company
 
 
 def get_data():
-
-	dashboardData = {
-		'heatmap': False,
-		'heatmap_message': _('This is based on transactions against this Customer. See timeline below for details'),
-		'fieldname': 'customer',
-		'non_standard_fieldnames': {
-			'Payment Entry': 'party',
-			'Quotation': 'party_name',
-			'Opportunity': 'party_name',
+	return {
+		"fieldname": "customer",
+		"non_standard_fieldnames": {
+			"Payment Entry": "party",
+			"Quotation": "party_name",
+			"Opportunity": "party_name",
 			'Medical Objects': 'customer_id',
 			'Sample': 'practitioner_id',
-			'Bank Account': 'party',
-			'Subscription': 'party',
+			"Bank Account": "party",
+			"Subscription": "party",
 			'Journal Entry': 'party',
 			'Customer': 'creation'
 		},

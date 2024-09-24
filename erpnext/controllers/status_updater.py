@@ -91,9 +91,13 @@ status_map = {
 	],
 	"Purchase Receipt": [
 		["Draft", None],
-		["To Bill", "eval:self.per_billed < 100 and self.docstatus == 1"],
+		["To Bill", "eval:self.per_billed == 0 and self.docstatus == 1"],
+		["Partly Billed", "eval:self.per_billed > 0 and self.per_billed < 100 and self.docstatus == 1"],
 		["Return Issued", "eval:self.per_returned == 100 and self.docstatus == 1"],
-		["Completed", "eval:self.per_billed == 100 and self.docstatus == 1"],
+		[
+			"Completed",
+			"eval:(self.per_billed == 100 and self.docstatus == 1) or (self.docstatus == 1 and self.grand_total == 0 and self.per_returned != 100 and self.is_return == 0)",
+		],
 		["Cancelled", "eval:self.docstatus==2"],
 		["Closed", "eval:self.status=='Closed' and self.docstatus != 2"],
 	],
@@ -130,11 +134,6 @@ status_map = {
 			"Manufactured",
 			"eval:self.status != 'Stopped' and self.per_ordered == 100 and self.docstatus == 1 and self.material_request_type == 'Manufacture'",
 		],
-	],
-	"Bank Transaction": [
-		["Unreconciled", "eval:self.docstatus == 1 and self.unallocated_amount>0"],
-		["Reconciled", "eval:self.docstatus == 1 and self.unallocated_amount<=0"],
-		["Cancelled", "eval:self.docstatus == 2"],
 	],
 	"POS Opening Entry": [
 		["Draft", None],
