@@ -212,18 +212,6 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 			},
 			{
 				fieldtype: "Check",
-				label: "Sales Invoice",
-				fieldname: "sales_invoice",
-				onchange: () => this.update_options(),
-			},
-			{
-				fieldtype: "Check",
-				label: "Purchase Invoice",
-				fieldname: "purchase_invoice",
-				onchange: () => this.update_options(),
-			},
-			{
-				fieldtype: "Check",
 				label: "Show Only Exact Amount",
 				fieldname: "exact_match",
 				onchange: () => this.update_options()
@@ -731,7 +719,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					project: values.project,
 					cost_center: values.cost_center,
 					allow_edit: true,
-					user_remark: values.user_remark,
+					user_remark: valuesuser_remark,
 				},
 				callback: (r) => {
 					const doc = frappe.model.sync(r.message);
