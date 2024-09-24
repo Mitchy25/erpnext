@@ -206,6 +206,16 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				label: __("Filters"),
 				depends_on: "eval:doc.action=='Match Against Voucher'",
 			},
+			{
+				fieldname: "column_break_5",
+				fieldtype: "Column Break",
+			},
+			{
+				fieldtype: "Check",
+				label: "Show Only Exact Amount",
+				fieldname: "exact_match",
+				onchange: () => this.update_options()
+			}
 		];
 
 		frappe.call({
