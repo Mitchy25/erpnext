@@ -719,7 +719,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					project: values.project,
 					cost_center: values.cost_center,
 					allow_edit: true,
-					user_remark: valuesuser_remark,
+					user_remark: values.user_remark,
 				},
 				callback: (r) => {
 					const doc = frappe.model.sync(r.message);
