@@ -37,7 +37,7 @@ frappe.ui.form.on("Bank Reconciliation Tool", {
 	},
 
 	refresh: function (frm) {
-		frm.disable_save();
+		// frm.disable_save();
 		frappe.require("bank-reconciliation-tool.bundle.js", () => frm.trigger("make_reconciliation_tool"));
 
 		frm.add_custom_button(__("Upload Bank Statement"), () =>
