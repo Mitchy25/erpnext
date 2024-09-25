@@ -160,8 +160,9 @@ def prepare_chart_data(data, filters):
 	if filters.filter_based_on not in ("Date Range", "Fiscal Year"):
 		filters_filter_based_on = "Date Range"
 		date_field = "purchase_date"
-		filters_from_date = min(data, key=lambda a: a.get(date_field)).get(date_field)
-		filters_to_date = max(data, key=lambda a: a.get(date_field)).get(date_field)
+		filtered_data = [d for d in data if d.get(date_field)]
+		filters_from_date = min(filtered_data, key=lambda a: a.get(date_field)).get(date_field)
+		filters_to_date = max(filtered_data, key=lambda a: a.get(date_field)).get(date_field)
 	else:
 		filters_filter_based_on = filters.filter_based_on
 		date_field = frappe.scrub(filters.date_based_on)
@@ -185,11 +186,12 @@ def prepare_chart_data(data, filters):
 		)
 
 	for d in data:
-		date = d.get(date_field)
-		belongs_to_month = formatdate(date, "MMM YYYY")
+		if d.get(date_field):
+			date = d.get(date_field)
+			belongs_to_month = formatdate(date, "MMM YYYY")
 
-		labels_values_map[belongs_to_month].asset_value += d.get("asset_value")
-		labels_values_map[belongs_to_month].depreciated_amount += d.get("depreciated_amount")
+			labels_values_map[belongs_to_month].asset_value += d.get("asset_value")
+			labels_values_map[belongs_to_month].depreciated_amount += d.get("depreciated_amount")
 
 	return {
 		"data": {

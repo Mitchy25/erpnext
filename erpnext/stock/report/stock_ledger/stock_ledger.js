@@ -59,6 +59,14 @@ frappe.query_reports["Stock Ledger"] = {
 			label: __("Batch No"),
 			fieldtype: "Link",
 			options: "Batch",
+			on_change() {
+				const batch_no = frappe.query_report.get_filter_value("batch_no");
+				if (batch_no) {
+					frappe.query_report.set_filter_value("segregate_serial_batch_bundle", 1);
+				} else {
+					frappe.query_report.set_filter_value("segregate_serial_batch_bundle", 0);
+				}
+			},
 		},
 		{
 			fieldname: "brand",
@@ -90,6 +98,12 @@ frappe.query_reports["Stock Ledger"] = {
 			width: "80",
 			options: "Currency\nFloat",
 			default: "Currency",
+		},
+		{
+			fieldname: "segregate_serial_batch_bundle",
+			label: __("Segregate Serial / Batch Bundle"),
+			fieldtype: "Check",
+			default: 0,
 		},
 	],
 	formatter: function (value, row, column, data, default_formatter) {

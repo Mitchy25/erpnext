@@ -20,14 +20,12 @@ frappe.ui.form.on("Project", {
 	onload: function (frm) {
 		const so = frm.get_docfield("sales_order");
 		so.get_route_options_for_new_doc = () => {
-			if (frm.is_new()) return;
+			if (frm.is_new()) return {};
 			return {
 				customer: frm.doc.customer,
 				project_name: frm.doc.name,
 			};
 		};
-
-		frm.set_query("customer", "erpnext.controllers.queries.customer_query");
 
 		frm.set_query("user", "users", function () {
 			return {

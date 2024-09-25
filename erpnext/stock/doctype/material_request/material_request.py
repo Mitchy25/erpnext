@@ -23,8 +23,54 @@ form_grid_templates = {"items": "templates/form_grid/material_request_grid.html"
 
 
 class MaterialRequest(BuyingController):
-	def get_feed(self):
-		return
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.stock.doctype.material_request_item.material_request_item import MaterialRequestItem
+
+		amended_from: DF.Link | None
+		company: DF.Link
+		customer: DF.Link | None
+		items: DF.Table[MaterialRequestItem]
+		job_card: DF.Link | None
+		letter_head: DF.Link | None
+		material_request_type: DF.Literal[
+			"Purchase", "Material Transfer", "Material Issue", "Manufacture", "Customer Provided"
+		]
+		naming_series: DF.Literal["MAT-MR-.YYYY.-"]
+		per_ordered: DF.Percent
+		per_received: DF.Percent
+		scan_barcode: DF.Data | None
+		schedule_date: DF.Date | None
+		select_print_heading: DF.Link | None
+		set_from_warehouse: DF.Link | None
+		set_warehouse: DF.Link | None
+		status: DF.Literal[
+			"",
+			"Draft",
+			"Submitted",
+			"Stopped",
+			"Cancelled",
+			"Pending",
+			"Partially Ordered",
+			"Partially Received",
+			"Ordered",
+			"Issued",
+			"Transferred",
+			"Received",
+		]
+		tc_name: DF.Link | None
+		terms: DF.TextEditor | None
+		title: DF.Data | None
+		transaction_date: DF.Date
+		transfer_status: DF.Literal["", "Not Started", "In Transit", "Completed"]
+		work_order: DF.Link | None
+	# end: auto-generated types
 
 	def check_if_already_pulled(self):
 		pass
@@ -118,7 +164,7 @@ class MaterialRequest(BuyingController):
 		"""Set title as comma separated list of items"""
 		if not self.title:
 			items = ", ".join([d.item_name for d in self.items][:3])
-			self.title = _("{0} Request for {1}").format(self.material_request_type, items)[:100]
+			self.title = _("{0} Request for {1}").format(_(self.material_request_type), items)[:100]
 
 	def on_submit(self):
 		self.update_requested_qty_in_production_plan()
@@ -227,7 +273,9 @@ class MaterialRequest(BuyingController):
 					d.ordered_qty = flt(mr_items_ordered_qty.get(d.name))
 
 					if mr_qty_allowance:
-						allowed_qty = flt((d.qty + (d.qty * (mr_qty_allowance / 100))), precision)
+						allowed_qty = flt(
+							(d.qty + (d.qty * (mr_qty_allowance / 100))), d.precision("ordered_qty")
+						)
 
 						if d.ordered_qty and d.ordered_qty > allowed_qty:
 							frappe.throw(

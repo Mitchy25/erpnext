@@ -171,47 +171,6 @@ frappe.ui.form.on("Item", {
 			erpnext.toggle_naming_series();
 		}
 
-		if (!frm.doc.published_in_website) {
-			frm.add_custom_button(
-				__("Publish in Website"),
-				function () {
-					frappe.call({
-						method: "erpnext.e_commerce.doctype.website_item.website_item.make_website_item",
-						args: { doc: frm.doc },
-						freeze: true,
-						freeze_message: __("Publishing Item ..."),
-						callback: function (result) {
-							frappe.msgprint({
-								message: __("Website Item {0} has been created.", [
-									repl(
-										'<a href="/app/website-item/%(item_encoded)s" class="strong">%(item)s</a>',
-										{
-											item_encoded: encodeURIComponent(result.message[0]),
-											item: result.message[1],
-										}
-									),
-								]),
-								title: __("Published"),
-								indicator: "green",
-							});
-						},
-					});
-				},
-				__("Actions")
-			);
-		} else {
-			frm.add_custom_button(
-				__("Website Item"),
-				function () {
-					frappe.db.get_value("Website Item", { item_code: frm.doc.name }, "name", (d) => {
-						if (!d.name) frappe.throw(__("Website Item not found"));
-						frappe.set_route("Form", "Website Item", d.name);
-					});
-				},
-				__("View")
-			);
-		}
-
 		erpnext.item.edit_prices_button(frm);
 		erpnext.item.toggle_attributes(frm);
 
@@ -450,14 +409,6 @@ $.extend(erpnext.item, {
 			};
 		};
 
-		frm.fields_dict.customer_items.grid.get_field("customer_name").get_query = function (doc, cdt, cdn) {
-			return { query: "erpnext.controllers.queries.customer_query" };
-		};
-
-		frm.fields_dict.supplier_items.grid.get_field("supplier").get_query = function (doc, cdt, cdn) {
-			return { query: "erpnext.controllers.queries.supplier_query" };
-		};
-
 		frm.fields_dict["item_defaults"].grid.get_field("default_warehouse").get_query = function (
 			doc,
 			cdt,
@@ -636,6 +587,14 @@ $.extend(erpnext.item, {
 			me.multiple_variant_dialog = new frappe.ui.Dialog({
 				title: __("Select Attribute Values"),
 				fields: [
+					frm.doc.image
+						? {
+								fieldtype: "Check",
+								label: __("Create a variant with the template image."),
+								fieldname: "use_template_image",
+								default: 0,
+						  }
+						: null,
 					{
 						fieldtype: "HTML",
 						fieldname: "help",
@@ -643,11 +602,14 @@ $.extend(erpnext.item, {
 							${__("Select at least one value from each of the attributes.")}
 						</label>`,
 					},
-				].concat(fields),
+				]
+					.concat(fields)
+					.filter(Boolean),
 			});
 
 			me.multiple_variant_dialog.set_primary_action(__("Create Variants"), () => {
 				let selected_attributes = get_selected_attributes();
+				let use_template_image = me.multiple_variant_dialog.get_value("use_template_image");
 
 				me.multiple_variant_dialog.hide();
 				frappe.call({
@@ -655,6 +617,7 @@ $.extend(erpnext.item, {
 					args: {
 						item: frm.doc.name,
 						args: selected_attributes,
+						use_template_image: use_template_image,
 					},
 					callback: function (r) {
 						if (r.message === "queued") {
@@ -686,7 +649,7 @@ $.extend(erpnext.item, {
 			let selected_attributes = {};
 			me.multiple_variant_dialog.$wrapper.find(".form-column").each((i, col) => {
 				if (i === 0) return;
-				let attribute_name = $(col).find(".control-label").html().trim();
+				let attribute_name = $(col).find(".column-label").html().trim();
 				selected_attributes[attribute_name] = [];
 				let checked_opts = $(col).find(".checkbox input");
 				checked_opts.each((i, opt) => {
@@ -769,6 +732,15 @@ $.extend(erpnext.item, {
 			});
 		}
 
+		if (frm.doc.image) {
+			fields.push({
+				fieldtype: "Check",
+				label: __("Create a variant with the template image."),
+				fieldname: "use_template_image",
+				default: 0,
+			});
+		}
+
 		var d = new frappe.ui.Dialog({
 			title: __("Create Variant"),
 			fields: fields,
@@ -810,6 +782,7 @@ $.extend(erpnext.item, {
 							args: {
 								item: frm.doc.name,
 								args: d.get_values(),
+								use_template_image: args.use_template_image,
 							},
 							callback: function (r) {
 								var doclist = frappe.model.sync(r.message);
@@ -864,12 +837,6 @@ $.extend(erpnext.item, {
 					let modal = field.$input.parents(".modal-dialog")[0];
 					if (modal) {
 						$(modal).removeClass("modal-dialog-scrollable");
-					}
-				})
-				.on("awesomplete-close", () => {
-					let modal = field.$input.parents(".modal-dialog")[0];
-					if (modal) {
-						$(modal).addClass("modal-dialog-scrollable");
 					}
 				});
 		});

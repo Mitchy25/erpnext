@@ -296,12 +296,9 @@ def get_conditions(filters, date_field):
 	if filters.get("item_group"):
 		lft, rgt = frappe.get_cached_value("Item Group", filters.get("item_group"), ["lft", "rgt"])
 
-		conditions += """ and dt_item.item_group in (select name from
-			`tabItem Group` where lft >= %s and rgt <= %s)""" % (
-			lft,
-			rgt,
-		)
-	
+		conditions += f""" and dt_item.item_group in (select name from
+			`tabItem Group` where lft >= {lft} and rgt <= {rgt})"""
+
 	return conditions
 
 

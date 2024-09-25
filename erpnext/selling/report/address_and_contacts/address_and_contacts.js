@@ -1,6 +1,5 @@
 // Copyright (c) 2016, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
-/* eslint-disable */
 
 frappe.query_reports["Address And Contacts"] = {
 	filters: [
@@ -13,7 +12,7 @@ frappe.query_reports["Address And Contacts"] = {
 			get_query: function () {
 				return {
 					filters: {
-						name: ["in", "Customer,Supplier,Sales Partner"],
+						name: ["in", "Customer,Supplier,Sales Partner,Lead"],
 					},
 				};
 			},

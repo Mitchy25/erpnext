@@ -32,6 +32,7 @@
   "amended_from",
   "accounting_dimensions_section",
   "cost_center",
+  "dimension_col_break",
   "project",
   "currency_and_price_list",
   "currency",
@@ -138,7 +139,6 @@
   "loyalty_amount",
   "column_break_77",
   "loyalty_program",
-  "dont_create_loyalty_points",
   "loyalty_redemption_account",
   "loyalty_redemption_cost_center",
   "contact_and_address_tab",
@@ -196,6 +196,7 @@
   "select_print_heading",
   "language",
   "subscription_section",
+  "subscription",
   "from_date",
   "auto_repeat",
   "column_break_140",
@@ -212,7 +213,6 @@
   "is_internal_customer",
   "is_discounted",
   "remarks",
-  "repost_required",
   "connections_tab"
  ],
  "fields": [
@@ -288,6 +288,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "project",
    "fieldtype": "Link",
    "hide_days": 1,
@@ -353,6 +354,7 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "hide_days": 1,
@@ -526,6 +528,7 @@
    "hide_days": 1,
    "hide_seconds": 1,
    "label": "Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -786,6 +789,7 @@
    "hide_days": 1,
    "hide_seconds": 1,
    "label": "Time Sheets",
+   "no_copy": 1,
    "options": "Sales Invoice Timesheet",
    "print_hide": 1
   },
@@ -2017,6 +2021,12 @@
    "read_only": 1
   },
   {
+   "fieldname": "subscription",
+   "fieldtype": "Link",
+   "label": "Subscription",
+   "options": "Subscription"
+  },
+  {
    "default": "0",
    "depends_on": "eval: doc.apply_discount_on == \"Grand Total\"",
    "fieldname": "is_cash_or_non_trade_discount",
@@ -2124,15 +2134,6 @@
   },
   {
    "default": "0",
-   "fieldname": "repost_required",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Repost Required",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
-   "default": "0",
    "depends_on": "allocate_advances_automatically",
    "description": "Advance payments allocated against orders will only be fetched",
    "fieldname": "only_include_allocated_payments",
@@ -2151,14 +2152,6 @@
    "fieldname": "update_billed_amount_in_delivery_note",
    "fieldtype": "Check",
    "label": "Update Billed Amount in Delivery Note"
-  },
-  {
-   "default": "0",
-   "depends_on": "loyalty_program",
-   "fieldname": "dont_create_loyalty_points",
-   "fieldtype": "Check",
-   "label": "Don't Create Loyalty Points",
-   "no_copy": 1
   },
   {
    "default": "1",
@@ -2181,7 +2174,7 @@
    "link_fieldname": "consolidated_invoice"
   }
  ],
- "modified": "2024-08-09 15:34:26.032115",
+ "modified": "2024-07-18 15:30:39.428519",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

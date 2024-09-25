@@ -145,7 +145,6 @@ def apply_filters_on_query(filters, parent, child, query):
 	return query
 
 
-
 def get_data(filters):
 	purchase_order_entry = get_po_entries(filters)
 	mr_records, procurement_record_against_mr = get_mapped_mr_details(filters)
@@ -176,7 +175,7 @@ def get_data(filters):
 				"purchase_order": po.parent,
 				"supplier": po.supplier,
 				"estimated_cost": flt(mr_record.get("amount")),
-				"actual_cost": flt(pi_records.get(po.name)) or flt(po.amount),
+				"actual_cost": flt(pi_records.get(po.name)),
 				"purchase_order_amt": flt(po.amount),
 				"purchase_order_amt_in_company_currency": flt(po.base_amount),
 				"expected_delivery_date": po.schedule_date,

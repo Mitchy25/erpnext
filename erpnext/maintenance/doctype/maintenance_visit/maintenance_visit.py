@@ -10,8 +10,41 @@ from erpnext.utilities.transaction_base import TransactionBase
 
 
 class MaintenanceVisit(TransactionBase):
-	def get_feed(self):
-		return _("To {0}").format(self.customer_name)
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.maintenance.doctype.maintenance_visit_purpose.maintenance_visit_purpose import (
+			MaintenanceVisitPurpose,
+		)
+
+		address_display: DF.SmallText | None
+		amended_from: DF.Link | None
+		company: DF.Link
+		completion_status: DF.Literal["", "Partially Completed", "Fully Completed"]
+		contact_display: DF.SmallText | None
+		contact_email: DF.Data | None
+		contact_mobile: DF.Data | None
+		contact_person: DF.Link | None
+		customer: DF.Link
+		customer_address: DF.Link | None
+		customer_feedback: DF.SmallText | None
+		customer_group: DF.Link | None
+		customer_name: DF.Data | None
+		maintenance_schedule: DF.Link | None
+		maintenance_schedule_detail: DF.Link | None
+		maintenance_type: DF.Literal["", "Scheduled", "Unscheduled", "Breakdown"]
+		mntc_date: DF.Date
+		mntc_time: DF.Time | None
+		naming_series: DF.Literal["MAT-MVS-.YYYY.-"]
+		purposes: DF.Table[MaintenanceVisitPurpose]
+		status: DF.Literal["", "Draft", "Cancelled", "Submitted"]
+		territory: DF.Link | None
+	# end: auto-generated types
 
 	def validate_serial_no(self):
 		for d in self.get("purposes"):
@@ -72,6 +105,7 @@ class MaintenanceVisit(TransactionBase):
 		if not cancel:
 			status = self.completion_status
 			actual_date = self.mntc_date
+
 		if self.maintenance_schedule_detail:
 			frappe.db.set_value(
 				"Maintenance Schedule Detail", self.maintenance_schedule_detail, "completion_status", status

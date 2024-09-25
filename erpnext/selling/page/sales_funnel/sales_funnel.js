@@ -205,7 +205,7 @@ erpnext.SalesFunnel = class SalesFunnel {
 
 		// calculate height for each data
 		$.each(this.options.data, function (i, d) {
-			d.height = (height * d.value * Math.pow(i + 1, 2)) / me.options.total_weightage + min_height;
+			d.height = (me.options.height * d.value * Math.pow(i + 1, 2)) / me.options.total_weightage;
 		});
 
 		this.elements.canvas = $("<canvas></canvas>")

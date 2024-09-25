@@ -2,7 +2,8 @@
  "allow_copy": 0,
  "allow_guest_to_view": 0,
  "allow_import": 0,
- "allow_rename": 0,
+ "actions": [],
+ "allow_rename": 1,
  "autoname": "field:license_plate",
  "beta": 0,
  "creation": "2016-09-03 03:33:27.680331",
@@ -834,7 +835,8 @@
  "issingle": 0,
  "istable": 0,
  "max_attachments": 0,
- "modified": "2022-06-27 14:48:30.813359",
+ "links": [],
+ "modified": "2024-05-31 06:38:15.399283",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Vehicle",
@@ -859,6 +861,22 @@
    "set_user_permissions": 0,
    "share": 1,
    "submit": 0,
+   "write": 1
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Delivery User"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Delivery Manager",
+   "share": 1,
    "write": 1
   }
  ],

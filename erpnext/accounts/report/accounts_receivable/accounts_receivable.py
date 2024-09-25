@@ -14,7 +14,7 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
 	get_dimension_with_children,
 )
-from erpnext.accounts.utils import get_currency_precision
+from erpnext.accounts.utils import get_currency_precision, get_party_types_from_account_type
 
 #  This report gives a summary of all Outstanding Invoices considering the following
 
@@ -30,7 +30,6 @@ from erpnext.accounts.utils import get_currency_precision
 #  8. Invoice details like Sales Persons, Delivery Notes are also fetched comma separated
 #  9. Report amounts are in party currency if in_party_currency is selected, otherwise company currency
 # 10. This report is based on Payment Ledger Entries
-
 
 
 def execute(filters=None):
@@ -54,9 +53,7 @@ class ReceivablePayableReport:
 	def run(self, args):
 		self.filters.update(args)
 		self.set_defaults()
-		self.party_naming_by = frappe.db.get_value(
-			args.get("naming_by")[0], None, args.get("naming_by")[1]
-		)
+		self.party_naming_by = frappe.db.get_value(args.get("naming_by")[0], None, args.get("naming_by")[1])
 		self.get_columns()
 		self.get_data()
 		self.get_chart_data()
@@ -71,7 +68,7 @@ class ReceivablePayableReport:
 		self.currency_precision = get_currency_precision() or 2
 		self.dr_or_cr = "debit" if self.filters.account_type == "Receivable" else "credit"
 		self.account_type = self.filters.account_type
-		self.party_type = frappe.db.get_all("Party Type", {"account_type": self.account_type}, pluck="name")
+		self.party_type = get_party_types_from_account_type(self.account_type)
 		self.party_details = {}
 		self.invoices = set()
 		self.skip_total_row = 0
@@ -146,8 +143,24 @@ class ReceivablePayableReport:
 				key = (ple.account, ple.voucher_type, ple.voucher_no, ple.party)
 
 			if key not in self.voucher_balance:
-				self.voucher_balance[key] = self.build_voucher_dict(ple)
-
+				self.voucher_balance[key] = frappe._dict(
+					voucher_type=ple.voucher_type,
+					voucher_no=ple.voucher_no,
+					party=ple.party,
+					party_account=ple.account,
+					posting_date=ple.posting_date,
+					account_currency=ple.account_currency,
+					remarks=ple.remarks,
+					invoiced=0.0,
+					paid=0.0,
+					credit_note=0.0,
+					outstanding=0.0,
+					invoiced_in_account_currency=0.0,
+					paid_in_account_currency=0.0,
+					credit_note_in_account_currency=0.0,
+					outstanding_in_account_currency=0.0,
+					cost_center=ple.cost_center,
+				)
 			self.get_invoices(ple)
 
 			if self.filters.get("group_by_party"):
@@ -214,18 +227,6 @@ class ReceivablePayableReport:
 						key = (ple.account, ple.against_voucher_type, return_against, ple.party)
 
 		row = self.voucher_balance.get(key)
-
-		# Build and use a separate row for Employee Advances.
-		# This allows Payments or Journals made against Emp Advance to be processed.
-		if (
-			not row
-			and ple.against_voucher_type == "Employee Advance"
-			and self.filters.handle_employee_advances
-		):
-			_d = self.build_voucher_dict(ple)
-			_d.voucher_type = ple.against_voucher_type
-			_d.voucher_no = ple.against_voucher_no
-			row = self.voucher_balance[key] = _d
 
 		if not row:
 			# no invoice, this is an invoice / stand-alone payment / credit note

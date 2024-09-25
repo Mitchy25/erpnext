@@ -4,7 +4,7 @@
 import unittest
 
 import frappe
-from frappe.utils import flt, nowdate
+from frappe.utils import flt, nowdate, nowtime, today
 
 from erpnext.assets.doctype.asset.asset import (
 	get_asset_account,
@@ -15,7 +15,14 @@ from erpnext.assets.doctype.asset.test_asset import (
 	create_asset_data,
 	set_depreciation_settings_in_company,
 )
+from erpnext.assets.doctype.asset_depreciation_schedule.asset_depreciation_schedule import (
+	get_asset_depr_schedule_doc,
+)
 from erpnext.stock.doctype.item.test_item import create_item
+from erpnext.stock.doctype.serial_and_batch_bundle.test_serial_and_batch_bundle import (
+	get_serial_nos_from_bundle,
+	make_serial_batch_bundle,
+)
 
 
 class TestAssetRepair(unittest.TestCase):
@@ -69,31 +76,31 @@ class TestAssetRepair(unittest.TestCase):
 	def test_warehouse(self):
 		asset_repair = create_asset_repair(stock_consumption=1)
 		self.assertTrue(asset_repair.stock_consumption)
-		self.assertTrue(asset_repair.warehouse)
+		self.assertTrue(asset_repair.stock_items[0].warehouse)
 
 	def test_decrease_stock_quantity(self):
 		asset_repair = create_asset_repair(stock_consumption=1, submit=1)
 		stock_entry = frappe.get_last_doc("Stock Entry")
 
 		self.assertEqual(stock_entry.stock_entry_type, "Material Issue")
-		self.assertEqual(stock_entry.items[0].s_warehouse, asset_repair.warehouse)
+		self.assertEqual(stock_entry.items[0].s_warehouse, asset_repair.stock_items[0].warehouse)
 		self.assertEqual(stock_entry.items[0].item_code, asset_repair.stock_items[0].item_code)
 		self.assertEqual(stock_entry.items[0].qty, asset_repair.stock_items[0].consumed_quantity)
 
 	def test_serialized_item_consumption(self):
-		from erpnext.stock.doctype.serial_no.serial_no import SerialNoRequiredError
 		from erpnext.stock.doctype.stock_entry.test_stock_entry import make_serialized_item
 
 		stock_entry = make_serialized_item()
-		serial_nos = stock_entry.get("items")[0].serial_no
-		serial_no = serial_nos.split("\n")[0]
+		bundle_id = stock_entry.get("items")[0].serial_and_batch_bundle
+		serial_nos = get_serial_nos_from_bundle(bundle_id)
+		serial_no = serial_nos[0]
 
 		# should not raise any error
 		create_asset_repair(
 			stock_consumption=1,
 			item_code=stock_entry.get("items")[0].item_code,
 			warehouse="_Test Warehouse - _TC",
-			serial_no=serial_no,
+			serial_no=[serial_no],
 			submit=1,
 		)
 
@@ -105,16 +112,16 @@ class TestAssetRepair(unittest.TestCase):
 		)
 
 		asset_repair.repair_status = "Completed"
-		self.assertRaises(SerialNoRequiredError, asset_repair.submit)
+		self.assertRaises(frappe.ValidationError, asset_repair.submit)
 
-	def test_increase_in_asset_value_due_to_stock_consumption(self):
+	def test_no_increase_in_asset_value_when_not_capitalized(self):
 		asset = create_asset(calculate_depreciation=1, submit=1)
 		initial_asset_value = get_asset_value_after_depreciation(asset.name)
-		asset_repair = create_asset_repair(asset=asset, stock_consumption=1, submit=1)
+		create_asset_repair(asset=asset, stock_consumption=1, submit=1)
 		asset.reload()
 
 		increase_in_asset_value = get_asset_value_after_depreciation(asset.name) - initial_asset_value
-		self.assertEqual(asset_repair.stock_items[0].total_value, increase_in_asset_value)
+		self.assertEqual(increase_in_asset_value, 0)
 
 	def test_increase_in_asset_value_due_to_repair_cost_capitalisation(self):
 		asset = create_asset(calculate_depreciation=1, submit=1)
@@ -133,7 +140,6 @@ class TestAssetRepair(unittest.TestCase):
 		set_depreciation_settings_in_company(company="_Test Company with perpetual inventory")
 
 		asset_category = frappe.get_doc("Asset Category", "Computers")
-		asset_category.enable_cwip_accounting = 0
 		asset_category.append(
 			"accounts",
 			{
@@ -179,7 +185,7 @@ class TestAssetRepair(unittest.TestCase):
 			frappe.get_doc("Purchase Invoice", asset_repair.purchase_invoice).items[0].expense_account
 		)
 		stock_entry_expense_account = (
-			frappe.get_doc("Stock Entry", asset_repair.stock_entry).get("items")[0].expense_account
+			frappe.get_doc("Stock Entry", {"asset_repair": asset_repair.name}).get("items")[0].expense_account
 		)
 
 		expected_values = {
@@ -234,15 +240,31 @@ class TestAssetRepair(unittest.TestCase):
 
 	def test_increase_in_asset_life(self):
 		asset = create_asset(calculate_depreciation=1, submit=1)
+
+		first_asset_depr_schedule = get_asset_depr_schedule_doc(asset.name, "Active")
+		self.assertEqual(first_asset_depr_schedule.status, "Active")
+
 		initial_num_of_depreciations = num_of_depreciations(asset)
 		create_asset_repair(asset=asset, capitalize_repair_cost=1, submit=1)
+
 		asset.reload()
+		first_asset_depr_schedule.load_from_db()
+
+		second_asset_depr_schedule = get_asset_depr_schedule_doc(asset.name, "Active")
+		self.assertEqual(second_asset_depr_schedule.status, "Active")
+		self.assertEqual(first_asset_depr_schedule.status, "Cancelled")
 
 		self.assertEqual((initial_num_of_depreciations + 1), num_of_depreciations(asset))
 		self.assertEqual(
-			asset.schedules[-1].accumulated_depreciation_amount,
+			second_asset_depr_schedule.get("depreciation_schedule")[-1].accumulated_depreciation_amount,
 			asset.finance_books[0].value_after_depreciation,
 		)
+
+	def test_asset_repiar_link_in_stock_entry(self):
+		asset = create_asset(calculate_depreciation=1, submit=1)
+		asset_repair = create_asset_repair(asset=asset, stock_consumption=1, submit=1)
+		stock_entry = frappe.get_last_doc("Stock Entry")
+		self.assertEqual(stock_entry.asset_repair, asset_repair.name)
 
 
 def num_of_depreciations(asset):
@@ -273,14 +295,35 @@ def create_asset_repair(**args):
 
 	if args.stock_consumption:
 		asset_repair.stock_consumption = 1
-		asset_repair.warehouse = args.warehouse or create_warehouse("Test Warehouse", company=asset.company)
+		warehouse = args.warehouse or create_warehouse("Test Warehouse", company=asset.company)
+
+		bundle = None
+		if args.serial_no:
+			bundle = make_serial_batch_bundle(
+				frappe._dict(
+					{
+						"item_code": args.item_code,
+						"warehouse": warehouse,
+						"company": frappe.get_cached_value("Warehouse", warehouse, "company"),
+						"qty": (flt(args.stock_qty) or 1) * -1,
+						"voucher_type": "Asset Repair",
+						"type_of_transaction": "Asset Repair",
+						"serial_nos": args.serial_no,
+						"posting_date": today(),
+						"posting_time": nowtime(),
+						"do_not_submit": 1,
+					}
+				)
+			).name
+
 		asset_repair.append(
 			"stock_items",
 			{
 				"item_code": args.item_code or "_Test Stock Item",
+				"warehouse": warehouse,
 				"valuation_rate": args.rate if args.get("rate") is not None else 100,
 				"consumed_quantity": args.qty or 1,
-				"serial_no": args.serial_no,
+				"serial_and_batch_bundle": bundle,
 			},
 		)
 
@@ -297,7 +340,7 @@ def create_asset_repair(**args):
 			stock_entry.append(
 				"items",
 				{
-					"t_warehouse": asset_repair.warehouse,
+					"t_warehouse": asset_repair.stock_items[0].warehouse,
 					"item_code": asset_repair.stock_items[0].item_code,
 					"qty": asset_repair.stock_items[0].consumed_quantity,
 					"basic_rate": args.rate if args.get("rate") is not None else 100,
@@ -315,7 +358,7 @@ def create_asset_repair(**args):
 				company=asset.company,
 				expense_account=frappe.db.get_value("Company", asset.company, "default_expense_account"),
 				cost_center=asset_repair.cost_center,
-				warehouse=asset_repair.warehouse,
+				warehouse=args.warehouse or create_warehouse("Test Warehouse", company=asset.company),
 			)
 			asset_repair.purchase_invoice = pi.name
 

@@ -124,6 +124,7 @@
    "fieldname": "rate",
    "fieldtype": "Currency",
    "label": "Rate",
+   "options": "Company:company:default_currency",
    "reqd": 1
   },
   {

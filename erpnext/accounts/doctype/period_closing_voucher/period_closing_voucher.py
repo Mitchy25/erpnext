@@ -15,6 +15,26 @@ from erpnext.controllers.accounts_controller import AccountsController
 
 
 class PeriodClosingVoucher(AccountsController):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		amended_from: DF.Link | None
+		closing_account_head: DF.Link
+		company: DF.Link
+		error_message: DF.Text | None
+		fiscal_year: DF.Link
+		gle_processing_status: DF.Literal["In Progress", "Completed", "Failed"]
+		posting_date: DF.Date
+		remarks: DF.SmallText
+		transaction_date: DF.Date | None
+		year_start_date: DF.Date | None
+	# end: auto-generated types
+
 	def validate(self):
 		self.validate_account_head()
 		self.validate_posting_date()
@@ -116,18 +136,28 @@ class PeriodClosingVoucher(AccountsController):
 
 	def check_if_previous_year_closed(self):
 		last_year_closing = add_days(self.year_start_date, -1)
-
 		previous_fiscal_year = get_fiscal_year(last_year_closing, company=self.company, boolean=True)
+		if not previous_fiscal_year:
+			return
 
-		if previous_fiscal_year and not frappe.db.exists(
+		previous_fiscal_year_start_date = previous_fiscal_year[0][1]
+		if not frappe.db.exists(
 			"GL Entry",
-			{"posting_date": ("<=", last_year_closing), "company": self.company, "is_cancelled": 0},
+			{
+				"posting_date": ("between", [previous_fiscal_year_start_date, last_year_closing]),
+				"company": self.company,
+				"is_cancelled": 0,
+			},
 		):
 			return
 
-		if previous_fiscal_year and not frappe.db.exists(
+		if not frappe.db.exists(
 			"Period Closing Voucher",
-			{"posting_date": ("<=", last_year_closing), "docstatus": 1, "company": self.company},
+			{
+				"posting_date": ("between", [previous_fiscal_year_start_date, last_year_closing]),
+				"docstatus": 1,
+				"company": self.company,
+			},
 		):
 			frappe.throw(_("Previous Year is not closed, please close it first"))
 

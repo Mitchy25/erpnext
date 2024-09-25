@@ -7,13 +7,81 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.utils import flt
 
 from erpnext.buying.doctype.purchase_order.purchase_order import is_subcontracting_order_created
-from erpnext.buying.doctype.purchase_order.purchase_order import update_status as update_po_status
+from erpnext.buying.utils import check_on_hold_or_closed_status
 from erpnext.controllers.subcontracting_controller import SubcontractingController
 from erpnext.stock.stock_balance import update_bin_qty
 from erpnext.stock.utils import get_bin
 
 
 class SubcontractingOrder(SubcontractingController):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.stock.doctype.landed_cost_taxes_and_charges.landed_cost_taxes_and_charges import (
+			LandedCostTaxesandCharges,
+		)
+		from erpnext.subcontracting.doctype.subcontracting_order_item.subcontracting_order_item import (
+			SubcontractingOrderItem,
+		)
+		from erpnext.subcontracting.doctype.subcontracting_order_service_item.subcontracting_order_service_item import (
+			SubcontractingOrderServiceItem,
+		)
+		from erpnext.subcontracting.doctype.subcontracting_order_supplied_item.subcontracting_order_supplied_item import (
+			SubcontractingOrderSuppliedItem,
+		)
+
+		additional_costs: DF.Table[LandedCostTaxesandCharges]
+		address_display: DF.SmallText | None
+		amended_from: DF.Link | None
+		billing_address: DF.Link | None
+		billing_address_display: DF.SmallText | None
+		company: DF.Link
+		contact_display: DF.SmallText | None
+		contact_email: DF.SmallText | None
+		contact_mobile: DF.SmallText | None
+		contact_person: DF.Link | None
+		cost_center: DF.Link | None
+		distribute_additional_costs_based_on: DF.Literal["Qty", "Amount"]
+		items: DF.Table[SubcontractingOrderItem]
+		letter_head: DF.Link | None
+		naming_series: DF.Literal["SC-ORD-.YYYY.-"]
+		per_received: DF.Percent
+		project: DF.Link | None
+		purchase_order: DF.Link
+		schedule_date: DF.Date | None
+		select_print_heading: DF.Link | None
+		service_items: DF.Table[SubcontractingOrderServiceItem]
+		set_reserve_warehouse: DF.Link | None
+		set_warehouse: DF.Link | None
+		shipping_address: DF.Link | None
+		shipping_address_display: DF.SmallText | None
+		status: DF.Literal[
+			"Draft",
+			"Open",
+			"Partially Received",
+			"Completed",
+			"Material Transferred",
+			"Partial Material Transferred",
+			"Cancelled",
+			"Closed",
+		]
+		supplied_items: DF.Table[SubcontractingOrderSuppliedItem]
+		supplier: DF.Link
+		supplier_address: DF.Link | None
+		supplier_name: DF.Data
+		supplier_warehouse: DF.Link
+		title: DF.Data | None
+		total: DF.Currency
+		total_additional_costs: DF.Currency
+		total_qty: DF.Float
+		transaction_date: DF.Date
+	# end: auto-generated types
+
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
@@ -31,6 +99,12 @@ class SubcontractingOrder(SubcontractingController):
 			}
 		]
 
+	def onload(self):
+		self.set_onload(
+			"over_transfer_allowance",
+			frappe.db.get_single_value("Buying Settings", "over_transfer_allowance"),
+		)
+
 	def before_validate(self):
 		super().before_validate()
 
@@ -45,16 +119,10 @@ class SubcontractingOrder(SubcontractingController):
 
 	def on_submit(self):
 		self.update_prevdoc_status()
-		self.update_requested_qty()
-		self.update_ordered_qty_for_subcontracting()
-		self.update_reserved_qty_for_subcontracting()
 		self.update_status()
 
 	def on_cancel(self):
 		self.update_prevdoc_status()
-		self.update_requested_qty()
-		self.update_ordered_qty_for_subcontracting()
-		self.update_reserved_qty_for_subcontracting()
 		self.update_status()
 
 	def validate_purchase_order_for_subcontracting(self):
@@ -173,7 +241,14 @@ class SubcontractingOrder(SubcontractingController):
 		for si in self.service_items:
 			if si.fg_item:
 				item = frappe.get_doc("Item", si.fg_item)
-				bom = frappe.db.get_value("BOM", {"item": item.item_code, "is_active": 1, "is_default": 1})
+				bom = (
+					frappe.db.get_value(
+						"Subcontracting BOM",
+						{"finished_good": item.item_code, "is_active": 1},
+						"finished_good_bom",
+					)
+					or item.default_bom
+				)
 
 				items.append(
 					{
@@ -184,6 +259,7 @@ class SubcontractingOrder(SubcontractingController):
 						"qty": si.fg_item_qty,
 						"stock_uom": item.stock_uom,
 						"bom": bom,
+						"purchase_order_item": si.purchase_order_item,
 						"material_request": si.material_request,
 						"material_request_item": si.material_request_item,
 					}
@@ -194,13 +270,17 @@ class SubcontractingOrder(SubcontractingController):
 						si.item_name or si.item_code
 					)
 				)
-		else:
+
+		if items:
 			for item in items:
 				self.append("items", item)
-			else:
-				self.set_missing_values()
+
+		self.set_missing_values()
 
 	def update_status(self, status=None, update_modified=True):
+		if self.status == "Closed" and self.status != status:
+			check_on_hold_or_closed_status("Purchase Order", self.purchase_order)
+
 		if self.docstatus >= 1 and not status:
 			if self.docstatus == 1:
 				if self.status == "Draft":
@@ -231,13 +311,12 @@ class SubcontractingOrder(SubcontractingController):
 			elif self.docstatus == 2:
 				status = "Cancelled"
 
-		if status:
-			frappe.db.set_value(
-				"Subcontracting Order", self.name, "status", status, update_modified=update_modified
-			)
+		if status and self.status != status:
+			self.db_set("status", status, update_modified=update_modified)
 
-			if status == "Closed":
-				update_po_status("Closed", self.purchase_order)
+		self.update_requested_qty()
+		self.update_ordered_qty_for_subcontracting()
+		self.update_reserved_qty_for_subcontracting()
 
 
 @frappe.whitelist()
@@ -246,9 +325,11 @@ def make_subcontracting_receipt(source_name, target_doc=None):
 
 
 def get_mapped_subcontracting_receipt(source_name, target_doc=None):
-	def update_item(obj, target, source_parent):
-		target.qty = flt(obj.qty) - flt(obj.received_qty)
-		target.amount = (flt(obj.qty) - flt(obj.received_qty)) * flt(obj.rate)
+	def update_item(source, target, source_parent):
+		target.purchase_order = source_parent.purchase_order
+		target.purchase_order_item = source.purchase_order_item
+		target.qty = flt(source.qty) - flt(source.received_qty)
+		target.amount = (flt(source.qty) - flt(source.received_qty)) * flt(source.rate)
 
 	target_doc = get_mapped_doc(
 		"Subcontracting Order",
@@ -256,7 +337,10 @@ def get_mapped_subcontracting_receipt(source_name, target_doc=None):
 		{
 			"Subcontracting Order": {
 				"doctype": "Subcontracting Receipt",
-				"field_map": {"supplier_warehouse": "supplier_warehouse"},
+				"field_map": {
+					"supplier_warehouse": "supplier_warehouse",
+					"set_warehouse": "set_warehouse",
+				},
 				"validation": {
 					"docstatus": ["=", 1],
 				},
@@ -279,8 +363,8 @@ def get_mapped_subcontracting_receipt(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def update_subcontracting_order_status(sco):
+def update_subcontracting_order_status(sco, status=None):
 	if isinstance(sco, str):
 		sco = frappe.get_doc("Subcontracting Order", sco)
 
-	sco.update_status()
+	sco.update_status(status)

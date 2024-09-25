@@ -9,7 +9,7 @@ from frappe import _, throw
 from frappe.model import child_table_fields, default_fields
 from frappe.model.meta import get_field_precision
 from frappe.model.utils import get_fetch_values
-from frappe.query_builder.functions import CombineDatetime, IfNull, Sum
+from frappe.query_builder.functions import IfNull, Sum
 from frappe.utils import add_days, add_months, cint, cstr, flt, getdate
 
 from erpnext import get_company_currency
@@ -20,7 +20,6 @@ from erpnext.accounts.doctype.pricing_rule.pricing_rule import (
 from erpnext.setup.doctype.brand.brand import get_brand_defaults
 from erpnext.setup.doctype.item_group.item_group import get_item_group_defaults
 from erpnext.setup.utils import get_exchange_rate
-from erpnext.stock.doctype.batch.batch import get_batch_no
 from erpnext.stock.doctype.item.item import get_item_defaults, get_uom_conv_factor
 from erpnext.stock.doctype.item_manufacturer.item_manufacturer import get_item_manufacturer_part_no
 from erpnext.stock.doctype.price_list.price_list import get_price_list_details
@@ -115,18 +114,12 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		if args.get(key) is None:
 			args[key] = value
 
-	if args.get("update_stock"):
-		if frappe.get_cached_value("Item", args.get("item_code"), "has_batch_no") and not args.batch_no:
-			batch_results = get_batch_no(args.get("item_code"), args.get("warehouse"), args.get("qty"), cur_batch_no=args.get(args.batch_no), return_error=False, return_shortdated=True)
-			if batch_results:
-				args.batch_no, args.shortdated_batch = batch_results
+	data = get_pricing_rule_for_item(args, doc=doc, for_validate=for_validate)
 
 	
 	data = get_pricing_rule_for_item(args, doc, for_validate=for_validate)
 	
 	out.update(data)
-
-	update_stock(args, out)
 
 	if args.transaction_date and item.lead_time_days:
 		out.schedule_date = out.lead_time_date = add_days(args.transaction_date, item.lead_time_days)
@@ -147,37 +140,6 @@ def remove_standard_fields(details):
 	for key in child_table_fields + default_fields:
 		details.pop(key, None)
 	return details
-
-
-def update_stock(args, out):
-	if (
-		(
-			args.get("doctype") == "Delivery Note"
-			or (args.get("doctype") == "Sales Invoice" and args.get("update_stock"))
-		)
-		and out.warehouse
-		and out.stock_qty > 0
-	):
-		out["ignore_serial_nos"] = args.get("ignore_serial_nos")
-
-		if out.has_batch_no and not args.get("batch_no"):
-			out.batch_no = get_batch_no(out.item_code, out.warehouse, out.qty)
-			
-			actual_batch_qty = get_batch_qty(out.batch_no, out.warehouse, out.item_code)
-			if actual_batch_qty:
-				out.update(actual_batch_qty)
-
-		if out.has_serial_no and args.get("batch_no"):
-			reserved_so = get_so_reservation_for_item(args)
-			out.batch_no = args.get("batch_no")
-			out.serial_no = get_serial_no(out, args.serial_no, sales_order=reserved_so)
-
-		elif out.has_serial_no:
-			reserved_so = get_so_reservation_for_item(args)
-			out.serial_no = get_serial_no(out, args.serial_no, sales_order=reserved_so)
-
-	if not out.serial_no:
-		out.pop("serial_no", None)
 
 
 def set_valuation_rate(out, args):
@@ -236,7 +198,6 @@ def process_string_args(args):
 	return args
 
 
-@frappe.whitelist()
 def get_item_code(barcode=None, serial_no=None):
 	if barcode:
 		item_code = frappe.db.get_value("Item Barcode", {"barcode": barcode}, fieldname=["parent"])
@@ -569,8 +530,8 @@ def update_barcode_value(out):
 
 
 def get_barcode_data(items_list=None, item_code=None):
-	# get itemwise batch no data
-	# exmaple: {'LED-GRE': [Batch001, Batch002]}
+	# get item-wise batch no data
+	# example: {'LED-GRE': [Batch001, Batch002]}
 	# where LED-GRE is item code, SN0001 is serial no and Pune is warehouse
 
 	itemwise_barcode = {}
@@ -622,7 +583,7 @@ def get_item_tax_info(company, tax_category, item_codes, item_rates=None, item_t
 		args = {
 			"company": company,
 			"tax_category": tax_category,
-			"net_rate": item_rates.get(item_code[1]),
+			"base_net_rate": item_rates.get(item_code[1]),
 		}
 
 		if item_tax_templates:
@@ -712,7 +673,7 @@ def is_within_valid_range(args, tax):
 	if not flt(tax.maximum_net_rate):
 		# No range specified, just ignore
 		return True
-	elif flt(tax.minimum_net_rate) <= flt(args.get("net_rate")) <= flt(tax.maximum_net_rate):
+	elif flt(tax.minimum_net_rate) <= flt(args.get("base_net_rate")) <= flt(tax.maximum_net_rate):
 		return True
 
 	return False
@@ -885,12 +846,16 @@ def get_price_list_rate(args, item_doc, out=None):
 		if price_list_rate is None or frappe.db.get_single_value(
 			"Stock Settings", "update_existing_price_list_rate"
 		):
-			insert_item_price(args)
+			if args.price_list and args.rate:
+				insert_item_price(args)
 
-		if price_list_rate is None:
-			return out
+			if not price_list_rate:
+				return out
 
 		out.price_list_rate = flt(price_list_rate) * flt(args.plc_conversion_rate) / flt(args.conversion_rate)
+
+		if frappe.db.get_single_value("Buying Settings", "disable_last_purchase_rate"):
+			return out
 
 		if frappe.db.get_single_value("Buying Settings", "disable_last_purchase_rate"):
 			return out
@@ -909,14 +874,6 @@ def get_price_list_rate(args, item_doc, out=None):
 
 def insert_item_price(args):
 	"""Insert Item Price if Price List and Price List Rate are specified and currency is the same"""
-	if (
-		not args.price_list
-		or not args.rate
-		or args.get("is_internal_supplier")
-		or args.get("is_internal_customer")
-	):
-		return
-
 	if frappe.db.get_value("Price List", args.price_list, "currency", cache=True) == args.currency and cint(
 		frappe.db.get_single_value("Stock Settings", "auto_insert_price_list_rate_if_missing")
 	):
@@ -929,7 +886,12 @@ def insert_item_price(args):
 
 			item_price = frappe.db.get_value(
 				"Item Price",
-				{"item_code": args.item_code, "price_list": args.price_list, "currency": args.currency},
+				{
+					"item_code": args.item_code,
+					"price_list": args.price_list,
+					"currency": args.currency,
+					"uom": args.stock_uom,
+				},
 				["name", "price_list_rate"],
 				as_dict=1,
 			)
@@ -1199,30 +1161,6 @@ def get_pos_profile(company, pos_profile=None, user=None):
 	return pos_profile and pos_profile[0] or None
 
 
-def get_serial_nos_by_fifo(args, sales_order=None):
-	if frappe.db.get_single_value("Stock Settings", "automatically_set_serial_nos_based_on_fifo"):
-		sn = frappe.qb.DocType("Serial No")
-		query = (
-			frappe.qb.from_(sn)
-			.select(sn.name)
-			.where((sn.item_code == args.item_code) & (sn.warehouse == args.warehouse))
-			.orderby(CombineDatetime(sn.purchase_date, sn.purchase_time))
-			.limit(abs(cint(args.stock_qty)))
-		)
-
-		if sales_order:
-			query = query.where(sn.sales_order == sales_order)
-		if args.batch_no:
-			query = query.where(sn.batch_no == args.batch_no)
-		if args.ignore_serial_nos:
-			query = query.where(sn.name.notin(args.ignore_serial_nos))
-
-		serial_nos = query.run(as_list=True)
-		serial_nos = [s[0] for s in serial_nos]
-
-		return "\n".join(serial_nos)
-
-
 @frappe.whitelist()
 def get_conversion_factor(item_code, uom):
 	variant_of = frappe.db.get_value("Item", item_code, "variant_of", cache=True)
@@ -1286,45 +1224,6 @@ def get_company_total_stock(item_code, company):
 		.select(Sum(bin.actual_qty))
 		.where((wh.company == company) & (bin.item_code == item_code))
 	).run()[0][0]
-
-
-@frappe.whitelist()
-def get_serial_no_details(item_code, warehouse, stock_qty, serial_no):
-	args = frappe._dict(
-		{"item_code": item_code, "warehouse": warehouse, "stock_qty": stock_qty, "serial_no": serial_no}
-	)
-	serial_no = get_serial_no(args)
-	return {"serial_no": serial_no}
-
-
-@frappe.whitelist()
-def get_bin_details_and_serial_nos(item_code, warehouse, has_batch_no=None, stock_qty=None, serial_no=None):
-	bin_details_and_serial_nos = {}
-	bin_details_and_serial_nos.update(get_bin_details(item_code, warehouse))
-	if flt(stock_qty) > 0:
-		if has_batch_no:
-			args = frappe._dict({"item_code": item_code, "warehouse": warehouse, "stock_qty": stock_qty})
-			serial_no = get_serial_no(args)
-			bin_details_and_serial_nos.update({"serial_no": serial_no})
-			return bin_details_and_serial_nos
-
-		bin_details_and_serial_nos.update(get_serial_no_details(item_code, warehouse, stock_qty, serial_no))
-
-	return bin_details_and_serial_nos
-
-
-@frappe.whitelist()
-def get_batch_qty_and_serial_no(batch_no, stock_qty, warehouse, item_code, has_serial_no):
-	batch_qty_and_serial_no = {}
-	batch_qty_and_serial_no.update(get_batch_qty(batch_no, warehouse, item_code))
-
-	if (flt(batch_qty_and_serial_no.get("actual_batch_qty")) >= flt(stock_qty)) and has_serial_no:
-		args = frappe._dict(
-			{"item_code": item_code, "warehouse": warehouse, "stock_qty": stock_qty, "batch_no": batch_no}
-		)
-		serial_no = get_serial_no(args)
-		batch_qty_and_serial_no.update({"serial_no": serial_no})
-	return batch_qty_and_serial_no
 
 
 @frappe.whitelist()
@@ -1500,33 +1399,8 @@ def get_gross_profit(out):
 
 @frappe.whitelist()
 def get_serial_no(args, serial_nos=None, sales_order=None):
-	serial_no = None
-	if isinstance(args, str):
-		args = json.loads(args)
-		args = frappe._dict(args)
-	if args.get("doctype") == "Sales Invoice" and not args.get("update_stock"):
-		return ""
-	if args.get("warehouse") and args.get("stock_qty") and args.get("item_code"):
-		has_serial_no = frappe.get_value("Item", {"item_code": args.item_code}, "has_serial_no")
-		if args.get("batch_no") and has_serial_no == 1:
-			return get_serial_nos_by_fifo(args, sales_order)
-		elif has_serial_no == 1:
-			args = json.dumps(
-				{
-					"item_code": args.get("item_code"),
-					"warehouse": args.get("warehouse"),
-					"stock_qty": args.get("stock_qty"),
-					"ignore_serial_nos": args.get("ignore_serial_nos"),
-				}
-			)
-			args = process_args(args)
-			serial_no = get_serial_nos_by_fifo(args, sales_order)
-
-	if not serial_no and serial_nos:
-		# For POS
-		serial_no = serial_nos
-
-	return serial_no
+	serial_nos = serial_nos or []
+	return serial_nos
 
 
 def update_party_blanket_order(args, out):
@@ -1571,41 +1445,3 @@ def get_blanket_order_details(args):
 		blanket_order_details = blanket_order_details[0] if blanket_order_details else ""
 
 	return blanket_order_details
-
-
-def get_so_reservation_for_item(args):
-	reserved_so = None
-	if args.get("against_sales_order"):
-		if get_reserved_qty_for_so(args.get("against_sales_order"), args.get("item_code")):
-			reserved_so = args.get("against_sales_order")
-	elif args.get("against_sales_invoice"):
-		sales_order = frappe.db.get_all(
-			"Sales Invoice Item",
-			filters={
-				"parent": args.get("against_sales_invoice"),
-				"item_code": args.get("item_code"),
-				"docstatus": 1,
-			},
-			fields="sales_order",
-		)
-		if sales_order and sales_order[0]:
-			if get_reserved_qty_for_so(sales_order[0].sales_order, args.get("item_code")):
-				reserved_so = sales_order[0]
-	elif args.get("sales_order"):
-		if get_reserved_qty_for_so(args.get("sales_order"), args.get("item_code")):
-			reserved_so = args.get("sales_order")
-	return reserved_so
-
-
-def get_reserved_qty_for_so(sales_order, item_code):
-	reserved_qty = frappe.db.get_value(
-		"Sales Order Item",
-		filters={
-			"parent": sales_order,
-			"item_code": item_code,
-			"ensure_delivery_based_on_produced_serial_no": 1,
-		},
-		fieldname="sum(qty)",
-	)
-
-	return reserved_qty or 0

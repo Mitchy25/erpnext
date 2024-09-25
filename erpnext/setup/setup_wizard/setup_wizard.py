@@ -5,7 +5,8 @@
 import frappe
 from frappe import _
 
-from .operations import install_fixtures as fixtures
+from erpnext.setup.demo import setup_demo_data
+from erpnext.setup.setup_wizard.operations import install_fixtures as fixtures
 
 
 def get_setup_stages(args=None):
@@ -58,11 +59,14 @@ def setup_defaults(args):
 	fixtures.install_defaults(frappe._dict(args))
 
 
-
 def fin(args):
 	frappe.local.message_log = []
 	login_as_first_user(args)
 
+
+def setup_demo(args):
+	if args.get("setup_demo"):
+		frappe.enqueue(setup_demo_data, enqueue_after_commit=True, at_front=True)
 
 
 def login_as_first_user(args):

@@ -10,6 +10,27 @@ from frappe.utils import add_days, add_months, add_years, getdate, nowdate
 
 
 class AssetMaintenance(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.assets.doctype.asset_maintenance_task.asset_maintenance_task import AssetMaintenanceTask
+
+		asset_category: DF.ReadOnly | None
+		asset_maintenance_tasks: DF.Table[AssetMaintenanceTask]
+		asset_name: DF.Link
+		company: DF.Link
+		item_code: DF.ReadOnly | None
+		item_name: DF.ReadOnly | None
+		maintenance_manager: DF.Data | None
+		maintenance_manager_name: DF.ReadOnly | None
+		maintenance_team: DF.Link
+	# end: auto-generated types
+
 	def validate(self):
 		for task in self.get("asset_maintenance_tasks"):
 			if task.end_date and (getdate(task.start_date) >= getdate(task.end_date)):
@@ -23,6 +44,11 @@ class AssetMaintenance(Document):
 		for task in self.get("asset_maintenance_tasks"):
 			assign_tasks(self.name, task.assign_to, task.maintenance_task, task.next_due_date)
 		self.sync_maintenance_tasks()
+
+	def after_delete(self):
+		asset = frappe.get_doc("Asset", self.asset_name)
+		if asset.status == "In Maintenance":
+			asset.set_status()
 
 	def sync_maintenance_tasks(self):
 		tasks_names = []
@@ -42,7 +68,6 @@ class AssetMaintenance(Document):
 				maintenance_log.db_set("maintenance_status", "Cancelled")
 
 
-@frappe.whitelist()
 def assign_tasks(asset_maintenance_name, assign_to_member, maintenance_task, next_due_date):
 	team_member = frappe.db.get_value("User", assign_to_member, "email")
 	args = {

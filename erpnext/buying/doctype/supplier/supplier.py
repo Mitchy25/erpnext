@@ -15,12 +15,64 @@ from erpnext.accounts.party import (
 	get_dashboard_info,
 	validate_party_accounts,
 )
+from erpnext.controllers.website_list_for_contact import add_role_for_portal_user
 from erpnext.utilities.transaction_base import TransactionBase
 
 
 class Supplier(TransactionBase):
-	def get_feed(self):
-		return self.supplier_name
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		from erpnext.accounts.doctype.allowed_to_transact_with.allowed_to_transact_with import (
+			AllowedToTransactWith,
+		)
+		from erpnext.accounts.doctype.party_account.party_account import PartyAccount
+		from erpnext.utilities.doctype.portal_user.portal_user import PortalUser
+
+		accounts: DF.Table[PartyAccount]
+		allow_purchase_invoice_creation_without_purchase_order: DF.Check
+		allow_purchase_invoice_creation_without_purchase_receipt: DF.Check
+		companies: DF.Table[AllowedToTransactWith]
+		country: DF.Link | None
+		default_bank_account: DF.Link | None
+		default_currency: DF.Link | None
+		default_price_list: DF.Link | None
+		disabled: DF.Check
+		email_id: DF.ReadOnly | None
+		hold_type: DF.Literal["", "All", "Invoices", "Payments"]
+		image: DF.AttachImage | None
+		is_frozen: DF.Check
+		is_internal_supplier: DF.Check
+		is_transporter: DF.Check
+		language: DF.Link | None
+		mobile_no: DF.ReadOnly | None
+		naming_series: DF.Literal["SUP-.YYYY.-"]
+		on_hold: DF.Check
+		payment_terms: DF.Link | None
+		portal_users: DF.Table[PortalUser]
+		prevent_pos: DF.Check
+		prevent_rfqs: DF.Check
+		primary_address: DF.Text | None
+		release_date: DF.Date | None
+		represents_company: DF.Link | None
+		supplier_details: DF.Text | None
+		supplier_group: DF.Link | None
+		supplier_name: DF.Data
+		supplier_primary_address: DF.Link | None
+		supplier_primary_contact: DF.Link | None
+		supplier_type: DF.Literal["Company", "Individual", "Partnership"]
+		tax_category: DF.Link | None
+		tax_id: DF.Data | None
+		tax_withholding_category: DF.Link | None
+		warn_pos: DF.Check
+		warn_rfqs: DF.Check
+		website: DF.Data | None
+	# end: auto-generated types
 
 	def onload(self):
 		"""Load address and contacts in `__onload`"""
@@ -48,11 +100,32 @@ class Supplier(TransactionBase):
 			self.name = set_name_from_naming_options(frappe.get_meta(self.doctype).autoname, self)
 
 	def on_update(self):
-		if not self.naming_series:
-			self.naming_series = ""
-
 		self.create_primary_contact()
 		self.create_primary_address()
+
+	def add_role_for_user(self):
+		for portal_user in self.portal_users:
+			add_role_for_portal_user(portal_user, "Supplier")
+
+	def _add_supplier_role(self, portal_user):
+		if not portal_user.is_new():
+			return
+
+		user_doc = frappe.get_doc("User", portal_user.user)
+		roles = {r.role for r in user_doc.roles}
+
+		if "Supplier" in roles:
+			return
+
+		if "System Manager" not in frappe.get_roles():
+			frappe.msgprint(
+				_("Please add 'Supplier' role to user {0}.").format(portal_user.user),
+				alert=True,
+			)
+			return
+
+		user_doc.add_roles("Supplier")
+		frappe.msgprint(_("Added Supplier Role to User {0}.").format(frappe.bold(user_doc.name)), alert=True)
 
 	def validate(self):
 		self.flags.is_new_doc = self.is_new()
@@ -64,6 +137,8 @@ class Supplier(TransactionBase):
 
 		validate_party_accounts(self)
 		self.validate_internal_supplier()
+		self.add_role_for_user()
+		self.validate_currency_for_receivable_payable_and_advance_account()
 
 	@frappe.whitelist()
 	def get_supplier_group_details(self):

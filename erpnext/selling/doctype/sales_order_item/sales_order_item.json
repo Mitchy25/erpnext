@@ -10,6 +10,8 @@
   "item_code",
   "customer_item_code",
   "ensure_delivery_based_on_produced_serial_no",
+  "is_stock_item",
+  "reserve_stock",
   "col_break1",
   "delivery_date",
   "item_name",
@@ -27,6 +29,7 @@
   "uom",
   "conversion_factor",
   "stock_qty",
+  "stock_reserved_qty",
   "section_break_16",
   "price_list_rate",
   "base_price_list_rate",
@@ -161,7 +164,6 @@
    "oldfieldname": "description",
    "oldfieldtype": "Small Text",
    "print_width": "300px",
-   "reqd": 1,
    "width": "300px"
   },
   {
@@ -866,11 +868,43 @@
    "label": "Material Request Item"
   },
   {
+   "allow_on_submit": 1,
+   "default": "1",
+   "depends_on": "eval:doc.is_stock_item",
+   "fieldname": "reserve_stock",
+   "fieldtype": "Check",
+   "label": "Reserve Stock",
+   "print_hide": 1,
+   "report_hide": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.stock_reserved_qty",
+   "fieldname": "stock_reserved_qty",
+   "fieldtype": "Float",
+   "label": "Stock Reserved Qty (in Stock UOM)",
+   "no_copy": 1,
+   "non_negative": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1
+  },
+  {
    "fieldname": "production_plan_qty",
    "fieldtype": "Float",
    "label": "Production Plan Qty",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "item_code.is_stock_item",
+   "fieldname": "is_stock_item",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Stock Item",
+   "print_hide": 1,
+   "report_hide": 1
   }
  ],
  "idx": 1,

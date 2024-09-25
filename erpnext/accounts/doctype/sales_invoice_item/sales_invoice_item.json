@@ -81,14 +81,19 @@
   "warehouse",
   "target_warehouse",
   "quality_inspection",
-  "batch_no",
-  "incoming_rate",
+  "pick_serial_and_batch",
+  "serial_and_batch_bundle",
+  "use_serial_batch_fields",
   "col_break5",
   "allow_zero_valuation_rate",
-  "serial_no",
+  "incoming_rate",
   "item_tax_rate",
   "actual_batch_qty",
   "actual_qty",
+  "section_break_eoec",
+  "serial_no",
+  "column_break_ytgd",
+  "batch_no",
   "edit_references",
   "sales_order",
   "so_detail",
@@ -156,7 +161,6 @@
    "oldfieldname": "description",
    "oldfieldtype": "Text",
    "print_width": "200px",
-   "reqd": 1,
    "width": "200px"
   },
   {
@@ -600,12 +604,11 @@
    "options": "Quality Inspection"
   },
   {
+   "depends_on": "eval: doc.use_serial_batch_fields === 1 && parent.update_stock === 1",
    "fieldname": "batch_no",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Batch No",
    "options": "Batch",
-   "print_hide": 1,
    "search_index": 1
   },
   {
@@ -621,9 +624,9 @@
    "print_hide": 1
   },
   {
+   "depends_on": "eval: doc.use_serial_batch_fields === 1 && parent.update_stock === 1",
    "fieldname": "serial_no",
-   "fieldtype": "Small Text",
-   "in_list_view": 1,
+   "fieldtype": "Text",
    "label": "Serial No",
    "oldfieldname": "serial_no",
    "oldfieldtype": "Small Text"
@@ -889,6 +892,37 @@
    "fieldtype": "Check",
    "label": "Has Item Scanned",
    "read_only": 1
+  },
+  {
+   "depends_on": "eval:parent.update_stock == 1 && (doc.use_serial_batch_fields === 0 || doc.docstatus === 1)",
+   "fieldname": "serial_and_batch_bundle",
+   "fieldtype": "Link",
+   "label": "Serial and Batch Bundle",
+   "no_copy": 1,
+   "options": "Serial and Batch Bundle",
+   "print_hide": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:parent.update_stock === 1",
+   "fieldname": "pick_serial_and_batch",
+   "fieldtype": "Button",
+   "label": "Pick Serial / Batch No"
+  },
+  {
+   "default": "0",
+   "fieldname": "use_serial_batch_fields",
+   "fieldtype": "Check",
+   "label": "Use Serial No / Batch Fields"
+  },
+  {
+   "depends_on": "eval:doc.use_serial_batch_fields === 1 && parent.update_stock === 1",
+   "fieldname": "section_break_eoec",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_ytgd",
+   "fieldtype": "Column Break"
   }
  ],
  "idx": 1,

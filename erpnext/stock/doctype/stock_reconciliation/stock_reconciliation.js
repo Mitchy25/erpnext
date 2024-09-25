@@ -5,6 +5,10 @@ frappe.provide("erpnext.stock");
 frappe.provide("erpnext.accounts.dimensions");
 
 frappe.ui.form.on("Stock Reconciliation", {
+	setup(frm) {
+		frm.ignore_doctypes_on_cancel_all = ["Serial and Batch Bundle"];
+	},
+
 	onload: function (frm) {
 		frm.add_fetch("item_code", "item_name", "item_name");
 
@@ -26,6 +30,29 @@ frappe.ui.form.on("Stock Reconciliation", {
 			};
 		});
 
+		frm.set_query("serial_and_batch_bundle", "items", (doc, cdt, cdn) => {
+			let row = locals[cdt][cdn];
+			return {
+				filters: {
+					item_code: row.item_code,
+					voucher_type: doc.doctype,
+					voucher_no: ["in", [doc.name, ""]],
+					is_cancelled: 0,
+				},
+			};
+		});
+
+		let sbb_field = frm.get_docfield("items", "serial_and_batch_bundle");
+		if (sbb_field) {
+			sbb_field.get_route_options_for_new_doc = (row) => {
+				return {
+					item_code: row.doc.item_code,
+					warehouse: row.doc.warehouse,
+					voucher_type: frm.doc.doctype,
+				};
+			};
+		}
+
 		if (frm.doc.company) {
 			erpnext.queries.setup_queries(frm, "Warehouse", function () {
 				return erpnext.queries.warehouse(frm.doc);
@@ -40,6 +67,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 	},
 
 	company: function (frm) {
+		frm.trigger("toggle_display_account_head");
 		erpnext.accounts.dimensions.update_dimension(frm, frm.doctype);
 	},
 
@@ -178,6 +206,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 					posting_date: frm.doc.posting_date,
 					posting_time: frm.doc.posting_time,
 					batch_no: d.batch_no,
+					row: d,
 				},
 				callback: function (r) {
 					const row = frappe.model.get_doc(cdt, cdn);
@@ -190,6 +219,12 @@ frappe.ui.form.on("Stock Reconciliation", {
 					frappe.model.set_value(cdt, cdn, "current_amount", r.message.rate * r.message.qty);
 					frappe.model.set_value(cdt, cdn, "amount", row.qty * row.valuation_rate);
 					frappe.model.set_value(cdt, cdn, "current_serial_no", r.message.serial_nos);
+					frappe.model.set_value(
+						cdt,
+						cdn,
+						"use_serial_batch_fields",
+						r.message.use_serial_batch_fields
+					);
 
 					if (frm.doc.purpose == "Stock Reconciliation" && !frm.doc.scan_mode) {
 						frappe.model.set_value(cdt, cdn, "serial_no", r.message.serial_nos);
@@ -201,14 +236,11 @@ frappe.ui.form.on("Stock Reconciliation", {
 
 	set_amount_quantity: function (doc, cdt, cdn) {
 		var d = frappe.model.get_doc(cdt, cdn);
-		if (d.qty & d.valuation_rate) {
+		if (d.qty && d.valuation_rate) {
 			frappe.model.set_value(cdt, cdn, "amount", flt(d.qty) * flt(d.valuation_rate));
 			frappe.model.set_value(cdt, cdn, "quantity_difference", flt(d.qty) - flt(d.current_qty));
 			frappe.model.set_value(cdt, cdn, "amount_difference", flt(d.amount) - flt(d.current_amount));
 		}
-	},
-	company: function (frm) {
-		frm.trigger("toggle_display_account_head");
 	},
 	toggle_display_account_head: function (frm) {
 		frm.toggle_display(
@@ -287,6 +319,10 @@ frappe.ui.form.on("Stock Reconciliation Item", {
 			frappe.model.set_value(item.doctype, item.name, "use_serial_batch_fields", 1);
 		}
 	},
+
+	add_serial_batch_bundle(frm, cdt, cdn) {
+		erpnext.utils.pick_serial_and_batch_bundle(frm, cdt, cdn, "Inward");
+	},
 });
 
 erpnext.stock.StockReconciliation = class StockReconciliation extends erpnext.stock.StockController {
@@ -323,6 +359,7 @@ erpnext.stock.StockReconciliation = class StockReconciliation extends erpnext.st
 	refresh() {
 		if (this.frm.doc.docstatus > 0) {
 			this.show_stock_ledger();
+			erpnext.utils.view_serial_batch_nos(this.frm);
 			if (erpnext.is_perpetual_inventory_enabled(this.frm.doc.company)) {
 				this.show_general_ledger();
 			}

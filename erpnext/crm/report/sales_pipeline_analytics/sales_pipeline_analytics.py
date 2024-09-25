@@ -239,7 +239,7 @@ class SalesPipelineAnalytics:
 		month_list = []
 		current_date = getdate(self.filters.get("from_date"))
 
-		while current_date < getdate(self.filters.get("to_date")):
+		for _month in range(month_number, 13):
 			month_list.append(current_date.strftime("%B"))
 			current_date = current_date + relativedelta(months=1)
 

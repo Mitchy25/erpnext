@@ -16,7 +16,7 @@ frappe.query_reports["Batch-Wise Balance History"] = {
 			label: __("From Date"),
 			fieldtype: "Date",
 			width: "80",
-			default: frappe.sys_defaults.year_start_date,
+			default: erpnext.utils.get_fiscal_year(frappe.datetime.get_today(), true)[1],
 			reqd: 1,
 		},
 		{
@@ -54,8 +54,7 @@ frappe.query_reports["Batch-Wise Balance History"] = {
 			options: "Warehouse",
 			get_query: function () {
 				let warehouse_type = frappe.query_report.get_filter_value("warehouse_type");
-				const company = frappe.query_report.get_filter_value("company");
-
+				let company = frappe.query_report.get_filter_value("company");
 				return {
 					filters: {
 						...(warehouse_type && { warehouse_type }),

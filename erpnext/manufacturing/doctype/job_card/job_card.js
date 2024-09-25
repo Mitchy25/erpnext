@@ -12,6 +12,17 @@ frappe.ui.form.on("Job Card", {
 			};
 		});
 
+		frm.set_query("serial_and_batch_bundle", () => {
+			return {
+				filters: {
+					item_code: frm.doc.production_item,
+					voucher_type: frm.doc.doctype,
+					voucher_no: ["in", [frm.doc.name, ""]],
+					is_cancelled: 0,
+				},
+			};
+		});
+
 		frm.set_indicator_formatter("sub_operation", function (doc) {
 			if (doc.status == "Pending") {
 				return "red";
@@ -109,6 +120,17 @@ frappe.ui.form.on("Job Card", {
 					frm.set_df_property("items", "hidden", 1);
 				}
 			});
+		}
+
+		let sbb_field = frm.get_docfield("serial_and_batch_bundle");
+		if (sbb_field) {
+			sbb_field.get_route_options_for_new_doc = () => {
+				return {
+					item_code: frm.doc.production_item,
+					warehouse: frm.doc.wip_warehouse,
+					voucher_type: frm.doc.doctype,
+				};
+			};
 		}
 	},
 
@@ -362,6 +384,34 @@ frappe.ui.form.on("Job Card", {
 	make_dashboard: function (frm) {
 		if (frm.doc.__islocal) return;
 
+		function setCurrentIncrement() {
+			currentIncrement += 1;
+			return currentIncrement;
+		}
+
+		function updateStopwatch(increment) {
+			var hours = Math.floor(increment / 3600);
+			var minutes = Math.floor((increment - hours * 3600) / 60);
+			var seconds = increment - hours * 3600 - minutes * 60;
+
+			$(section)
+				.find(".hours")
+				.text(hours < 10 ? "0" + hours.toString() : hours.toString());
+			$(section)
+				.find(".minutes")
+				.text(minutes < 10 ? "0" + minutes.toString() : minutes.toString());
+			$(section)
+				.find(".seconds")
+				.text(seconds < 10 ? "0" + seconds.toString() : seconds.toString());
+		}
+
+		function initialiseTimer() {
+			const interval = setInterval(function () {
+				var current = setCurrentIncrement();
+				updateStopwatch(current);
+			}, 1000);
+		}
+
 		frm.dashboard.refresh();
 		const timer = `
 			<div class="stopwatch" style="font-weight:bold;margin:0px 13px 0px 2px;
@@ -385,34 +435,6 @@ frappe.ui.form.on("Job Card", {
 					"seconds"
 				);
 				initialiseTimer();
-			}
-
-			function initialiseTimer() {
-				const interval = setInterval(function () {
-					var current = setCurrentIncrement();
-					updateStopwatch(current);
-				}, 1000);
-			}
-
-			function updateStopwatch(increment) {
-				var hours = Math.floor(increment / 3600);
-				var minutes = Math.floor((increment - hours * 3600) / 60);
-				var seconds = increment - hours * 3600 - minutes * 60;
-
-				$(section)
-					.find(".hours")
-					.text(hours < 10 ? "0" + hours.toString() : hours.toString());
-				$(section)
-					.find(".minutes")
-					.text(minutes < 10 ? "0" + minutes.toString() : minutes.toString());
-				$(section)
-					.find(".seconds")
-					.text(seconds < 10 ? "0" + seconds.toString() : seconds.toString());
-			}
-
-			function setCurrentIncrement() {
-				currentIncrement += 1;
-				return currentIncrement;
 			}
 		}
 	},

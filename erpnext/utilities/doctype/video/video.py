@@ -10,10 +10,33 @@ import pytz
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
+from frappe.utils.data import get_system_timezone
 from pyyoutube import Api
 
 
 class Video(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		comment_count: DF.Float
+		description: DF.TextEditor
+		dislike_count: DF.Float
+		duration: DF.Duration | None
+		image: DF.AttachImage | None
+		like_count: DF.Float
+		provider: DF.Literal["YouTube", "Vimeo"]
+		publish_date: DF.Date | None
+		title: DF.Data
+		url: DF.Data
+		view_count: DF.Float
+		youtube_video_id: DF.Data | None
+	# end: auto-generated types
+
 	def validate(self):
 		if self.provider == "YouTube" and is_tracking_enabled():
 			self.set_video_id()
@@ -64,7 +87,7 @@ def update_youtube_data():
 
 	frequency = get_frequency(frequency)
 	time = datetime.now()
-	timezone = pytz.timezone(frappe.utils.get_time_zone())
+	timezone = pytz.timezone(get_system_timezone())
 	site_time = time.astimezone(timezone)
 
 	if frequency == 30:

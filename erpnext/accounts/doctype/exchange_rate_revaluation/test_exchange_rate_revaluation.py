@@ -60,7 +60,7 @@ class TestExchangeRateRevaluation(AccountsTestMixin, FrappeTestCase):
 		si.save().submit()
 
 		err = frappe.new_doc("Exchange Rate Revaluation")
-		err.company = (self.company,)
+		err.company = self.company
 		err.posting_date = today()
 		accounts = err.get_accounts_data()
 		err.extend("accounts", accounts)
@@ -124,7 +124,7 @@ class TestExchangeRateRevaluation(AccountsTestMixin, FrappeTestCase):
 		frappe.get_doc("Journal Entry", je).cancel()
 
 		err = frappe.new_doc("Exchange Rate Revaluation")
-		err.company = (self.company,)
+		err.company = self.company
 		err.posting_date = today()
 		err.fetch_and_calculate_accounts_data()
 		err = err.save().submit()
@@ -206,7 +206,7 @@ class TestExchangeRateRevaluation(AccountsTestMixin, FrappeTestCase):
 		self.assertEqual(flt(acc_balance.balance_in_account_currency, precision), 5.0)  # in USD
 
 		err = frappe.new_doc("Exchange Rate Revaluation")
-		err.company = (self.company,)
+		err.company = self.company
 		err.posting_date = today()
 		err.fetch_and_calculate_accounts_data()
 		err.set_total_gain_loss()
