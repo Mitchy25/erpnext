@@ -277,7 +277,7 @@ class MaterialRequest(BuyingController):
 							(d.qty + (d.qty * (mr_qty_allowance / 100))), d.precision("ordered_qty")
 						)
 
-						if d.ordered_qty and d.ordered_qty > allowed_qty:
+						if d.ordered_qty and flt(d.ordered_qty, precision) > flt(allowed_qty, precision):
 							frappe.throw(
 								_(
 									"The total Issue / Transfer quantity {0} in Material Request {1}  cannot be greater than allowed requested quantity {2} for Item {3}"
