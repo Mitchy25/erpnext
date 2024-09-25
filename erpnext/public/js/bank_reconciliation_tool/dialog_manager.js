@@ -206,28 +206,22 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				label: __("Filters"),
 				depends_on: "eval:doc.action=='Match Against Voucher'",
 			},
-			{
-				fieldname: "column_break_5",
-				fieldtype: "Column Break",
-			},
-			{
-				fieldtype: "Check",
-				label: "Sales Invoice",
-				fieldname: "sales_invoice",
-				onchange: () => this.update_options(),
-			},
-			{
-				fieldtype: "Check",
-				label: "Purchase Invoice",
-				fieldname: "purchase_invoice",
-				onchange: () => this.update_options(),
-			},
-			{
-				fieldtype: "Check",
-				label: "Show Only Exact Amount",
-				fieldname: "exact_match",
-				onchange: () => this.update_options()
-			}
+			// {
+			// 	fieldname: "column_break_5",
+			// 	fieldtype: "Column Break",
+			// },
+			// {
+			// 	fieldtype: "Check",
+			// 	label: "Sales Invoice",
+			// 	fieldname: "sales_invoice",
+			// 	onchange: () => this.update_options(),
+			// },
+			// {
+			// 	fieldtype: "Check",
+			// 	label: "Purchase Invoice",
+			// 	fieldname: "purchase_invoice",
+			// 	onchange: () => this.update_options(),
+			// },
 		];
 
 		frappe.call({
@@ -261,21 +255,28 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 
 	get_voucher_fields() {
 		return [
-			{
-				fieldtype: "Check",
-				label: "Loan Disbursement",
-				fieldname: "loan_disbursement",
-				onchange: () => this.update_options(),
-			},
-			{
-				fieldname: "column_break_5",
-				fieldtype: "Column Break",
-			},
+			// {
+			// 	fieldtype: "Check",
+			// 	label: "Loan Disbursement",
+			// 	fieldname: "loan_disbursement",
+			// 	onchange: () => this.update_options(),
+			// },
+			// {
+			// 	fieldname: "column_break_5",
+			// 	fieldtype: "Column Break",
+			// },
 			{
 				fieldtype: "Check",
 				label: "Bank Transaction",
 				fieldname: "bank_transaction",
 				onchange: () => this.update_options(),
+			},
+			{
+				fieldtype: "Check",
+				label: "Show Only Exact Amount",
+				fieldname: "exact_match",
+				onchange: () => this.update_options(),
+				default: 1
 			},
 			{
 				fieldtype: "Section Break",

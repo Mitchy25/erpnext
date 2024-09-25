@@ -54,7 +54,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			{
 				name: __("Description"),
 				editable: false,
-				width: 400,
+				width: 300,
 			},
 			{
 				name: __("Deposit"),
@@ -82,7 +82,7 @@ erpnext.accounts.bank_reconciliation.DataTableManager = class DataTableManager {
 			{
 				name: __("Reference Number"),
 				editable: false,
-				width: 400,
+				width: 300,
 			},
 			{
 				name: __("Actions"),
