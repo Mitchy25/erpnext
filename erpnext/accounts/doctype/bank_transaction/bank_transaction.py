@@ -121,7 +121,8 @@ class BankTransaction(StatusUpdater):
 				elif 0.0 > unallocated_amount:
 					self.db_delete_payment_entry(payment_entry)
 					frappe.throw(frappe._("Voucher {0} is over-allocated by {1}").format(unallocated_amount))
-
+			else:
+				self.clear_linked_payment_entry(payment_entry)
 		self.reload()
 
 	def db_delete_payment_entry(self, payment_entry):
@@ -349,6 +350,7 @@ def set_voucher_clearance(doctype, docname, clearance_date, self):
 		"Payment Entry",
 		"Journal Entry",
 		"Payment Group",
+		"Bank Transaction Payments",
 		# "Purchase Invoice",
 		# "Expense Claim",
 		# "Loan Repayment",
@@ -366,6 +368,17 @@ def set_voucher_clearance(doctype, docname, clearance_date, self):
 			clear_linked_payment_group(docname, clearance_date)
 		elif doctype == "Payment Group":
 			set_clearance_date_bank_rec(docname,clearance_date)
+		elif doctype == "Bank Transaction Payments":
+			#Get the child doc
+			doc = frappe.get_doc(doctype, docname)
+			if doc.payment_document == "Journal Entry":
+				#Check for PG's with this JE as a Clearance JE
+				clear_linked_payment_group(doc.payment_entry, None)
+
+			if doc.payment_document == "Payment Group":
+				set_clearance_date_bank_rec(doc.payment_entry, None)
+			
+			frappe.db.set_value(doc.payment_document, doc.payment_entry, "clearance_date", clearance_date)
 
 		frappe.db.set_value(doctype, docname, "clearance_date", clearance_date)
 
@@ -404,7 +417,6 @@ def unclear_reference_payment(doctype, docname, bt_name):
 	bt = frappe.get_doc("Bank Transaction", bt_name)
 	set_voucher_clearance(doctype, docname, None, bt)
 	return docname
-
 
 def remove_from_bank_transaction(doctype, docname):
 	"""Remove a (cancelled) voucher from all Bank Transactions."""
