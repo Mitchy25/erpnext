@@ -94,7 +94,9 @@ class Asset(AccountsController):
 		purchase_amount: DF.Currency
 		purchase_date: DF.Date | None
 		purchase_invoice: DF.Link | None
+		purchase_invoice_item: DF.Link | None
 		purchase_receipt: DF.Link | None
+		purchase_receipt_item: DF.Link | None
 		split_from: DF.Link | None
 		status: DF.Literal[
 			"Draft",
@@ -123,7 +125,6 @@ class Asset(AccountsController):
 		self.validate_cost_center()
 		self.set_missing_values()
 		self.validate_gross_and_purchase_amount()
-		self.validate_expected_value_after_useful_life()
 		self.validate_finance_books()
 
 		if not self.split_from:
@@ -144,6 +145,7 @@ class Asset(AccountsController):
 								"Asset Depreciation Schedules created:<br>{0}<br><br>Please check, edit if needed, and submit the Asset."
 							).format(asset_depr_schedules_links)
 						)
+		self.validate_expected_value_after_useful_life()
 		self.set_total_booked_depreciations()
 		self.total_asset_cost = self.gross_purchase_amount
 		self.status = self.get_status()
@@ -621,6 +623,9 @@ class Asset(AccountsController):
 		return records
 
 	def validate_make_gl_entry(self):
+		if self.is_composite_asset:
+			return True
+
 		purchase_document = self.get_purchase_document()
 		if not purchase_document:
 			return False
@@ -669,7 +674,7 @@ class Asset(AccountsController):
 		if not fixed_asset_account:
 			frappe.throw(
 				_("Set {0} in asset category {1} for company {2}").format(
-					frappe.bold("Fixed Asset Account"),
+					frappe.bold(_("Fixed Asset Account")),
 					frappe.bold(self.asset_category),
 					frappe.bold(self.company),
 				),
@@ -691,12 +696,17 @@ class Asset(AccountsController):
 		return cwip_account
 
 	def make_gl_entries(self):
+		if self.check_asset_capitalization_gl_entries():
+			return
+
 		gl_entries = []
 
 		purchase_document = self.get_purchase_document()
 		fixed_asset_account, cwip_account = self.get_fixed_asset_account(), self.get_cwip_account()
 
-		if purchase_document and self.purchase_amount and getdate(self.available_for_use_date) <= getdate():
+		if (self.is_composite_asset or (purchase_document and self.purchase_amount)) and getdate(
+			self.available_for_use_date
+		) <= getdate():
 			gl_entries.append(
 				self.get_gl_dict(
 					{
@@ -732,6 +742,24 @@ class Asset(AccountsController):
 
 			make_gl_entries(gl_entries)
 			self.db_set("booked_fixed_asset", 1)
+
+	def check_asset_capitalization_gl_entries(self):
+		if self.is_composite_asset:
+			result = frappe.db.get_value(
+				"Asset Capitalization",
+				{"target_asset": self.name, "docstatus": 1},
+				["name", "target_fixed_asset_account"],
+			)
+
+			if result:
+				asset_capitalization, target_fixed_asset_account = result
+				# Check GL entries for the retrieved Asset Capitalization and target fixed asset account
+				return has_gl_entries(
+					"Asset Capitalization", asset_capitalization, target_fixed_asset_account
+				)
+			# return if there are no submitted capitalization for given asset
+			return True
+		return False
 
 	@frappe.whitelist()
 	def get_depreciation_rate(self, args, on_validate=False):
@@ -777,6 +805,22 @@ class Asset(AccountsController):
 			)
 
 			return flt((100 * (1 - depreciation_rate)), float_precision)
+
+
+def has_gl_entries(doctype, docname, target_account):
+	gl_entry = frappe.qb.DocType("GL Entry")
+	gl_entries = (
+		frappe.qb.from_(gl_entry)
+		.select(gl_entry.account)
+		.where(
+			(gl_entry.voucher_type == doctype)
+			& (gl_entry.voucher_no == docname)
+			& (gl_entry.debit != 0)
+			& (gl_entry.account == target_account)
+		)
+		.run(as_dict=True)
+	)
+	return len(gl_entries) > 0
 
 
 def update_maintenance_status():
@@ -854,18 +898,19 @@ def create_asset_maintenance(asset, item_code, item_name, asset_category, compan
 
 
 @frappe.whitelist()
-def create_asset_repair(asset, asset_name):
+def create_asset_repair(company, asset, asset_name):
 	asset_repair = frappe.new_doc("Asset Repair")
-	asset_repair.update({"asset": asset, "asset_name": asset_name})
+	asset_repair.update({"company": company, "asset": asset, "asset_name": asset_name})
 	return asset_repair
 
 
 @frappe.whitelist()
-def create_asset_capitalization(asset, asset_name, item_code):
+def create_asset_capitalization(company, asset, asset_name, item_code):
 	asset_capitalization = frappe.new_doc("Asset Capitalization")
 	asset_capitalization.update(
 		{
 			"target_asset": asset,
+			"company": company,
 			"capitalization_method": "Choose a WIP composite asset",
 			"target_asset_name": asset_name,
 			"target_item_code": item_code,
@@ -904,7 +949,7 @@ def transfer_asset(args):
 
 @frappe.whitelist()
 def get_item_details(item_code, asset_category, gross_purchase_amount):
-	asset_category_doc = frappe.get_doc("Asset Category", asset_category)
+	asset_category_doc = frappe.get_cached_doc("Asset Category", asset_category)
 	books = []
 	for d in asset_category_doc.finance_books:
 		books.append(
@@ -1033,6 +1078,14 @@ def get_asset_value_after_depreciation(asset_name, finance_book=None):
 		return flt(asset.value_after_depreciation)
 
 	return asset.get_value_after_depreciation(finance_book)
+
+
+@frappe.whitelist()
+def has_active_capitalization(asset):
+	active_capitalizations = frappe.db.count(
+		"Asset Capitalization", filters={"target_asset": asset, "docstatus": 1}
+	)
+	return active_capitalizations > 0
 
 
 @frappe.whitelist()

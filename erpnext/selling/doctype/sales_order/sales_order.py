@@ -185,6 +185,8 @@ class SalesOrder(SellingController):
 		super().__init__(*args, **kwargs)
 
 	def onload(self) -> None:
+		super().onload()
+
 		if frappe.db.get_single_value("Stock Settings", "enable_stock_reservation"):
 			if self.has_unreserved_stock():
 				self.set_onload("has_unreserved_stock", True)
@@ -936,6 +938,10 @@ def make_delivery_note(source_name, target_doc=None, kwargs=None):
 	}
 
 	def set_missing_values(source, target):
+		if kwargs.get("ignore_pricing_rule"):
+			# Skip pricing rule when the dn is creating from the pick list
+			target.ignore_pricing_rule = 1
+
 		target.run_method("set_missing_values")
 		target.run_method("set_po_nos")
 		target.run_method("calculate_taxes_and_totals")
