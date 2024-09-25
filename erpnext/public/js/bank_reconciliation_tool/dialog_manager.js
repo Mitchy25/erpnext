@@ -643,14 +643,11 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 		});
 	}
 	route_to_payment_reconcile(party, party_type) {
-		let doc = {
+		frappe.open_in_new_tab = true;
+		frappe.set_route("Form", "Payment Reconciliation", {
 			party: party,
 			party_type: party_type
-		};
-	
-		let url = frappe.urllib.get_full_url(`/app/payment-reconciliation/Payment Reconciliation` + $.param(doc));
-	
-		window.open(url, '_blank');
+		});
 	}
 	add_journal_entry(values) {
 		frappe.call({
