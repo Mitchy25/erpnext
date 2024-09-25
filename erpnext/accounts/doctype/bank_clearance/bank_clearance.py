@@ -6,7 +6,7 @@ import frappe
 from frappe import _, msgprint
 from frappe.model.document import Document
 from frappe.query_builder.custom import ConstantColumn
-from frappe.utils import flt, fmt_money, getdate
+from frappe.utils import flt, fmt_money, get_link_to_form, getdate
 from pypika import Order
 
 import erpnext
@@ -108,8 +108,18 @@ class BankClearance(Document):
 				if not d.clearance_date:
 					d.clearance_date = None
 
-				payment_entry = frappe.get_doc(d.payment_document, d.payment_entry)
-				payment_entry.db_set("clearance_date", d.clearance_date)
+				if d.payment_document == "Sales Invoice":
+					frappe.db.set_value(
+						"Sales Invoice Payment",
+						{"parent": d.payment_entry, "account": self.get("account"), "amount": [">", 0]},
+						"clearance_date",
+						d.clearance_date,
+					)
+
+				else:
+					frappe.db.set_value(
+						d.payment_document, d.payment_entry, "clearance_date", d.clearance_date
+					)
 
 				clearance_date_updated = True
 

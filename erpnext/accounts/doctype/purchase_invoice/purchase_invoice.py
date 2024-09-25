@@ -285,7 +285,6 @@ class PurchaseInvoice(BuyingController):
 		self.set_against_expense_account()
 		self.validate_write_off_account()
 		self.validate_multiple_billing("Purchase Receipt", "pr_detail", "amount")
-		self.create_remarks()
 		self.set_status()
 		self.validate_purchase_receipt_if_update_stock()
 		validate_inter_company_party(
@@ -322,10 +321,11 @@ class PurchaseInvoice(BuyingController):
 
 	def create_remarks(self):
 		if not self.remarks:
-			if self.bill_no and self.bill_date:
-				self.remarks = _("Against Supplier Invoice {0} dated {1}").format(
-					self.bill_no, formatdate(self.bill_date)
-				)
+			if self.bill_no:
+				self.remarks = _("Against Supplier Invoice {0}").format(self.bill_no)
+				if self.bill_date:
+					self.remarks += " " + _("dated {0}").format(formatdate(self.bill_date))
+
 			else:
 				self.remarks = _("No Remarks")
 
@@ -346,22 +346,6 @@ class PurchaseInvoice(BuyingController):
 			self.tax_withholding_category = tds_category
 			self.set_onload("supplier_tds", tds_category)
 
-		# If Linked Purchase Order has TDS applied, enable 'apply_tds' checkbox
-		if purchase_orders := [x.purchase_order for x in self.items if x.purchase_order]:
-			po = qb.DocType("Purchase Order")
-			po_with_tds = (
-				qb.from_(po)
-				.select(po.name)
-				.where(
-					po.docstatus.eq(1)
-					& (po.name.isin(purchase_orders))
-					& (po.apply_tds.eq(1))
-					& (po.tax_withholding_category.notnull())
-				)
-				.run()
-			)
-			self.set_onload("enable_apply_tds", True if po_with_tds else False)
-
 		super().set_missing_values(for_validate)
 
 	def validate_credit_to_acc(self):
@@ -377,16 +361,16 @@ class PurchaseInvoice(BuyingController):
 		if account.report_type != "Balance Sheet":
 			frappe.throw(
 				_(
-					"Please ensure {} account is a Balance Sheet account. You can change the parent account to a Balance Sheet account or select a different account."
-				).format(frappe.bold("Credit To")),
+					"Please ensure that the {0} account is a Balance Sheet account. You can change the parent account to a Balance Sheet account or select a different account."
+				).format(frappe.bold(_("Credit To"))),
 				title=_("Invalid Account"),
 			)
 
 		if self.supplier and account.account_type != "Payable":
 			frappe.throw(
 				_(
-					"Please ensure {} account {} is a Payable account. Change the account type to Payable or select a different account."
-				).format(frappe.bold("Credit To"), frappe.bold(self.credit_to)),
+					"Please ensure that the {0} account {1} is a Payable account. You can change the account type to Payable or select a different account."
+				).format(frappe.bold(_("Credit To")), frappe.bold(self.credit_to)),
 				title=_("Invalid Account"),
 			)
 
@@ -634,7 +618,7 @@ class PurchaseInvoice(BuyingController):
 						"To submit the invoice without purchase order please set {0} as {1} in {2}"
 					).format(
 						frappe.bold(_("Purchase Order Required")),
-						frappe.bold("No"),
+						frappe.bold(_("No")),
 						get_link_to_form("Buying Settings", "Buying Settings", "Buying Settings"),
 					)
 					throw(msg, title=_("Mandatory Purchase Order"))
@@ -655,7 +639,7 @@ class PurchaseInvoice(BuyingController):
 						"To submit the invoice without purchase receipt please set {0} as {1} in {2}"
 					).format(
 						frappe.bold(_("Purchase Receipt Required")),
-						frappe.bold("No"),
+						frappe.bold(_("No")),
 						get_link_to_form("Buying Settings", "Buying Settings", "Buying Settings"),
 					)
 					throw(msg, title=_("Mandatory Purchase Receipt"))
@@ -746,6 +730,9 @@ class PurchaseInvoice(BuyingController):
 		self.validate_expense_account()
 		validate_docs_for_voucher_types(["Purchase Invoice"])
 		validate_docs_for_deferred_accounting([], [self.name])
+
+	def before_submit(self):
+		self.create_remarks()
 
 	def on_submit(self):
 		super().on_submit()
@@ -1262,7 +1249,11 @@ class PurchaseInvoice(BuyingController):
 	def update_gross_purchase_amount_for_linked_assets(self, item):
 		assets = frappe.db.get_all(
 			"Asset",
-			filters={"purchase_invoice": self.name, "item_code": item.item_code},
+			filters={
+				"purchase_invoice": self.name,
+				"item_code": item.item_code,
+				"purchase_invoice_item": ("in", [item.name, ""]),
+			},
 			fields=["name", "asset_quantity"],
 		)
 		for asset in assets:
