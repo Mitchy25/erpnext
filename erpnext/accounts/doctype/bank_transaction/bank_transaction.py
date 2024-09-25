@@ -100,6 +100,11 @@ class BankTransaction(StatusUpdater):
 					self, payment_entry
 				)
 
+				# Overriding to true as we dont do reconciliations on a lot of our bank
+				# accounts like our payment providers so this will always be False for
+				# Payment Group payouts which involve multiple bank accounts
+				should_clear = True
+
 				if 0.0 == unallocated_amount:
 					if should_clear:
 						latest_transaction.clear_linked_payment_entry(payment_entry)
@@ -122,6 +127,7 @@ class BankTransaction(StatusUpdater):
 					self.db_delete_payment_entry(payment_entry)
 					frappe.throw(frappe._("Voucher {0} is over-allocated by {1}").format(unallocated_amount))
 			else:
+				#We should check if fully cleared here
 				self.clear_linked_payment_entry(payment_entry)
 		self.reload()
 
