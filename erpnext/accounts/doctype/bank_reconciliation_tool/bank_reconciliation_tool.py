@@ -527,7 +527,8 @@ def check_matching(
 		matching_vouchers.extend(
 			frappe.db.sql(
 				query,
-				filters
+				filters,
+				debug=True
 			)
 		)
 		
