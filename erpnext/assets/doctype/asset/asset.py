@@ -20,13 +20,10 @@ from frappe.utils import (
 
 import erpnext
 from erpnext.accounts.general_ledger import make_reverse_gl_entries
-from erpnext.accounts.utils import get_fiscal_year
 from erpnext.assets.doctype.asset.depreciation import (
 	get_comma_separated_links,
 	get_depreciation_accounts,
 	get_disposal_account_and_cost_center,
-	is_first_day_of_the_month,
-	is_last_day_of_the_month,
 )
 from erpnext.assets.doctype.asset_activity.asset_activity import add_asset_activity
 from erpnext.assets.doctype.asset_category.asset_category import get_asset_category_account
@@ -156,7 +153,6 @@ class Asset(AccountsController):
 	def on_submit(self):
 		self.validate_in_use_date()
 		self.make_asset_movement()
-		self.reload()
 		if not self.booked_fixed_asset and self.validate_make_gl_entry():
 			self.make_gl_entries()
 		if self.calculate_depreciation and not self.split_from:
@@ -222,59 +218,9 @@ class Asset(AccountsController):
 			self.set_depreciation_rate()
 		else:
 			self.finance_books = []
-			if value_after_depreciation:
-				self.value_after_depreciation = value_after_depreciation
-			else:
-				self.value_after_depreciation = flt(self.gross_purchase_amount) - flt(
-					self.opening_accumulated_depreciation
-				)
-
-	def update_shift_depr_schedule(self):
-		if not any(fb.get("shift_based") for fb in self.finance_books) or self.docstatus != 0:
-			return
-
-		self.make_depreciation_schedule()
-		self.set_accumulated_depreciation()
-
-	def should_prepare_depreciation_schedule(self):
-		if not self.get("schedules"):
-			return True
-
-		old_asset_doc = self.get_doc_before_save()
-
-		if not old_asset_doc:
-			return True
-
-		have_asset_details_been_modified = (
-			old_asset_doc.gross_purchase_amount != self.gross_purchase_amount
-			or old_asset_doc.opening_accumulated_depreciation != self.opening_accumulated_depreciation
-			or old_asset_doc.number_of_depreciations_booked != self.number_of_depreciations_booked
-		)
-
-		if have_asset_details_been_modified:
-			return True
-
-		manual_fb_idx = -1
-		for d in self.finance_books:
-			if d.depreciation_method == "Manual":
-				manual_fb_idx = d.idx - 1
-
-		no_manual_depr_or_have_manual_depr_details_been_modified = (
-			manual_fb_idx == -1
-			or old_asset_doc.finance_books[manual_fb_idx].total_number_of_depreciations
-			!= self.finance_books[manual_fb_idx].total_number_of_depreciations
-			or old_asset_doc.finance_books[manual_fb_idx].frequency_of_depreciation
-			!= self.finance_books[manual_fb_idx].frequency_of_depreciation
-			or old_asset_doc.finance_books[manual_fb_idx].depreciation_start_date
-			!= getdate(self.finance_books[manual_fb_idx].depreciation_start_date)
-			or old_asset_doc.finance_books[manual_fb_idx].expected_value_after_useful_life
-			!= self.finance_books[manual_fb_idx].expected_value_after_useful_life
-		)
-
-		if no_manual_depr_or_have_manual_depr_details_been_modified:
-			return True
-
-		return False
+			self.value_after_depreciation = flt(self.gross_purchase_amount) - flt(
+				self.opening_accumulated_depreciation
+			)
 
 	def validate_item(self):
 		item = frappe.get_cached_value(
@@ -598,26 +544,6 @@ class Asset(AccountsController):
 				(flt(self.gross_purchase_amount) - flt(self.opening_accumulated_depreciation)),
 			)
 
-		if asset_capitalization:
-			asset_capitalization = frappe.get_doc("Asset Capitalization", asset_capitalization)
-			asset_capitalization.cancel()
-
-	def delete_depreciation_entries(self):
-		if self.calculate_depreciation:
-			for d in self.get("schedules"):
-				if d.journal_entry:
-					frappe.get_doc("Journal Entry", d.journal_entry).cancel()
-		else:
-			depr_entries = self.get_manual_depreciation_entries()
-
-			for depr_entry in depr_entries or []:
-				frappe.get_doc("Journal Entry", depr_entry.name).cancel()
-
-			self.db_set(
-				"value_after_depreciation",
-				(flt(self.gross_purchase_amount) - flt(self.opening_accumulated_depreciation)),
-			)
-
 	def set_status(self, status=None):
 		"""Get and update status"""
 		if not status:
@@ -834,25 +760,6 @@ class Asset(AccountsController):
 			# return if there are no submitted capitalization for given asset
 			return True
 		return False
-
-	@frappe.whitelist()
-	def get_manual_depreciation_entries(self):
-		(_, _, depreciation_expense_account) = get_depreciation_accounts(self.asset_category, self.company)
-
-		gle = frappe.qb.DocType("GL Entry")
-
-		records = (
-			frappe.qb.from_(gle)
-			.select(gle.voucher_no.as_("name"), gle.debit.as_("value"), gle.posting_date)
-			.where(gle.against_voucher == self.name)
-			.where(gle.account == depreciation_expense_account)
-			.where(gle.debit != 0)
-			.where(gle.is_cancelled == 0)
-			.orderby(gle.posting_date)
-			.orderby(gle.creation)
-		).run(as_dict=True)
-
-		return records
 
 	@frappe.whitelist()
 	def get_depreciation_rate(self, args, on_validate=False):

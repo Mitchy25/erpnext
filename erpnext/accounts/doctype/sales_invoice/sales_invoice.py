@@ -1348,10 +1348,6 @@ class SalesInvoice(SellingController):
 								"Sales Invoice", self.return_against, "posting_date"
 							)
 							reverse_depreciation_entry_made_after_disposal(asset, posting_date)
-							reset_depreciation_schedule(asset, self.posting_date)
-
-					else:
-						if asset.calculate_depreciation:
 							depreciate_asset(asset, self.posting_date)
 							notes = _(
 								"This schedule was created when Asset {0} was returned through Sales Invoice {1}."
