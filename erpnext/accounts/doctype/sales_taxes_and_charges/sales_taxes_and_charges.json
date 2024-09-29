@@ -28,7 +28,8 @@
   "base_total",
   "base_tax_amount_after_discount_amount",
   "item_wise_tax_detail",
-  "dont_recompute_tax"
+  "dont_recompute_tax",
+  "from_shipping_rule"
  ],
  "fields": [
   {
@@ -212,13 +213,20 @@
    "label": "Account Currency",
    "options": "Currency",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "from_shipping_rule",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "From Shipping Rule"
   }
  ],
  "idx": 1,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-01-14 10:08:17.776528",
+ "modified": "2024-09-30 08:46:38.870377",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Taxes and Charges",
