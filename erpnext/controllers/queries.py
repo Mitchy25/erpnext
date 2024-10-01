@@ -81,7 +81,7 @@ def lead_query(doctype, txt, searchfield, start, page_len, filters):
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
-def customer_query(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
+def customer_query(doctype, txt, searchfield, start, page_len, filters, as_dict=False, reference_doctype=None):
 	doctype = "Customer"
 	conditions = []
 	cust_master_name = frappe.defaults.get_user_default("cust_master_name")
@@ -94,10 +94,16 @@ def customer_query(doctype, txt, searchfield, start, page_len, filters, as_dict=
 	searchfields = frappe.get_meta(doctype).get_search_fields()
 	searchfields = " or ".join(field + " like %(txt)s" for field in searchfields)
 
+	#Set Disabled unless in Interactions
+	disabledCondition = " and disabled = 0"
+	if reference_doctype:
+		if reference_doctype == "Interactions":
+			disabledCondition = ""
+
 	return frappe.db.sql(
 		"""select {fields} from `tabCustomer`
 		where docstatus < 2
-			and ({scond}) and disabled=0 and customer_status != "Closed"
+			and ({scond}) {disabledCondition} and customer_status != "Closed"
 			{fcond} {mcond}
 		order by
 			(case when locate(%(_txt)s, name) > 0 then locate(%(_txt)s, name) else 99999 end),
@@ -108,6 +114,7 @@ def customer_query(doctype, txt, searchfield, start, page_len, filters, as_dict=
 			**{
 				"fields": ", ".join(fields),
 				"scond": searchfields,
+				"disabledCondition": disabledCondition,
 				"mcond": get_match_cond(doctype),
 				"fcond": get_filters_cond(doctype, filters, conditions).replace("%", "%%"),
 			}
