@@ -1387,9 +1387,15 @@ class SalesInvoice(SellingController):
 
 	def make_write_off_gl_entry(self, gl_entries):
 		# write off entries, applicable if only pos
+		# if (
+		# 	self.is_pos
+		# 	and self.write_off_account
+		# 	and flt(self.write_off_amount, self.precision("write_off_amount"))
+		# ):
+
+		#Commenting out is_pos to revert to V13 compatability and also its just wrong
 		if (
-			self.is_pos
-			and self.write_off_account
+			self.write_off_account
 			and flt(self.write_off_amount, self.precision("write_off_amount"))
 		):
 			write_off_account_currency = get_account_currency(self.write_off_account)
