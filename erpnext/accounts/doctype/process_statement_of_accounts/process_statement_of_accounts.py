@@ -111,7 +111,7 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			'show_due_date': 1,
 			'include_default_book_entries': 0,
 			'tax_id': tax_id if tax_id else None,
-			'show_remarks': 1
+			'show_statement_remarks': 1
 		})
 		
 		col, res = get_soa(filters)
