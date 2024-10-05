@@ -578,9 +578,18 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		// 				}
 		// 			},
 
-		// 			callback: function(r) {
+		//  			callback: function(r) {
 		// 				if(!r.exc) {
 		// 					frappe.run_serially([
+		// 						() => {
+		// 							if (item.docstatus === 0
+		// 								&& frappe.meta.has_field(item.doctype, "use_serial_batch_fields")
+		// 								&& !item.use_serial_batch_fields
+		// 								&& cint(frappe.user_defaults?.use_serial_batch_fields) === 1
+		// 							) {
+		// 								item["use_serial_batch_fields"] = 1;
+		// 							}
+		// 						},
 		// 						() => {
 		// 							var d = locals[cdt][cdn];
 		// 							me.add_taxes_from_item_tax_template(d.item_tax_rate);
@@ -631,9 +640,11 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		// 								$.each(r.message, function(k, v) {
 		// 									if(!d[k]) d[k] = v;
 		// 								});
+
 		// 								if (d.has_batch_no && d.has_serial_no) {
 		// 									d.batch_no = undefined;
 		// 								}
+
 		// 								frappe.flags.dialog_set = true;
 		// 								erpnext.show_serial_batch_selector(me.frm, d, (item) => {
 		// 									me.frm.script_manager.trigger('qty', item.doctype, item.name);
@@ -661,7 +672,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		// 				}
 		// 			}
 		// 		});
-		// 	}
+		//  	}
 		// }
 	}
 
@@ -1108,7 +1119,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	apply_discount_on_item(doc, cdt, cdn, field) {
 		var item = frappe.get_doc(cdt, cdn);
-		if(!item.price_list_rate) {
+		if(!item?.price_list_rate) {
 			item[field] = 0.0;
 		} else {
 			this.price_list_rate(doc, cdt, cdn);
@@ -1274,6 +1285,10 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				.filter(Boolean).length > 0;
 		} else if (this.frm.doc?.items) {
 			let first_row = this.frm.doc.items[0];
+			if (!first_row) {
+				return false
+			};
+
 			let mapped_rows = mappped_fields.filter(d => first_row[d])
 
 			return mapped_rows?.length > 0;
