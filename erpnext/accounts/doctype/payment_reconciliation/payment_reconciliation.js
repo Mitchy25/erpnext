@@ -12,6 +12,8 @@ erpnext.accounts.PaymentReconciliationController = class PaymentReconciliationCo
 		this.frm.set_value("party_type", "");
 		this.frm.set_value("party", "");
 		this.frm.set_value("receivable_payable_account", "");
+		this.frm.set_value("invoice_limit", "");
+		this.frm.set_value('payment_limit', "");
 
 		this.frm.set_query("party_type", () => {
 			return {
