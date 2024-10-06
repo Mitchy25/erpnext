@@ -169,10 +169,11 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			'show_opening_entries': 1,
 			'show_due_date': 1,
 			'include_default_book_entries': 0,
-			'tax_id': tax_id if tax_id else None
+			'tax_id': tax_id if tax_id else None,
+			'show_statement_remarks': 1
 		})
+		
 		col, res = get_soa(filters)
-
 		new_res = []
 		for item in res[0:]:
 			if item.debit == item.credit and item.account != "'Total'" and item.account != "'Opening'":
@@ -228,7 +229,8 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 				'range2': 60,
 				'range3': 90,
 				'range4': 120,
-				'customer': entry.customer,
+				'party_type': "Customer",
+				'party': [entry.customer],
 				'show_not_yet_due': 1
 			})
 			col1, ageing = get_ageing(ageing_filters)
@@ -244,7 +246,8 @@ def get_report_pdf(doc, consolidated=True, customer=None):
 			'range2': 60,
 			'range3': 90,
 			'range4': 120,
-			'customer': entry.customer
+			'party_type': "Customer",
+			'party': [entry.customer]
 		})
 		outstanding = get_outstanding(outstanding_filters)[1]
 

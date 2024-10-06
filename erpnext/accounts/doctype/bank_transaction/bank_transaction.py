@@ -162,6 +162,11 @@ class BankTransaction(Document):
 					self, payment_entry
 				)
 
+				# Overriding to true as we dont do reconciliations on a lot of our bank
+				# accounts like our payment providers so this will always be False for
+				# Payment Group payouts which involve multiple bank accounts
+				should_clear = True
+
 				if 0.0 == unallocated_amount:
 					if should_clear:
 						latest_transaction.clear_linked_payment_entry(payment_entry)
@@ -182,7 +187,9 @@ class BankTransaction(Document):
 
 				elif 0.0 > unallocated_amount:
 					frappe.throw(_("Voucher {0} is over-allocated by {1}").format(unallocated_amount))
-
+			else:
+				#We should check if fully cleared here
+				self.clear_linked_payment_entry(payment_entry)
 		for payment_entry in to_remove:
 			self.remove(payment_entry)
 
@@ -413,6 +420,17 @@ def set_voucher_clearance(doctype, docname, clearance_date, self):
 				clearance_date,
 			)
 			return
+		elif doctype == "Bank Transaction Payments":
+			#Get the child doc
+			doc = frappe.get_doc(doctype, docname)
+			if doc.payment_document == "Journal Entry":
+				#Check for PG's with this JE as a Clearance JE
+				clear_linked_payment_group(doc.payment_entry, None)
+
+			if doc.payment_document == "Payment Group":
+				set_clearance_date_bank_rec(doc.payment_entry, None)
+			
+			frappe.db.set_value(doc.payment_document, doc.payment_entry, "clearance_date", clearance_date)
 
 		frappe.db.set_value(doctype, docname, "clearance_date", clearance_date)
 
@@ -444,7 +462,6 @@ def unclear_reference_payment(doctype, docname, bt_name):
 	bt = frappe.get_doc("Bank Transaction", bt_name)
 	set_voucher_clearance(doctype, docname, None, bt)
 	return docname
-
 
 def remove_from_bank_transaction(doctype, docname):
 	"""Remove a (cancelled) voucher from all Bank Transactions."""

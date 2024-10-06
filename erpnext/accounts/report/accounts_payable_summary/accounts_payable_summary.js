@@ -88,6 +88,11 @@ frappe.query_reports["Accounts Payable Summary"] = {
 			options: "Supplier Group",
 		},
 		{
+			fieldname: "in_party_currency",
+			label: __("In Party Currency"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "based_on_payment_terms",
 			label: __("Based On Payment Terms"),
 			fieldtype: "Check",
