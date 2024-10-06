@@ -160,6 +160,9 @@ def get_gl_entries(filters, accounting_dimensions):
 			select_fields += f",substr(remarks, 1, {remarks_length}) as 'remarks'"
 		else:
 			select_fields += """,remarks"""
+	
+	if filters.get("show_statement_remarks"):
+		select_fields += f", CASE WHEN INSTR(remarks, '\n') > 0 THEN SUBSTR(remarks, 1, INSTR(remarks, '\n') - 1) ELSE remarks END as 'remarks'"
 
 	order_by_statement = "order by posting_date, account, creation"
 

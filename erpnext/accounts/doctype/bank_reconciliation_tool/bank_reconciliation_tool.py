@@ -140,7 +140,7 @@ def create_journal_entry_bts(
 	user_remark=None,
 	party_type=None,
 	party=None,
-	cost_center = None,
+	cost_center=None,
 	allow_edit=None,
 	multi_currency=None
 ):
@@ -175,6 +175,9 @@ def create_journal_entry_bts(
 		else False
 	)
 
+	if not cost_center:
+		cost_center = get_default_cost_center(company)
+
 	accounts = []
 	second_account_dict = {
 		"account": second_account,
@@ -183,7 +186,7 @@ def create_journal_entry_bts(
 		"debit_in_account_currency": bank_transaction.withdrawal,
 		"party_type": party_type,
 		"party": party,
-		"cost_center": get_default_cost_center(company),
+		"cost_center": cost_center,
 	}
 
 	company_account_dict = {
@@ -192,7 +195,7 @@ def create_journal_entry_bts(
 		"bank_account": bank_transaction.bank_account,
 		"credit_in_account_currency": bank_transaction.withdrawal,
 		"debit_in_account_currency": bank_transaction.deposit,
-		"cost_center": get_default_cost_center(company),
+		"cost_center": cost_center,
 	}
 
 	# convert transaction amount to company currency
@@ -258,6 +261,7 @@ def create_journal_entry_bts(
 		"cheque_date": reference_date,
 		"cheque_no": reference_number,
 		"mode_of_payment": mode_of_payment,
+		"user_remark": user_remark
 	}
 	if is_multi_currency:
 		journal_entry_dict.update({"multi_currency": True})
@@ -855,7 +859,7 @@ def get_je_matching_query(
 		.where(jea.account == common_filters.bank_account)
 		.where(amount_equality if exact_match else getattr(jea, amount_field) > 0.0)
 		.where(je.docstatus == 1)
-		.where(filter_by_date)
+		# .where(filter_by_date)
 		.orderby(je.cheque_date if cint(filter_by_reference_date) else je.posting_date)
 	)
 
@@ -863,7 +867,6 @@ def get_je_matching_query(
 		query = query.where(ref_condition)
 
 	return query
-
 
 
 def get_si_matching_query(exact_match, currency, common_filters):

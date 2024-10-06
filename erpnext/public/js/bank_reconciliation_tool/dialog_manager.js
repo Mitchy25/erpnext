@@ -206,6 +206,22 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				label: __("Filters"),
 				depends_on: "eval:doc.action=='Match Against Voucher'",
 			},
+			// {
+			// 	fieldname: "column_break_5",
+			// 	fieldtype: "Column Break",
+			// },
+			// {
+			// 	fieldtype: "Check",
+			// 	label: "Sales Invoice",
+			// 	fieldname: "sales_invoice",
+			// 	onchange: () => this.update_options(),
+			// },
+			// {
+			// 	fieldtype: "Check",
+			// 	label: "Purchase Invoice",
+			// 	fieldname: "purchase_invoice",
+			// 	onchange: () => this.update_options(),
+			// },
 		];
 
 		frappe.call({
@@ -239,31 +255,28 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 
 	get_voucher_fields() {
 		return [
-			{
-				fieldtype: "Check",
-				label: "Loan Disbursement",
-				fieldname: "loan_disbursement",
-				onchange: () => this.update_options(),
-			},
-			{
-				fieldname: "column_break_5",
-				fieldtype: "Column Break",
-			},
-			{
-				fieldtype: "Check",
-				label: "Bank Transaction",
-				fieldname: "bank_transaction",
-				onchange: () => this.update_options(),
-			},
-			{
-				fieldname: "column_break_5",
-				fieldtype: "Column Break",
-			},
+			// {
+			// 	fieldtype: "Check",
+			// 	label: "Loan Disbursement",
+			// 	fieldname: "loan_disbursement",
+			// 	onchange: () => this.update_options(),
+			// },
+			// {
+			// 	fieldname: "column_break_5",
+			// 	fieldtype: "Column Break",
+			// },
 			{
 				fieldtype: "Check",
 				label: "Bank Transaction",
 				fieldname: "bank_transaction",
 				onchange: () => this.update_options(),
+			},
+			{
+				fieldtype: "Check",
+				label: "Show Only Exact Amount",
+				fieldname: "exact_match",
+				onchange: () => this.update_options(),
+				default: 1
 			},
 			{
 				fieldtype: "Section Break",
@@ -449,8 +462,6 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 				mandatory_depends_on:
 					"eval:doc.action=='Create Voucher' && doc.document_type=='Payment Entry'",
 				onchange: function (values) {
-					console.log(cur_dialog.fields_dict.action.value);
-					console.log(cur_dialog.fields_dict.document_type.value);
 					if (cur_dialog.fields_dict.action.value == "Create Voucher" && cur_dialog.fields_dict.document_type.value == "Payment Entry" && values.party_type == "Customer" && values.party) {
 						frappe.call({
 								method: 'frappe.client.get_value',
@@ -639,14 +650,11 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 		});
 	}
 	route_to_payment_reconcile(party, party_type) {
-		let doc = {
+		frappe.open_in_new_tab = true;
+		frappe.set_route("Form", "Payment Reconciliation", {
 			party: party,
 			party_type: party_type
-		};
-	
-		let url = frappe.urllib.get_full_url(`/app/payment-reconciliation/Payment Reconciliation` + $.param(doc));
-	
-		window.open(url, '_blank');
+		});
 	}
 	add_journal_entry(values) {
 		frappe.call({
@@ -699,6 +707,20 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 
 	edit_in_full_page() {
 		const values = this.dialog.get_values(true);
+
+		if (values.document_type == "Journal Entry") {
+			if (!values.second_account) {
+				frappe.msgprint("Please set the <b>account</b> before continuing.");
+				return;
+			}
+		} else if (values.document_type == "Payment Entry") {
+			if (!values.party_type || !values.party) {
+				let missingFields = !values.party_type ? "party type" : "party";
+				frappe.msgprint(`Please set the <b>${missingFields}</b> before continuing.`);
+				return;
+			}
+		}
+		
 		if (values.document_type == "Payment Entry") {
 			frappe.call({
 				method: "erpnext.accounts.doctype.bank_reconciliation_tool.bank_reconciliation_tool.create_payment_entry_bts",
@@ -713,6 +735,7 @@ erpnext.accounts.bank_reconciliation.DialogManager = class DialogManager {
 					project: values.project,
 					cost_center: values.cost_center,
 					allow_edit: true,
+					user_remark: values.user_remark,
 				},
 				callback: (r) => {
 					const doc = frappe.model.sync(r.message);
