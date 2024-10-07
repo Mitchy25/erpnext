@@ -13,6 +13,7 @@ def get_data():
 			"Product Bundle": "new_item_code",
 			"BOM": "item",
 			"Batch": "item",
+			"Memos": "item"
 		},
 		"transactions": [
 			{
@@ -23,7 +24,6 @@ def get_data():
 				'label': _('Buy'),
 				'items': ['Purchase Order', 'Purchase Receipt', 'Purchase Invoice', 'Stock Entry']
 			},
-
 			{
 				'label': _('Sell'),
 				'items': ['Sales Invoice', 'Backorder', 'Memos']
