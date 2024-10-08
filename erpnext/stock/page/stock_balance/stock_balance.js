@@ -77,6 +77,7 @@ frappe.pages["stock-balance"].on_page_load = function (wrapper) {
 			this.item_code = page.item_field.get_value();
 			this.warehouse = page.warehouse_field.get_value();
 			this.item_group = page.item_group_field.get_value();
+			this.brand = page.brand_field.get_value();
 		};
 
 		page.item_dashboard.refresh();

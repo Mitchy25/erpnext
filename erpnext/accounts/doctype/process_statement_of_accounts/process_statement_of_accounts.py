@@ -801,7 +801,7 @@ def send_emails(document_name, from_scheduler=False):
 			enqueue_args = {
 				"queue":"short",
 				"method":frappe.sendmail,
-				"recipients":"IT@Fxmed.co.nz",
+				"recipients":["IT@Fxmed.co.nz","ar@fxmed.co.nz"],
 				# sender=frappe.session.user, #Send as default outgoing
 				"subject": doc.company + ": Customer Statements Sending Complete",
 				"message":"Hi IT,<br><br><b>Company</b>: " + str(doc.company) + "<br><b>From</b>: " + str(doc.from_date) + "<br><b>To</b>: " + str(doc.to_date) + "<br><b>Customers Analysed</b>: " + str(len(doc.customers)) + "<br><b>Customers Sent</b>: " + str(len(report)) + "<br><br>Kind Regards, ERPNext",
@@ -820,7 +820,7 @@ def send_emails(document_name, from_scheduler=False):
 		enqueue_args = {
 			"queue":"short",
 			"method":frappe.sendmail,
-			"recipients":"IT@Fxmed.co.nz",
+			"recipients":["IT@Fxmed.co.nz","ar@fxmed.co.nz"],
 			# sender=frappe.session.user, #Send as default outgoing
 			"subject": doc.company + ": Customer Statements Sending Complete",
 			"message":"Hi IT,<br><br><b>Company</b>: " + str(doc.company) + "<br><b>From</b>: " + str(doc.from_date) + "<br><b>To</b>: " + str(doc.to_date) + "<br><b>Customers Analysed</b>: " + str(len(doc.customers)) + "<br><b>Customers Sent</b>: " + str(len(report)) + "<br><br>Kind Regards, ERPNext",
