@@ -770,7 +770,8 @@ function stock_transfer_dialog(item_code, cur_batch_data, tar_batch_data, curren
 						label: 'Expiry Date',
 						fieldtype: 'Date',
 						in_list_view: 1,
-						reqd: 1
+						reqd: 1,
+						read_only: !batchReqd
 					},
 					{
 						fieldname: "from_batch",
