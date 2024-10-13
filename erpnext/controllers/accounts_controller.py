@@ -1100,7 +1100,7 @@ class AccountsController(TransactionBase):
 		if account_currency == self.get("currency"):
 			return gl_dict.get(field + "_in_account_currency")
 		else:
-			return flt(gl_dict.get(field, 0) / self.get("conversion_rate", 1))
+			return flt(gl_dict.get(field, 0) / flt(self.get("conversion_rate", 1)))
 
 	def validate_zero_qty_for_return_invoices_with_stock(self):
 		rows = []
