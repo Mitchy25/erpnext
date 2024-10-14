@@ -2168,6 +2168,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 		if (!reset_plc_conversion) {
 			this.frm.set_value("plc_conversion_rate", "");
+			return
 		}
 
 		var me = this;
