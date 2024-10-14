@@ -131,6 +131,8 @@ erpnext.stock.ItemDashboard = class ItemDashboard {
 						item_code: item,
 						target_site: target_site,
 						current_site: current_site,
+						user_email: frappe.session.user_email,
+						user_name: frappe.session.user_fullname
 					}
 				},
 				async: false,
@@ -193,7 +195,9 @@ erpnext.stock.ItemDashboard = class ItemDashboard {
 							item_code: item,
 							target_site: target_site,
 							current_site: current_site,
-							has_batch_no: has_batch_no
+							has_batch_no: has_batch_no, 
+							user_email: frappe.session.user_email,
+							user_name: frappe.session.user_fullname
 						}
 					},
 					async: false,
@@ -1025,7 +1029,9 @@ function create_stock_entry(item_code, current_site, target_site, values, action
 				current_site: current_site,
 				has_batch_no: has_batch_no,
 				batch_data: values,
-				intersite_key: intersite_key
+				intersite_key: intersite_key,
+				user_email: frappe.session.user_email,
+				user_name: frappe.session.user_fullname
 			}
 		},
 		async: false,
