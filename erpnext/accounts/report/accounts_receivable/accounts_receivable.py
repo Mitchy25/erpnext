@@ -759,7 +759,7 @@ class ReceivablePayableReport:
 				90,
 				120,
 			)
-
+		index = None
 		for i, days in enumerate(
 			[self.filters.range1, self.filters.range2, self.filters.range3, self.filters.range4]
 		):
