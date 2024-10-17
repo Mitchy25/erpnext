@@ -1156,7 +1156,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	batch_no (doc, cdt, cdn) {
 		let item = frappe.get_doc(cdt, cdn);
 		// if (!this.is_a_mapped_document(item)) {
-		if(!item.is_free_item) {
+		if(!item.is_free_item && !cur_frm.doc.purchase_order_pricing) {
 			this.apply_price_list(item, true);
 		}
 	}
