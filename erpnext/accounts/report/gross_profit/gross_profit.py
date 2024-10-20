@@ -44,6 +44,7 @@ def execute(filters=None):
 				"gross_profit",
 				"gross_profit_percent",
 				"project",
+				"cost_center"
 			],
 			"item_code": [
 				"item_code",
@@ -58,6 +59,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"cost_center": [
 				"cost_center",
@@ -69,6 +71,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"warehouse": [
 				"warehouse",
@@ -80,6 +83,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"brand": [
 				"brand",
@@ -91,6 +95,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"item_group": [
 				"item_group",
@@ -102,6 +107,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"customer": [
 				"customer",
@@ -114,6 +120,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"customer_group": [
 				"customer_group",
@@ -125,6 +132,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"sales_person": [
 				"sales_person",
@@ -137,6 +145,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"project": [
 				"project", 
@@ -144,7 +153,8 @@ def execute(filters=None):
 				"buying_amount",
 				"discount_amount",
 				"gross_profit", 
-				"gross_profit_percent"
+				"gross_profit_percent",
+				"cost_center"
 			],
 			"territory": [
 				"territory",
@@ -153,6 +163,7 @@ def execute(filters=None):
 				"discount_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 			"monthly": [
 				"monthly",
@@ -170,6 +181,7 @@ def execute(filters=None):
 				"buying_amount",
 				"gross_profit",
 				"gross_profit_percent",
+				"cost_center"
 			],
 		}
 	)
@@ -201,7 +213,7 @@ def get_data_when_grouped_by_invoice(columns, gross_profit_data, filters, group_
 
 		for col in group_wise_columns.get(scrub(filters.group_by)):
 			row[column_names[col]] = src.get(col)
-
+			
 		data.append(row)
 
 
@@ -279,6 +291,13 @@ def get_columns(group_wise_columns, filters):
 				"options": "Warehouse",
 				"width": 100,
 			},
+			"cost_center": {
+                "label": _("Cost Center"),
+                "fieldname": "cost_center",
+                "fieldtype": "Link",
+                "options": "Cost Center",
+                "width": 250,
+            },
 			"qty": {"label": _("Qty"), "fieldname": "qty", "fieldtype": "Float", "width": 80},
 			"discount_amount": {
 				"label": _("Discount Amount"),
@@ -424,6 +443,7 @@ def get_column_names():
 			"gross_profit": "gross_profit",
 			"gross_profit_percent": "gross_profit_%",
 			"project": "project",
+			"cost_center": "cost_center"
 		}
 	)
 
