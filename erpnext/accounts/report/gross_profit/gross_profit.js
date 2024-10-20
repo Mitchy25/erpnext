@@ -51,6 +51,12 @@ frappe.query_reports["Gross Profit"] = {
 			fieldtype: "Link",
 			options: "Sales Person",
 		},
+		{
+			fieldname: "cost_center",
+			label: __("Cost Center"),
+			fieldtype: "Link",
+			options: "Cost Center"
+		}
 	],
 	tree: true,
 	name_field: "parent",
