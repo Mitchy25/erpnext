@@ -715,8 +715,11 @@ erpnext.SerialBatchPackageSelector = class SerialBatchPackageSelector {
 		this.item = item;
 		this.callback = callback;
 
-		if (this.item.is_free_item && this.batch_no) {
+		if (this.item.is_free_item && this.item.batch_no) {
 			//Dont show dialog for free items.
+			if (erpnext.batch_selector_pending === this.item.item_code) {
+				erpnext.batch_selector_pending = null
+			}
 			return
 		}
 
@@ -996,8 +999,14 @@ erpnext.SerialBatchPackageSelector = class SerialBatchPackageSelector {
 			me.fetch_batches(me, fetchType);
 		});
 
+		this.dialog.__is_batch_selector = true;
+		this.dialog.__batch_selector_item_code = me.item_code;
+
 		this.dialog.show();
-		
+		if (erpnext.batch_selector_pending === me.item_code) {
+			erpnext.batch_selector_pending = null;
+		}
+
 		//Dialog onload functions
 		this.dialog.$wrapper.on('shown.bs.modal', function () {
 			let defaultFetchType = $('.btn-group-toggle .btn input[type="radio"]:checked').attr('name');

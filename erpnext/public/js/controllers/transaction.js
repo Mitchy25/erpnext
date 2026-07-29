@@ -3150,6 +3150,15 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	}
 };
 
+erpnext.batch_selector_is_open = function (item_code) {
+	if (erpnext.batch_selector_pending && erpnext.batch_selector_pending === item_code) {
+		return true;
+	}
+	return (frappe.ui.open_dialogs || []).some(
+		(d) => d.__is_batch_selector && d.__batch_selector_item_code === item_code
+	);
+};
+
 erpnext.show_serial_batch_selector = function (frm, item_row, callback, on_close, show_dialog) {
 	let warehouse, receiving_stock, existing_stock;
 
