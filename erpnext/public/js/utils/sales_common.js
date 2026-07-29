@@ -576,31 +576,39 @@ erpnext.sales_common = {
 				}
 				if (!me.__data['batch_data']) {
 					me.__data['batch_data'] = {}
-				} else {
-					if (me.__data['batch_data'][doc.name] && 
-					me.__data['batch_data'][doc.name]['item_code'] == doc.item_code &&
-					me.__data['batch_data'][doc.name]['qty'] == doc.qty &&
-					me.__data['batch_data'][doc.name]['shortdated_batch'] == doc.shortdated_batch) {
-						return
-					}
 				}
-		
+
+				if (doc.is_free_item) {
+					return
+				}
+
+				let cached = me.__data['batch_data'][doc.name]
+				if (cached &&
+				cached['item_code'] == doc.item_code &&
+				cached['qty'] == doc.qty &&
+				cached['shortdated_batch'] == doc.shortdated_batch) {
+					return
+				}
+
+				if (erpnext.batch_selector_is_open(doc.item_code)) {
+					return
+				}
+
+				me.__data['batch_data'][doc.name] = {
+					"item_code": doc.item_code,
+					"qty": doc.qty,
+					"shortdated_batch": doc.shortdated_batch,
+				}
 
 				let this_frm = doc
-		
-				let secondary_label = ""
-				switch (dialog_type) {
-					case "multi":
-						secondary_label = "Cancel"
-						break;
-					case "longdated":
-						secondary_label = "Keep as Longdated" 
-						break;
-					case "shortdated":
-						secondary_label = "Keep as Shortdated" 
-						break;
-				}
-		
+
+				erpnext.batch_selector_pending = doc.item_code
+
+				setTimeout(() => {
+					if (erpnext.batch_selector_pending === doc.item_code) {
+						erpnext.batch_selector_pending = null
+					}
+				}, 10000);
 
 				erpnext.show_serial_batch_selector(me.frm, this_frm, "", undefined, true);
 			}

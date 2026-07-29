@@ -1003,8 +1003,8 @@ frappe.ui.form.on("Stock Entry Detail", {
 						if (no_batch_serial_number_value && !frappe.flags.hide_serial_batch_dialog) {
 							if (!frappe.flags.dialog_set) {
 								frappe.flags.dialog_set = true;
+								erpnext.stock.select_batch_and_serial_no(frm, d);
 							}
-							erpnext.stock.select_batch_and_serial_no(frm, d);
 						}
 					}
 				},
