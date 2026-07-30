@@ -164,23 +164,29 @@ class Analytics:
 
 		self.get_teams()
 
+	def aggregate_patient_sales(self):
+		return bool(self.filters.get("aggregate_patient")) and self.filters.tree_type == "Customer"
+
 	def get_sales_transactions_based_on_customers_or_suppliers(self):
 		filters = {
 			"docstatus": 1,
 			"company": ["in", self.filters.company],
 			self.date_field: ("between", [self.filters.from_date, self.filters.to_date]),
 		}
-  
+
 		if self.filters["value_quantity"] == "Value":
 			value_field = "base_net_total as value_field"
 		else:
 			value_field = "total_qty as value_field"
 
+		aggregate_patient = self.aggregate_patient_sales()
+		customer = self.filters.get("customer")
+
 		if self.filters.tree_type == "Customer":
 			entity = "customer as entity"
 			entity_name = "customer_name as entity_name"
-			if self.filters.get('customer'):
-				filters['customer'] = self.filters.get('customer')
+			if customer and not aggregate_patient:
+				filters['customer'] = customer
 		else:
 			entity = "supplier as entity"
 			entity_name = "supplier_name as entity_name"
@@ -188,13 +194,54 @@ class Analytics:
 		if self.filters.doc_type in ["Sales Invoice", "Purchase Invoice", "Payment Entry"]:
 			filters.update({"is_opening": "No"})
 
-		self.entries = frappe.get_all(
-			self.filters.doc_type, fields=[entity, entity_name, value_field, self.date_field], filters=filters
-		)
+		fields = [entity, entity_name, value_field, self.date_field]
+		if aggregate_patient:
+			fields.append("sales_partner")
+
+		self.entries = frappe.get_all(self.filters.doc_type, fields=fields, filters=filters)
+
+		if aggregate_patient:
+			self.aggregate_to_sales_partner()
+			if customer:
+				self.entries = [d for d in self.entries if d.entity == customer]
 
 		self.entity_names = {}
 		for d in self.entries:
 			self.entity_names.setdefault(d.entity, d.entity_name)
+
+	def aggregate_to_sales_partner(self):
+		partners = {
+			d.sales_partner
+			for d in self.entries
+			if d.sales_partner and d.sales_partner not in ("NZUnallocated", "AUUnallocated")
+		}
+		if not partners:
+			return
+
+		partner_customer = {
+			p.name: p.customer
+			for p in frappe.get_all(
+				"Sales Partner", filters={"name": ("in", list(partners))}, fields=["name", "customer"]
+			)
+			if p.customer
+		}
+		if not partner_customer:
+			return
+
+		customer_names = dict(
+			frappe.get_all(
+				"Customer",
+				filters={"name": ("in", list(set(partner_customer.values())))},
+				fields=["name", "customer_name"],
+				as_list=True,
+			)
+		)
+
+		for d in self.entries:
+			target = partner_customer.get(d.sales_partner)
+			if target:
+				d.entity = target
+				d.entity_name = customer_names.get(target, target)
 
 	def get_sales_transactions_based_on_items(self):
 		if self.filters["value_quantity"] == "Value":

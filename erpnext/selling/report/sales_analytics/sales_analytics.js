@@ -81,6 +81,13 @@ frappe.query_reports["Sales Analytics"] = {
 			hidden: 1
 		},
 		{
+			fieldname: 'aggregate_patient',
+			label: 'Aggregate Patient Sales',
+			fieldtype: 'Check',
+			default: 0,
+			hidden: ["NaturalMeds", "Therahealth"].includes(frappe.user_defaults.company)
+		},
+		{
 			fieldname: "show_aggregate_value_from_subsidiary_companies",
 			label: __("Show Aggregate Value from Subsidiary Companies"),
 			fieldtype: "Check",
