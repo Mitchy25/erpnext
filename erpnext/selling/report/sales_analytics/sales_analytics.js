@@ -91,6 +91,7 @@ frappe.query_reports["Sales Analytics"] = {
 			fieldname: "show_aggregate_value_from_subsidiary_companies",
 			label: __("Show Aggregate Value from Subsidiary Companies"),
 			fieldtype: "Check",
+			hidden: 1
 		},
 	],
 	get_datatable_options(options) {
