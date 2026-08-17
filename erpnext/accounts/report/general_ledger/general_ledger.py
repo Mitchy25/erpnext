@@ -881,7 +881,6 @@ def get_sales_invoice_details(filters):
 		where {condition_string}""",
 		filters,
 		as_dict=1,
-		debug=1
 	):
 		inv_details[d.name] = {
 			"bill_no": d.po_no,
