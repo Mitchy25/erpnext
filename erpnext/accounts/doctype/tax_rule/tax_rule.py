@@ -204,7 +204,7 @@ def get_tax_template(posting_date, args):
 			elif len(value) > 2 and frappe.db.exists("Country", {"name": value}):
 				country = value
 			else:
-				frappe.throw(f"Unable to find a country to match code {value}. Please enter a value country code.")
+				frappe.throw(f"Unable to find a country to match code `{value}`. Please enter a valid country code.")
 			
 			conditions.append("ifnull({0}, '') in ('', {1})".format('shipping_country', frappe.db.escape(cstr(country))))
 		else:
